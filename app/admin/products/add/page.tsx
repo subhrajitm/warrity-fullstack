@@ -1,5 +1,7 @@
 "use client"
 
+/** @jsxRuntime automatic */
+/** @jsxImportSource react */
 import React, { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
@@ -31,7 +33,7 @@ export default function AddProductPage() {
     warrantyPeriod: "",
     description: ""
   })
-  const [productImage, setProductImage] = useState(null)
+  const [productImage, setProductImage] = useState<File | null>(null)
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   
@@ -47,7 +49,7 @@ export default function AddProductPage() {
     }
   }, [router])
   
-  const handleChange = (e) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({
       ...prev,
@@ -55,21 +57,21 @@ export default function AddProductPage() {
     }))
   }
   
-  const handleSelectChange = (name, value) => {
+  const handleSelectChange = (name: string, value: string) => {
     setFormData(prev => ({
       ...prev,
       [name]: value
     }))
   }
   
-  const handleFileChange = (e) => {
-    const file = e.target.files[0]
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
     if (file) {
       setProductImage(file)
     }
   }
   
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setError("")
     setIsLoading(true)
@@ -138,7 +140,7 @@ export default function AddProductPage() {
                       name="name"
                       value={formData.name}
                       onChange={handleChange}
-                      placeholder="e.g. Samsung 55\" QLED TV"
+                      placeholder="e.g. Samsung 55&quot; QLED TV"
                       className="border-2 border-amber-800 bg-amber-50"
                       required
                     />

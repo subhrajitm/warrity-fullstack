@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -22,8 +22,19 @@ import {
 } from "lucide-react"
 import WarrantySidebar from "./components/sidebar"
 
+// Define the warranty type
+interface Warranty {
+  id: number;
+  product: string;
+  category: string;
+  provider: string;
+  purchaseDate: string;
+  endDate: string;
+  status: string;
+}
+
 // Mock data for demonstration
-const mockWarranties = [
+const mockWarranties: Warranty[] = [
   {
     id: 1,
     product: "Samsung TV",
@@ -80,18 +91,26 @@ const mockWarranties = [
   }
 ]
 
-export default function WarrantiesPage() {
+// Create a component that uses useSearchParams
+function WarrantiesContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const statusFilter = searchParams.get('status')
-  
-  const [warranties, setWarranties] = useState([])
-  const [filteredWarranties, setFilteredWarranties] = useState([])
-  const [searchQuery, setSearchQuery] = useState("")
-  const [sortField, setSortField] = useState("endDate")
+  const [warranties, setWarranties] = useState<Warranty[]>([])
+  const [filteredWarranties, setFilteredWarranties] = useState<Warranty[]>([])
+  const [searchTerm, setSearchTerm] = useState("")
+  const [sortField, setSortField] = useState<keyof Warranty>("endDate")
   const [sortDirection, setSortDirection] = useState("asc")
+  const [isLoading, setIsLoading] = useState(true)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [statusFilter, setStatusFilter] = useState<string | null>(null)
   
-  // Check if user is logged in and fetch data
+  // Filter warranties by category
+  const filterWarrantiesByCategory = (category: string) => {
+    const filtered = warranties.filter(warranty => warranty.category === category)
+    setFilteredWarranties(filtered)
+  }
+  
+  // Check if user is logged in and fetch warranties
   useEffect(() => {
     const isLoggedIn = localStorage.getItem('userLoggedIn')
     const role = localStorage.getItem('userRole')
@@ -104,55 +123,63 @@ export default function WarrantiesPage() {
     
     // In a real app, you would fetch the warranties from your backend
     setWarranties(mockWarranties)
-  }, [router])
+    setFilteredWarranties(mockWarranties)
+    setIsLoading(false)
+    
+    // Check if there's a category filter in the URL
+    const category = searchParams?.get('category')
+    if (category) {
+      filterWarrantiesByCategory(category)
+    }
+    
+    // Check if there's a status filter in the URL
+    const status = searchParams?.get('status')
+    if (status) {
+      setStatusFilter(status)
+      const filtered = mockWarranties.filter(warranty => warranty.status === status)
+      setFilteredWarranties(filtered)
+    }
+  }, [router, searchParams])
   
   // Filter and sort warranties
   useEffect(() => {
-    let filtered = [...warranties]
+    let result = [...warranties]
     
-    // Apply status filter if present
+    // Apply status filter
     if (statusFilter) {
-      filtered = filtered.filter(warranty => warranty.status === statusFilter)
+      result = result.filter(warranty => warranty.status === statusFilter)
     }
     
     // Apply search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase()
-      filtered = filtered.filter(warranty => 
-        warranty.product.toLowerCase().includes(query) ||
+      result = result.filter(warranty => 
+        warranty.product.toLowerCase().includes(query) || 
         warranty.provider.toLowerCase().includes(query) ||
         warranty.category.toLowerCase().includes(query)
       )
     }
     
     // Apply sorting
-    filtered.sort((a, b) => {
-      let aValue = a[sortField]
-      let bValue = b[sortField]
+    result.sort((a, b) => {
+      const valueA = a[sortField]
+      const valueB = b[sortField]
       
-      // Handle date fields
-      if (sortField === 'purchaseDate' || sortField === 'endDate') {
-        aValue = new Date(aValue)
-        bValue = new Date(bValue)
+      if (sortDirection === 'asc') {
+        return valueA > valueB ? 1 : -1
+      } else {
+        return valueA < valueB ? 1 : -1
       }
-      
-      if (aValue < bValue) {
-        return sortDirection === 'asc' ? -1 : 1
-      }
-      if (aValue > bValue) {
-        return sortDirection === 'asc' ? 1 : -1
-      }
-      return 0
     })
     
-    setFilteredWarranties(filtered)
+    setFilteredWarranties(result)
   }, [warranties, statusFilter, searchQuery, sortField, sortDirection])
   
-  const handleSearchChange = (e) => {
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value)
   }
   
-  const handleSortChange = (field) => {
+  const handleSortChange = (field: keyof Warranty) => {
     if (sortField === field) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
     } else {
@@ -161,7 +188,7 @@ export default function WarrantiesPage() {
     }
   }
   
-  const getStatusBadge = (status) => {
+  const getStatusBadge = (status: string) => {
     switch (status) {
       case 'active':
         return (
@@ -189,164 +216,185 @@ export default function WarrantiesPage() {
     }
   }
   
-  const getSortIcon = (field) => {
+  const getSortIcon = (field: keyof Warranty) => {
     if (sortField !== field) return null
     
     return sortDirection === 'asc' 
-      ? <SortAsc className="h-4 w-4 ml-1" /> 
+      ? <SortAsc className="h-4 w-4 ml-1" />
       : <SortDesc className="h-4 w-4 ml-1" />
   }
   
+  // Return the component JSX
+  if (isLoading) {
+    return (
+      <div className="flex-1 p-6 ml-64 flex items-center justify-center">
+        <p className="text-amber-800 text-xl">Loading warranties...</p>
+      </div>
+    )
+  }
+  
+  return (
+    <div className="flex-1 p-6 ml-64">
+      <div className="max-w-6xl mx-auto">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-3xl font-bold text-amber-900">
+            {statusFilter 
+              ? `${statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1)} Warranties` 
+              : "My Warranties"}
+          </h1>
+          <Link href="/user/warranties/add">
+            <Button className="bg-amber-800 hover:bg-amber-900 text-amber-100 border-2 border-amber-900">
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Add Warranty
+            </Button>
+          </Link>
+        </div>
+        
+        <Card className="border-4 border-amber-800 shadow-[8px_8px_0px_0px_rgba(120,53,15,0.5)] bg-amber-100 mb-6">
+          <CardContent className="p-4">
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-3 h-4 w-4 text-amber-800" />
+                <Input
+                  placeholder="Search warranties..."
+                  value={searchQuery}
+                  onChange={handleSearchChange}
+                  className="pl-10 border-2 border-amber-800 bg-amber-50"
+                />
+              </div>
+              
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  className={`border-2 ${!statusFilter ? 'bg-amber-200 border-amber-900' : 'border-amber-800'} text-amber-800`}
+                  onClick={() => router.push('/user/warranties')}
+                >
+                  All
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className={`border-2 ${statusFilter === 'active' ? 'bg-green-200 border-green-900' : 'border-amber-800'} text-amber-800`}
+                  onClick={() => router.push('/user/warranties?status=active')}
+                >
+                  <CheckCircle className="h-4 w-4 mr-1" />
+                  Active
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className={`border-2 ${statusFilter === 'expiring' ? 'bg-amber-200 border-amber-900' : 'border-amber-800'} text-amber-800`}
+                  onClick={() => router.push('/user/warranties?status=expiring')}
+                >
+                  <Clock className="h-4 w-4 mr-1" />
+                  Expiring
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className={`border-2 ${statusFilter === 'expired' ? 'bg-red-200 border-red-900' : 'border-amber-800'} text-amber-800`}
+                  onClick={() => router.push('/user/warranties?status=expired')}
+                >
+                  <AlertTriangle className="h-4 w-4 mr-1" />
+                  Expired
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card className="border-4 border-amber-800 shadow-[8px_8px_0px_0px_rgba(120,53,15,0.5)] bg-amber-100">
+          <CardHeader className="border-b-4 border-amber-800 bg-amber-200 px-6 py-4">
+            <div className="flex justify-between items-center">
+              <CardTitle className="text-xl font-bold text-amber-900">
+                {filteredWarranties.length} {filteredWarranties.length === 1 ? 'Warranty' : 'Warranties'}
+              </CardTitle>
+              <div className="flex items-center text-sm text-amber-800">
+                <Filter className="h-4 w-4 mr-1" />
+                Sort by:
+                <button 
+                  className="ml-2 flex items-center font-medium hover:text-amber-600"
+                  onClick={() => handleSortChange('product')}
+                >
+                  Name {getSortIcon('product')}
+                </button>
+                <span className="mx-2">|</span>
+                <button 
+                  className="flex items-center font-medium hover:text-amber-600"
+                  onClick={() => handleSortChange('endDate')}
+                >
+                  Expiry Date {getSortIcon('endDate')}
+                </button>
+              </div>
+            </div>
+          </CardHeader>
+          
+          <CardContent className="p-6">
+            {filteredWarranties.length === 0 ? (
+              <div className="text-center py-8">
+                <Package className="h-12 w-12 text-amber-800 mx-auto mb-4 opacity-50" />
+                <p className="text-amber-800 text-lg mb-2">No warranties found</p>
+                <p className="text-amber-700 mb-6">
+                  {searchQuery 
+                    ? "Try adjusting your search or filters" 
+                    : statusFilter 
+                      ? `You don't have any ${statusFilter} warranties` 
+                      : "Add your first warranty to get started"}
+                </p>
+                
+                <Link href="/user/warranties/add">
+                  <Button className="bg-amber-800 hover:bg-amber-900 text-amber-100 border-2 border-amber-900">
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Add Warranty
+                  </Button>
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {filteredWarranties.map(warranty => (
+                  <Link key={warranty.id} href={`/user/warranties/${warranty.id}`}>
+                    <div className="flex justify-between items-center p-4 border-2 border-amber-800 rounded-lg bg-amber-50 hover:bg-amber-200 transition-colors">
+                      <div className="flex items-center">
+                        <div className="mr-4">
+                          <Package className="h-10 w-10 text-amber-800" />
+                        </div>
+                        <div>
+                          <h3 className="font-medium text-amber-900">{warranty.product}</h3>
+                          <p className="text-sm text-amber-700">{warranty.provider}</p>
+                          <div className="flex items-center mt-1 space-x-2">
+                            {getStatusBadge(warranty.status)}
+                            <Badge className="bg-amber-800">{warranty.category}</Badge>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="flex items-center text-sm text-amber-800">
+                          <Calendar className="h-4 w-4 mr-1" />
+                          Expires: {warranty.endDate}
+                        </div>
+                        <ChevronRight className="h-5 w-5 text-amber-800 mt-2 ml-auto" />
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  )
+}
+
+// Main component that wraps the content in a Suspense boundary
+export default function WarrantiesPage() {
   return (
     <div className="flex min-h-screen bg-amber-50">
       <WarrantySidebar />
-      
-      <div className="flex-1 p-6 ml-64">
-        <div className="max-w-6xl mx-auto">
-          <div className="flex justify-between items-center mb-6">
-            <h1 className="text-3xl font-bold text-amber-900">
-              {statusFilter 
-                ? `${statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1)} Warranties` 
-                : "My Warranties"}
-            </h1>
-            <Link href="/user/warranties/add">
-              <Button className="bg-amber-800 hover:bg-amber-900 text-amber-100 border-2 border-amber-900">
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Add Warranty
-              </Button>
-            </Link>
-          </div>
-          
-          <Card className="border-4 border-amber-800 shadow-[8px_8px_0px_0px_rgba(120,53,15,0.5)] bg-amber-100 mb-6">
-            <CardContent className="p-4">
-              <div className="flex flex-col md:flex-row gap-4">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-3 h-4 w-4 text-amber-800" />
-                  <Input
-                    placeholder="Search warranties..."
-                    value={searchQuery}
-                    onChange={handleSearchChange}
-                    className="pl-10 border-2 border-amber-800 bg-amber-50"
-                  />
-                </div>
-                
-                <div className="flex gap-2">
-                  <Button 
-                    variant="outline" 
-                    className={`border-2 ${!statusFilter ? 'bg-amber-200 border-amber-900' : 'border-amber-800'} text-amber-800`}
-                    onClick={() => router.push('/user/warranties')}
-                  >
-                    All
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    className={`border-2 ${statusFilter === 'active' ? 'bg-green-200 border-green-900' : 'border-amber-800'} text-amber-800`}
-                    onClick={() => router.push('/user/warranties?status=active')}
-                  >
-                    <CheckCircle className="h-4 w-4 mr-1" />
-                    Active
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    className={`border-2 ${statusFilter === 'expiring' ? 'bg-amber-200 border-amber-900' : 'border-amber-800'} text-amber-800`}
-                    onClick={() => router.push('/user/warranties?status=expiring')}
-                  >
-                    <Clock className="h-4 w-4 mr-1" />
-                    Expiring
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    className={`border-2 ${statusFilter === 'expired' ? 'bg-red-200 border-red-900' : 'border-amber-800'} text-amber-800`}
-                    onClick={() => router.push('/user/warranties?status=expired')}
-                  >
-                    <AlertTriangle className="h-4 w-4 mr-1" />
-                    Expired
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card className="border-4 border-amber-800 shadow-[8px_8px_0px_0px_rgba(120,53,15,0.5)] bg-amber-100">
-            <CardHeader className="border-b-4 border-amber-800 bg-amber-200 px-6 py-4">
-              <div className="flex justify-between items-center">
-                <CardTitle className="text-xl font-bold text-amber-900">
-                  {filteredWarranties.length} {filteredWarranties.length === 1 ? 'Warranty' : 'Warranties'}
-                </CardTitle>
-                <div className="flex items-center text-sm text-amber-800">
-                  <Filter className="h-4 w-4 mr-1" />
-                  Sort by:
-                  <button 
-                    className="ml-2 flex items-center font-medium hover:text-amber-600"
-                    onClick={() => handleSortChange('product')}
-                  >
-                    Name {getSortIcon('product')}
-                  </button>
-                  <span className="mx-2">|</span>
-                  <button 
-                    className="flex items-center font-medium hover:text-amber-600"
-                    onClick={() => handleSortChange('endDate')}
-                  >
-                    Expiry Date {getSortIcon('endDate')}
-                  </button>
-                </div>
-              </div>
-            </CardHeader>
-            
-            <CardContent className="p-6">
-              {filteredWarranties.length === 0 ? (
-                <div className="text-center py-8">
-                  <Package className="h-12 w-12 text-amber-800 mx-auto mb-4 opacity-50" />
-                  <p className="text-amber-800 text-lg mb-2">No warranties found</p>
-                  <p className="text-amber-700 mb-6">
-                    {searchQuery 
-                      ? "Try adjusting your search or filters" 
-                      : statusFilter 
-                        ? `You don't have any ${statusFilter} warranties` 
-                        : "Add your first warranty to get started"}
-                  </p>
-                  
-                  <Link href="/user/warranties/add">
-                    <Button className="bg-amber-800 hover:bg-amber-900 text-amber-100 border-2 border-amber-900">
-                      <PlusCircle className="mr-2 h-4 w-4" />
-                      Add Warranty
-                    </Button>
-                  </Link>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {filteredWarranties.map(warranty => (
-                    <Link key={warranty.id} href={`/user/warranties/${warranty.id}`}>
-                      <div className="flex justify-between items-center p-4 border-2 border-amber-800 rounded-lg bg-amber-50 hover:bg-amber-200 transition-colors">
-                        <div className="flex items-center">
-                          <div className="mr-4">
-                            <Package className="h-10 w-10 text-amber-800" />
-                          </div>
-                          <div>
-                            <h3 className="font-medium text-amber-900">{warranty.product}</h3>
-                            <p className="text-sm text-amber-700">{warranty.provider}</p>
-                            <div className="flex items-center mt-1 space-x-2">
-                              {getStatusBadge(warranty.status)}
-                              <Badge className="bg-amber-800">{warranty.category}</Badge>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="flex items-center text-sm text-amber-800">
-                            <Calendar className="h-4 w-4 mr-1" />
-                            Expires: {warranty.endDate}
-                          </div>
-                          <ChevronRight className="h-5 w-5 text-amber-800 mt-2 ml-auto" />
-                        </div>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+      <Suspense fallback={
+        <div className="flex-1 p-6 ml-64 flex items-center justify-center">
+          <p className="text-amber-800 text-xl">Loading warranties...</p>
         </div>
-      </div>
+      }>
+        <WarrantiesContent />
+      </Suspense>
     </div>
   )
 }

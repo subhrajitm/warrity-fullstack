@@ -8,11 +8,21 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Calendar } from "@/components/ui/calendar"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ArrowLeft, Calendar as CalendarIcon, Shield, Tool, AlertTriangle, Info } from "lucide-react"
+import { ArrowLeft, Calendar as CalendarIcon, Shield, Wrench, AlertTriangle, Info } from "lucide-react"
 import ProductSidebar from "../products/components/sidebar"
 
+// Define the event type
+interface CalendarEvent {
+  id: number;
+  title: string;
+  date: string;
+  type: string;
+  productId: number;
+  productName: string;
+}
+
 // Mock calendar events
-const mockEvents = [
+const mockEvents: CalendarEvent[] = [
   {
     id: 1,
     title: "Samsung TV Warranty Expiration",
@@ -65,7 +75,7 @@ const mockEvents = [
 
 export default function CalendarPage() {
   const router = useRouter()
-  const [events, setEvents] = useState([])
+  const [events, setEvents] = useState<CalendarEvent[]>([])
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [filterType, setFilterType] = useState("all")
   const [isLoading, setIsLoading] = useState(true)
@@ -103,7 +113,7 @@ export default function CalendarPage() {
   }
   
   // Get event type badge
-  const getEventTypeBadge = (type) => {
+  const getEventTypeBadge = (type: string) => {
     switch (type) {
       case "warranty":
         return (
@@ -115,7 +125,7 @@ export default function CalendarPage() {
       case "maintenance":
         return (
           <Badge className="bg-blue-500 text-white">
-            <Tool className="mr-1 h-3 w-3" />
+            <Wrench className="mr-1 h-3 w-3" />
             Maintenance
           </Badge>
         )
@@ -130,8 +140,13 @@ export default function CalendarPage() {
   }
   
   // Format date for display
-  const formatDate = (dateString) => {
-    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }
+  const formatDate = (dateString: string) => {
+    const options: Intl.DateTimeFormatOptions = { 
+      weekday: 'long', 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    }
     return new Date(dateString).toLocaleDateString(undefined, options)
   }
   

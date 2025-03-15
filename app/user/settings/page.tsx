@@ -1,5 +1,7 @@
 "use client"
 
+/** @jsxRuntime automatic */
+/** @jsxImportSource react */
 import React, { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -15,7 +17,9 @@ import {
   Save, 
   Mail, 
   Phone, 
-  Calendar
+  Calendar,
+  Clock,
+  AlertTriangle
 } from "lucide-react"
 import WarrantySidebar from "../warranties/components/sidebar"
 
@@ -36,7 +40,7 @@ const mockUser = {
 
 export default function UserSettingsPage() {
   const router = useRouter()
-  const [user, setUser] = useState(null)
+  const [user, setUser] = useState<typeof mockUser | null>(null)
   const [profileForm, setProfileForm] = useState({
     name: "",
     email: "",
@@ -78,7 +82,7 @@ export default function UserSettingsPage() {
     setNotificationSettings(mockUser.notifications)
   }, [router])
   
-  const handleProfileChange = (e) => {
+  const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
     setProfileForm(prev => ({
       ...prev,
@@ -86,7 +90,7 @@ export default function UserSettingsPage() {
     }))
   }
   
-  const handlePasswordChange = (e) => {
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
     setPasswordForm(prev => ({
       ...prev,
@@ -94,14 +98,14 @@ export default function UserSettingsPage() {
     }))
   }
   
-  const handleNotificationToggle = (name) => {
+  const handleNotificationToggle = (name: keyof typeof notificationSettings) => {
     setNotificationSettings(prev => ({
       ...prev,
       [name]: !prev[name]
     }))
   }
   
-  const handleReminderDaysChange = (e) => {
+  const handleReminderDaysChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(e.target.value) || 0
     setNotificationSettings(prev => ({
       ...prev,
@@ -109,7 +113,7 @@ export default function UserSettingsPage() {
     }))
   }
   
-  const handleProfileSubmit = (e) => {
+  const handleProfileSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setIsLoading(true)
     
@@ -123,7 +127,7 @@ export default function UserSettingsPage() {
     }, 1000)
   }
   
-  const handlePasswordSubmit = (e) => {
+  const handlePasswordSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setIsLoading(true)
     
@@ -149,7 +153,7 @@ export default function UserSettingsPage() {
     }, 1000)
   }
   
-  const handleNotificationSubmit = (e) => {
+  const handleNotificationSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setIsLoading(true)
     
@@ -410,7 +414,6 @@ export default function UserSettingsPage() {
                             onCheckedChange={() => handleNotificationToggle('push')}
                             className="data-[state=checked]:bg-amber-800"
                           />
-                        </div>
                         </div>
                         
                         <div className="flex items-center justify-between">
