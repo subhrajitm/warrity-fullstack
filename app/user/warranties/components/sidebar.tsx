@@ -13,7 +13,8 @@ import {
   Home,
   LogOut,
   User,
-  Settings
+  Settings,
+  Calendar
 } from "lucide-react"
 
 export default function WarrantySidebar() {
@@ -32,6 +33,9 @@ export default function WarrantySidebar() {
       return true
     }
     if (path === '/user/settings' && pathname === '/user/settings') {
+      return true
+    }
+    if (path === '/user/calendar' && pathname === '/user/calendar') {
       return true
     }
     if (path.includes('active') && pathname.includes('active')) {
@@ -79,6 +83,16 @@ export default function WarrantySidebar() {
           >
             <User className="mr-2 h-5 w-5" />
             My Profile
+          </Button>
+        </Link>
+        
+        <Link href="/user/calendar">
+          <Button 
+            variant="ghost" 
+            className={`w-full justify-start ${isActive('/user/calendar') ? 'bg-amber-900 text-amber-50' : 'text-amber-100 hover:bg-amber-700'}`}
+          >
+            <Calendar className="mr-2 h-5 w-5" />
+            Calendar
           </Button>
         </Link>
         
