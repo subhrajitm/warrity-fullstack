@@ -34,7 +34,7 @@ export default function NotificationSidebar() {
     <div className="fixed left-0 top-0 bottom-0 w-64 bg-amber-800 text-amber-100 p-4 border-r-4 border-amber-900 shadow-lg">
       <div className="flex flex-col h-full">
         <div className="mb-8">
-          <h1 className="font-bold text-2xl font-mono mb-2">Warranty Manager</h1>
+          <h1 className="font-bold text-2xl font-mono mb-2">Warrity</h1>
           <div className="text-amber-200">Welcome, {userName}</div>
         </div>
         

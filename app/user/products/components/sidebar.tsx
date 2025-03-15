@@ -22,7 +22,7 @@ export default function ProductSidebar() {
   return (
     <div className="fixed left-0 top-0 bottom-0 w-64 bg-amber-800 text-amber-100 p-6 flex flex-col">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-amber-100">Warranty Manager</h1>
+        <h1 className="text-2xl font-bold text-amber-100">Warrity</h1>
         <p className="text-amber-300 text-sm">Product Management</p>
       </div>
       

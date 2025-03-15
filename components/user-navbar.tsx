@@ -62,7 +62,7 @@ export default function UserNavbar() {
               transition={{ duration: 0.5 }}
             >
               <div className="relative z-10 font-bold text-2xl bg-gradient-to-r from-purple-600 to-blue-500 bg-clip-text text-transparent">
-                Warranty Manager
+                Warrity
               </div>
               <motion.div
                 className="absolute -right-1 -top-1 w-8 h-8 rounded-full bg-gradient-to-r from-purple-600/20 to-blue-500/20"

@@ -76,7 +76,7 @@ export default function RegisterPage() {
       <Card className="w-full max-w-md border-4 border-amber-800 shadow-[8px_8px_0px_0px_rgba(120,53,15,0.5)] bg-amber-100">
         <CardHeader className="border-b-4 border-amber-800 bg-amber-200 px-6 py-4">
           <CardTitle className="text-3xl font-bold text-amber-900 font-mono tracking-tight text-center">
-            Warranty Manager
+            Warrity
           </CardTitle>
           <CardDescription className="text-amber-800 font-medium text-center">
             Create a new account

@@ -7,7 +7,7 @@ import { ThemeProvider } from "@/components/theme-provider"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Warrify - Products warranty management",
+  title: "Warrity - Products warranty management",
   description: "Modern and creative digital solutions for your business",
     generator: 'Dev'
 }

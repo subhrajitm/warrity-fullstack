@@ -15,8 +15,8 @@ import AdminSidebar from "../components/sidebar"
 // Mock data for demonstration
 const mockSettings = {
   general: {
-    siteName: "Warranty Manager",
-    supportEmail: "support@warrantymanager.com",
+    siteName: "Warrity",
+    supportEmail: "support@warrity.com",
     defaultCurrency: "USD",
     dateFormat: "MM/DD/YYYY"
   },

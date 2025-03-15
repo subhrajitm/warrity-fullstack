@@ -27,7 +27,7 @@ export default function Home() {
   return (
     <div className="container grid items-center gap-6 pb-8 pt-6 md:py-10 bg-amber-50">
       <div className="flex flex-col items-start gap-2">
-        <h1 className="text-3xl font-bold leading-tight tracking-tighter md:text-4xl text-amber-900">Warranty Manager</h1>
+        <h1 className="text-3xl font-bold leading-tight tracking-tighter md:text-4xl text-amber-900">Warrity</h1>
         <p className="text-lg text-amber-700">Track and manage warranties for all your products in one place.</p>
       </div>
       
