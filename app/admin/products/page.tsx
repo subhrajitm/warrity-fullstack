@@ -17,7 +17,6 @@ import {
   SortAsc,
   SortDesc
 } from "lucide-react"
-import AdminSidebar from "../components/sidebar"
 
 // Define Product interface
 interface Product {
@@ -160,131 +159,123 @@ export default function AdminProductsPage() {
   }
   
   return (
-    <div className="flex min-h-screen bg-amber-50">
-      <AdminSidebar />
-      
-      <div className="flex-1 p-6 ml-64">
-        <div className="max-w-6xl mx-auto">
-          <div className="flex justify-between items-center mb-6">
-            <h1 className="text-3xl font-bold text-amber-900">Products</h1>
-            <Link href="/admin/products/add">
-              <Button className="bg-amber-800 hover:bg-amber-900 text-amber-100 border-2 border-amber-900">
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Add Product
-              </Button>
-            </Link>
-          </div>
-          
-          <Card className="border-4 border-amber-800 shadow-[8px_8px_0px_0px_rgba(120,53,15,0.5)] bg-amber-100 mb-8">
-            <CardContent className="p-6">
-              <div className="flex space-x-2">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-3 h-4 w-4 text-amber-800" />
-                  <Input
-                    placeholder="Search products..."
-                    value={searchQuery}
-                    onChange={handleSearchChange}
-                    className="pl-10 border-2 border-amber-800 bg-amber-50"
-                  />
-                </div>
-                <Button variant="outline" className="border-2 border-amber-800 text-amber-800">
-                  <Filter className="mr-2 h-4 w-4" />
-                  Filter
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card className="border-4 border-amber-800 shadow-[8px_8px_0px_0px_rgba(120,53,15,0.5)] bg-amber-100">
-            <CardHeader className="border-b-4 border-amber-800 bg-amber-200 px-6 py-4">
-              <div className="flex justify-between items-center">
-                <CardTitle className="text-xl font-bold text-amber-900">
-                  {filteredProducts.length} {filteredProducts.length === 1 ? 'Product' : 'Products'}
-                </CardTitle>
-                <div className="flex items-center text-sm text-amber-800">
-                  <Filter className="h-4 w-4 mr-1" />
-                  Sort by:
-                  <button 
-                    className="ml-2 flex items-center font-medium hover:text-amber-600"
-                    onClick={() => handleSortChange('name')}
-                  >
-                    Name {getSortIcon('name')}
-                  </button>
-                  <span className="mx-2">|</span>
-                  <button 
-                    className="flex items-center font-medium hover:text-amber-600"
-                    onClick={() => handleSortChange('manufacturer')}
-                  >
-                    Manufacturer {getSortIcon('manufacturer')}
-                  </button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="p-6">
-              {filteredProducts.length === 0 ? (
-                <div className="text-center py-8">
-                  <Package className="h-12 w-12 text-amber-800 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-amber-900 mb-2">No products found</h3>
-                  <p className="text-amber-800 mb-4">Try adjusting your search or add a new product.</p>
-                  <Link href="/admin/products/add">
-                    <Button className="bg-amber-800 hover:bg-amber-900 text-amber-100 border-2 border-amber-900">
-                      <PlusCircle className="mr-2 h-4 w-4" />
-                      Add Product
-                    </Button>
-                  </Link>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="border-b-2 border-amber-800">
-                        <th className="text-left py-3 px-4 text-amber-900 font-bold">Product Name</th>
-                        <th className="text-left py-3 px-4 text-amber-900 font-bold">Category</th>
-                        <th className="text-left py-3 px-4 text-amber-900 font-bold">Manufacturer</th>
-                        <th className="text-left py-3 px-4 text-amber-900 font-bold">Warranty Period</th>
-                        <th className="text-right py-3 px-4 text-amber-900 font-bold">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredProducts.map(product => (
-                        <tr key={product.id} className="border-b border-amber-300 hover:bg-amber-50">
-                          <td className="py-3 px-4 text-amber-900">
-                            <Link href={`/admin/products/${product.id}`} className="hover:underline">
-                              {product.name}
-                            </Link>
-                          </td>
-                          <td className="py-3 px-4">
-                            <Badge className="bg-amber-800">{product.category}</Badge>
-                          </td>
-                          <td className="py-3 px-4 text-amber-900">{product.manufacturer}</td>
-                          <td className="py-3 px-4 text-amber-900">{product.warrantyPeriod}</td>
-                          <td className="py-3 px-4 text-right">
-                            <div className="flex justify-end space-x-2">
-                              <Link href={`/admin/products/${product.id}/edit`}>
-                                <Button size="sm" variant="outline" className="border-2 border-amber-800 text-amber-800">
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                              </Link>
-                              <Button 
-                                size="sm" 
-                                variant="outline" 
-                                className="border-2 border-red-800 text-red-800 hover:bg-red-100"
-                                onClick={() => handleDeleteProduct(product.id)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+    <div className="max-w-6xl mx-auto">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold text-amber-900">Products</h1>
+        <Link href="/admin/products/add">
+          <Button className="bg-amber-800 hover:bg-amber-900 text-amber-100 border-2 border-amber-900">
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Add Product
+          </Button>
+        </Link>
       </div>
+      
+      <Card className="border-4 border-amber-800 shadow-[8px_8px_0px_0px_rgba(120,53,15,0.5)] bg-amber-100 mb-8">
+        <CardContent className="p-6">
+          <div className="flex space-x-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-amber-800" />
+              <Input
+                placeholder="Search products..."
+                value={searchQuery}
+                onChange={handleSearchChange}
+                className="pl-10 border-2 border-amber-800 bg-amber-50"
+              />
+            </div>
+            <Button variant="outline" className="border-2 border-amber-800 text-amber-800">
+              <Filter className="mr-2 h-4 w-4" />
+              Filter
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+      
+      <Card className="border-4 border-amber-800 shadow-[8px_8px_0px_0px_rgba(120,53,15,0.5)] bg-amber-100">
+        <CardHeader className="border-b-4 border-amber-800 bg-amber-200 px-6 py-4">
+          <div className="flex justify-between items-center">
+            <CardTitle className="text-xl font-bold text-amber-900">
+              {filteredProducts.length} {filteredProducts.length === 1 ? 'Product' : 'Products'}
+            </CardTitle>
+            <div className="flex items-center text-sm text-amber-800">
+              <Filter className="h-4 w-4 mr-1" />
+              Sort by:
+              <button 
+                className="ml-2 flex items-center font-medium hover:text-amber-600"
+                onClick={() => handleSortChange('name')}
+              >
+                Name {getSortIcon('name')}
+              </button>
+              <span className="mx-2">|</span>
+              <button 
+                className="flex items-center font-medium hover:text-amber-600"
+                onClick={() => handleSortChange('manufacturer')}
+              >
+                Manufacturer {getSortIcon('manufacturer')}
+              </button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="p-6">
+          {filteredProducts.length === 0 ? (
+            <div className="text-center py-8">
+              <Package className="h-12 w-12 text-amber-800 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-amber-900 mb-2">No products found</h3>
+              <p className="text-amber-800 mb-4">Try adjusting your search or add a new product.</p>
+              <Link href="/admin/products/add">
+                <Button className="bg-amber-800 hover:bg-amber-900 text-amber-100 border-2 border-amber-900">
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  Add Product
+                </Button>
+              </Link>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="border-b-2 border-amber-800">
+                    <th className="text-left py-3 px-4 text-amber-900 font-bold">Product Name</th>
+                    <th className="text-left py-3 px-4 text-amber-900 font-bold">Category</th>
+                    <th className="text-left py-3 px-4 text-amber-900 font-bold">Manufacturer</th>
+                    <th className="text-left py-3 px-4 text-amber-900 font-bold">Warranty Period</th>
+                    <th className="text-right py-3 px-4 text-amber-900 font-bold">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredProducts.map(product => (
+                    <tr key={product.id} className="border-b border-amber-300 hover:bg-amber-50">
+                      <td className="py-3 px-4">
+                        <Link href={`/admin/products/${product.id}`} className="text-amber-900 font-medium hover:text-amber-700 hover:underline">
+                          {product.name}
+                        </Link>
+                      </td>
+                      <td className="py-3 px-4 text-amber-900 capitalize">{product.category}</td>
+                      <td className="py-3 px-4 text-amber-900">{product.manufacturer}</td>
+                      <td className="py-3 px-4 text-amber-900">{product.warrantyPeriod}</td>
+                      <td className="py-3 px-4 text-right">
+                        <div className="flex justify-end space-x-2">
+                          <Link href={`/admin/products/${product.id}/edit`}>
+                            <Button variant="outline" size="sm" className="h-8 border-amber-800 text-amber-800">
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          </Link>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="h-8 border-red-800 text-red-800"
+                            onClick={() => handleDeleteProduct(product.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }

@@ -6,13 +6,12 @@ import React, { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ArrowLeft, Save, X } from "lucide-react"
-import AdminSidebar from "../../components/sidebar"
 
 // Define Product interface
 interface Product {
@@ -84,17 +83,15 @@ export default function AddProductPage() {
   
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex items-center justify-center h-full">
         <p className="text-amber-800 text-xl">Loading...</p>
       </div>
     )
   }
   
   return (
-    <div className="flex min-h-screen bg-amber-50">
-      <AdminSidebar />
-      
-      <div className="flex-1 p-6 ml-64">
+    <div>
+      <div className="flex-1 p-6">
         <div className="max-w-4xl mx-auto">
           <div className="flex justify-between items-center mb-6">
             <div className="flex items-center">

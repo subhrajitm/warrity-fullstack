@@ -7,20 +7,22 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ArrowLeft, Bell, Cog, Save, Shield } from "lucide-react"
 
 // Mock data for demonstration
-const mockGeneralSettings = {
-  siteName: "Warrity",
-  supportEmail: "support@warrity.com",
-  defaultCurrency: "USD",
-  dateFormat: "MM/DD/YYYY"
+const mockSecuritySettings = {
+  passwordMinLength: 8,
+  requireSpecialChars: true,
+  requireNumbers: true,
+  sessionTimeout: 60,
+  maxLoginAttempts: 5
 }
 
-export default function AdminSettingsPage() {
+export default function SecuritySettingsPage() {
   const router = useRouter()
-  const [settings, setSettings] = useState(mockGeneralSettings)
+  const [settings, setSettings] = useState(mockSecuritySettings)
   const [isLoading, setIsLoading] = useState(true)
   
   // Check if admin is logged in and fetch settings
@@ -38,7 +40,7 @@ export default function AdminSettingsPage() {
     setIsLoading(false)
   }, [router])
   
-  const handleInputChange = (field: string, value: string) => {
+  const handleInputChange = (field: string, value: string | number | boolean) => {
     setSettings(prev => ({
       ...prev,
       [field]: value
@@ -46,7 +48,7 @@ export default function AdminSettingsPage() {
   }
   
   const handleSaveSettings = () => {
-    console.log("Saving general settings:", settings)
+    console.log("Saving security settings:", settings)
     // In a real app, you would send the updated settings to your backend
     alert("Settings saved successfully!")
   }
@@ -76,7 +78,7 @@ export default function AdminSettingsPage() {
             <Link href="/admin/settings">
               <Button 
                 variant="outline" 
-                className="border-2 border-amber-800 bg-amber-800 text-amber-100"
+                className="border-2 border-amber-800 text-amber-800 hover:bg-amber-100"
               >
                 <Cog className="mr-2 h-4 w-4" />
                 General
@@ -96,7 +98,7 @@ export default function AdminSettingsPage() {
             <Link href="/admin/settings/security">
               <Button 
                 variant="outline" 
-                className="border-2 border-amber-800 text-amber-800 hover:bg-amber-100"
+                className="border-2 border-amber-800 bg-amber-800 text-amber-100"
               >
                 <Shield className="mr-2 h-4 w-4" />
                 Security
@@ -108,68 +110,91 @@ export default function AdminSettingsPage() {
         <Card className="border-4 border-amber-800 shadow-[8px_8px_0px_0px_rgba(120,53,15,0.5)] bg-amber-100">
           <CardHeader className="border-b-4 border-amber-800 bg-amber-200 px-6 py-4">
             <CardTitle className="text-2xl font-bold text-amber-900">
-              General Settings
+              Security Settings
             </CardTitle>
             <CardDescription className="text-amber-800">
-              Configure basic system settings for the Warrity platform
+              Configure security and authentication settings for the platform
             </CardDescription>
           </CardHeader>
           
           <CardContent className="p-6">
             <div className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="siteName" className="text-amber-900">Site Name</Label>
-                <Input
-                  id="siteName"
-                  value={settings.siteName}
-                  onChange={(e) => handleInputChange("siteName", e.target.value)}
-                  className="border-2 border-amber-800 bg-amber-50"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="supportEmail" className="text-amber-900">Support Email</Label>
-                <Input
-                  id="supportEmail"
-                  type="email"
-                  value={settings.supportEmail}
-                  onChange={(e) => handleInputChange("supportEmail", e.target.value)}
-                  className="border-2 border-amber-800 bg-amber-50"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="defaultCurrency" className="text-amber-900">Default Currency</Label>
+                <Label htmlFor="passwordMinLength" className="text-amber-900">Minimum Password Length</Label>
                 <Select 
-                  value={settings.defaultCurrency} 
-                  onValueChange={(value) => handleInputChange("defaultCurrency", value)}
+                  value={settings.passwordMinLength.toString()} 
+                  onValueChange={(value) => handleInputChange("passwordMinLength", parseInt(value))}
                 >
-                  <SelectTrigger id="defaultCurrency" className="border-2 border-amber-800 bg-amber-50">
-                    <SelectValue placeholder="Select currency" />
+                  <SelectTrigger id="passwordMinLength" className="border-2 border-amber-800 bg-amber-50">
+                    <SelectValue placeholder="Select length" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="USD">USD ($)</SelectItem>
-                    <SelectItem value="EUR">EUR (€)</SelectItem>
-                    <SelectItem value="GBP">GBP (£)</SelectItem>
-                    <SelectItem value="JPY">JPY (¥)</SelectItem>
-                    <SelectItem value="CAD">CAD ($)</SelectItem>
+                    <SelectItem value="6">6 characters</SelectItem>
+                    <SelectItem value="8">8 characters</SelectItem>
+                    <SelectItem value="10">10 characters</SelectItem>
+                    <SelectItem value="12">12 characters</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="requireSpecialChars" className="text-amber-900">
+                    Require Special Characters
+                  </Label>
+                  <p className="text-sm text-amber-700">
+                    Passwords must contain at least one special character
+                  </p>
+                </div>
+                <Switch
+                  id="requireSpecialChars"
+                  checked={settings.requireSpecialChars}
+                  onCheckedChange={(checked) => handleInputChange("requireSpecialChars", checked)}
+                />
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="requireNumbers" className="text-amber-900">
+                    Require Numbers
+                  </Label>
+                  <p className="text-sm text-amber-700">
+                    Passwords must contain at least one number
+                  </p>
+                </div>
+                <Switch
+                  id="requireNumbers"
+                  checked={settings.requireNumbers}
+                  onCheckedChange={(checked) => handleInputChange("requireNumbers", checked)}
+                />
+              </div>
+              
               <div className="space-y-2">
-                <Label htmlFor="dateFormat" className="text-amber-900">Date Format</Label>
+                <Label htmlFor="sessionTimeout" className="text-amber-900">Session Timeout (minutes)</Label>
+                <Input
+                  id="sessionTimeout"
+                  type="number"
+                  value={settings.sessionTimeout}
+                  onChange={(e) => handleInputChange("sessionTimeout", parseInt(e.target.value))}
+                  className="border-2 border-amber-800 bg-amber-50"
+                  min="5"
+                  max="240"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="maxLoginAttempts" className="text-amber-900">Max Login Attempts</Label>
                 <Select 
-                  value={settings.dateFormat} 
-                  onValueChange={(value) => handleInputChange("dateFormat", value)}
+                  value={settings.maxLoginAttempts.toString()} 
+                  onValueChange={(value) => handleInputChange("maxLoginAttempts", parseInt(value))}
                 >
-                  <SelectTrigger id="dateFormat" className="border-2 border-amber-800 bg-amber-50">
-                    <SelectValue placeholder="Select date format" />
+                  <SelectTrigger id="maxLoginAttempts" className="border-2 border-amber-800 bg-amber-50">
+                    <SelectValue placeholder="Select attempts" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="MM/DD/YYYY">MM/DD/YYYY</SelectItem>
-                    <SelectItem value="DD/MM/YYYY">DD/MM/YYYY</SelectItem>
-                    <SelectItem value="YYYY-MM-DD">YYYY-MM-DD</SelectItem>
+                    <SelectItem value="3">3 attempts</SelectItem>
+                    <SelectItem value="5">5 attempts</SelectItem>
+                    <SelectItem value="10">10 attempts</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -189,4 +214,4 @@ export default function AdminSettingsPage() {
       </div>
     </div>
   )
-}
+} 

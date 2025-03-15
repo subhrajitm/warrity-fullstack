@@ -6,68 +6,112 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { ArrowLeft, Calendar, Edit, Eye, Mail, Trash2, User, UserCog } from "lucide-react"
-import AdminSidebar from "../../components/sidebar"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { 
+  ArrowLeft, 
+  Edit, 
+  Trash2, 
+  Mail, 
+  Phone, 
+  MapPin, 
+  Calendar, 
+  CreditCard,
+  FileText,
+  User,
+  Shield
+} from "lucide-react"
 
-// Mock data for demonstration
+// Mock user data
 const mockUser = {
-  id: 5,
-  name: "Emily Johnson",
-  email: "emily.johnson@example.com",
+  id: 2,
+  name: "Jane Smith",
+  email: "jane.smith@example.com",
+  phone: "+1 (555) 987-6543",
+  address: "456 Maple Avenue, Springfield, IL 62704",
   role: "user",
-  createdAt: "2022-05-12",
-  lastLogin: "2023-08-15",
   status: "active",
-  warranties: [
+  createdAt: "2023-03-15T14:30:00Z",
+  lastLogin: "2023-10-28T09:45:00Z",
+  profileImage: "/images/avatars/jane-smith.jpg",
+  products: [
     {
       id: 3,
-      product: "MacBook Pro",
+      name: "MacBook Pro 16\"",
       category: "Electronics",
-      endDate: "2023-08-25",
-      status: "expiring"
+      purchaseDate: "2022-08-05",
+      warrantyEndDate: "2023-08-05"
     },
     {
       id: 7,
-      product: "Samsung TV",
+      name: "Samsung 65\" QLED TV",
       category: "Electronics",
-      endDate: "2024-03-10",
+      purchaseDate: "2023-01-20",
+      warrantyEndDate: "2025-01-20"
+    }
+  ],
+  warranties: [
+    {
+      id: 4,
+      product: "MacBook Pro 16\"",
+      provider: "Apple",
+      startDate: "2022-08-05",
+      endDate: "2023-08-05",
+      status: "expired"
+    },
+    {
+      id: 8,
+      product: "Samsung 65\" QLED TV",
+      provider: "Samsung",
+      startDate: "2023-01-20",
+      endDate: "2025-01-20",
       status: "active"
     },
     {
       id: 12,
-      product: "Dyson Vacuum",
-      category: "Appliances",
-      endDate: "2024-01-15",
-      status: "active"
+      product: "Samsung 65\" QLED TV",
+      provider: "Extended Warranty Co.",
+      startDate: "2025-01-21",
+      endDate: "2027-01-20",
+      status: "pending"
+    }
+  ],
+  paymentMethods: [
+    {
+      id: 1,
+      type: "Credit Card",
+      last4: "4242",
+      expiry: "05/25",
+      isDefault: true
     },
     {
-      id: 18,
-      product: "iPhone 13",
-      category: "Electronics",
-      endDate: "2023-11-20",
-      status: "active"
-    },
-    {
-      id: 22,
-      product: "Kitchen Aid Mixer",
-      category: "Appliances",
-      endDate: "2023-07-05",
-      status: "expired"
+      id: 2,
+      type: "PayPal",
+      email: "jane.smith@example.com",
+      isDefault: false
     }
   ]
 }
 
 export default function AdminUserDetailPage({ params }) {
-  // Fix: Unwrap params using React.use()
+  // Unwrap params using React.use()
   const unwrappedParams = React.use(params);
   const userId = unwrappedParams.id;
   
   const router = useRouter()
   const [user, setUser] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   
+  // Check if admin is logged in and fetch user data
   useEffect(() => {
     const isLoggedIn = localStorage.getItem('userLoggedIn')
     const role = localStorage.getItem('userRole')
@@ -78,207 +122,433 @@ export default function AdminUserDetailPage({ params }) {
       router.replace(role === 'user' ? '/user' : '/login')
     }
     
-    // Set mock data
-    setUser(mockUser)
-    setIsLoading(false)
-  }, [router, userId]) // Use unwrapped userId instead of params.id
+    // In a real app, you would fetch the user data based on the ID
+    console.log(`Fetching user with ID: ${userId}`)
+    
+    // Simulate API call with timeout
+    setTimeout(() => {
+      setUser(mockUser)
+      setIsLoading(false)
+    }, 500)
+  }, [router, userId])
   
-  const handleDelete = () => {
-    if (confirm("Are you sure you want to delete this user? This will also delete all their warranties.")) {
-      console.log(`Deleting user with ID: ${userId}`) // Use unwrapped userId instead of params.id
-      // In a real app, you would send a delete request to your backend
-      
-      // Redirect to users list
-      router.push('/admin/users')
+  const getRoleBadge = (role) => {
+    switch (role) {
+      case 'admin':
+        return (
+          <Badge className="bg-purple-100 text-purple-800 border-purple-300 hover:bg-purple-200">
+            <Shield className="w-3.5 h-3.5 mr-1" />
+            Admin
+          </Badge>
+        )
+      case 'user':
+        return (
+          <Badge className="bg-blue-100 text-blue-800 border-blue-300 hover:bg-blue-200">
+            User
+          </Badge>
+        )
+      default:
+        return (
+          <Badge className="bg-gray-100 text-gray-800 border-gray-300 hover:bg-gray-200">
+            {role}
+          </Badge>
+        )
     }
   }
   
   const getStatusBadge = (status) => {
-    switch(status) {
-      case "active":
-        return <Badge className="bg-green-500">Active</Badge>
-      case "expiring":
-        return <Badge className="bg-amber-500">Expiring Soon</Badge>
-      case "expired":
-        return <Badge className="bg-red-500">Expired</Badge>
-      case "inactive":
-        return <Badge className="bg-gray-500">Inactive</Badge>
+    switch (status) {
+      case 'active':
+        return (
+          <Badge className="bg-green-100 text-green-800 border-green-300 hover:bg-green-200">
+            Active
+          </Badge>
+        )
+      case 'inactive':
+        return (
+          <Badge className="bg-red-100 text-red-800 border-red-300 hover:bg-red-200">
+            Inactive
+          </Badge>
+        )
+      case 'pending':
+        return (
+          <Badge className="bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200">
+            Pending
+          </Badge>
+        )
       default:
-        return <Badge className="bg-gray-500">Unknown</Badge>
+        return (
+          <Badge className="bg-gray-100 text-gray-800 border-gray-300 hover:bg-gray-200">
+            {status}
+          </Badge>
+        )
     }
   }
   
-  if (!user) {
+  const getWarrantyStatusBadge = (status) => {
+    switch (status) {
+      case 'active':
+        return (
+          <Badge className="bg-green-100 text-green-800 border-green-300 hover:bg-green-200">
+            Active
+          </Badge>
+        )
+      case 'expired':
+        return (
+          <Badge className="bg-red-100 text-red-800 border-red-300 hover:bg-red-200">
+            Expired
+          </Badge>
+        )
+      case 'pending':
+        return (
+          <Badge className="bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200">
+            Pending
+          </Badge>
+        )
+      default:
+        return (
+          <Badge className="bg-gray-100 text-gray-800 border-gray-300 hover:bg-gray-200">
+            {status}
+          </Badge>
+        )
+    }
+  }
+  
+  const handleDelete = () => {
+    console.log(`Deleting user with ID: ${userId}`)
+    // In a real app, you would send a delete request to your backend
+    
+    // Redirect to users list
+    router.push('/admin/users')
+  }
+  
+  if (isLoading) {
     return (
-      <div className="flex min-h-screen bg-amber-50">
-        <AdminSidebar />
-        <div className="flex-1 p-6 ml-64 flex items-center justify-center">
-          <p className="text-amber-800 text-xl">Loading user details...</p>
-        </div>
+      <div className="flex items-center justify-center h-full">
+        <p className="text-amber-800 text-xl">Loading user details...</p>
       </div>
     )
   }
   
   return (
-    <div className="flex min-h-screen bg-amber-50">
-      <AdminSidebar />
+    <div>
+      <div className="mb-6">
+        <Link href="/admin/users" className="flex items-center text-amber-800 hover:text-amber-600 transition-colors">
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to Users
+        </Link>
+      </div>
       
-      <div className="flex-1 p-6 ml-64">
-        <div className="mb-6">
-          <Link href="/admin/users" className="flex items-center text-amber-800 hover:text-amber-600 transition-colors">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Users
-          </Link>
-        </div>
-        
-        <div className="max-w-4xl mx-auto">
-          <Card className="border-4 border-amber-800 shadow-[8px_8px_0px_0px_rgba(120,53,15,0.5)] bg-amber-100 mb-6">
-            <CardHeader className="border-b-4 border-amber-800 bg-amber-200 px-6 py-4">
-              <div className="flex justify-between items-center">
-                <div>
-                  <CardTitle className="text-3xl font-bold text-[rgb(146,64,14)] font-mono tracking-tight">
-                    {user.name}
-                  </CardTitle>
-                  <CardDescription className="text-amber-800 font-medium flex items-center mt-1">
-                    <Mail className="mr-2 h-4 w-4" />
-                    {user.email}
-                  </CardDescription>
-                </div>
-                <div className="flex items-center">
-                  <Badge className={`${user.role === 'admin' ? 'bg-purple-600' : 'bg-blue-600'} mr-2`}>
-                    {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
-                  </Badge>
-                  {getStatusBadge(user.status)}
-                </div>
+      <div className="flex flex-col md:flex-row gap-6 mb-6">
+        <Card className="border-4 border-amber-800 shadow-[8px_8px_0px_0px_rgba(120,53,15,0.5)] bg-amber-100 md:w-1/3">
+          <CardHeader className="border-b-4 border-amber-800 bg-amber-200 px-6 py-4">
+            <CardTitle className="text-2xl font-bold text-amber-900">
+              User Profile
+            </CardTitle>
+          </CardHeader>
+          
+          <CardContent className="p-6">
+            <div className="flex flex-col items-center mb-6">
+              <div className="w-32 h-32 rounded-full bg-amber-200 flex items-center justify-center mb-4 border-4 border-amber-800">
+                <span className="text-4xl font-bold text-amber-800">
+                  {user.name.charAt(0)}
+                </span>
               </div>
-            </CardHeader>
-            
-            <CardContent className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="text-lg font-semibold text-amber-900 mb-2 flex items-center">
-                      <User className="mr-2 h-5 w-5" />
-                      User Information
-                    </h3>
-                    <div className="space-y-2">
-                      <div className="flex justify-between">
-                        <span className="text-amber-700">User ID:</span>
-                        <span className="text-amber-900 font-medium">{user.id}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-amber-700">Role:</span>
-                        <span className="text-amber-900 font-medium capitalize">{user.role}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-amber-700">Status:</span>
-                        <span className="text-amber-900 font-medium capitalize">{user.status}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="text-lg font-semibold text-amber-900 mb-2 flex items-center">
-                      <Calendar className="mr-2 h-5 w-5" />
-                      Dates
-                    </h3>
-                    <div className="space-y-2">
-                      <div className="flex justify-between">
-                        <span className="text-amber-700">Created:</span>
-                        <span className="text-amber-900 font-medium">{user.createdAt}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-amber-700">Last Login:</span>
-                        <span className="text-amber-900 font-medium">{user.lastLogin}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-amber-700">Warranties:</span>
-                        <span className="text-amber-900 font-medium">{user.warranties.length}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-            
-            <CardFooter className="bg-amber-200 border-t-4 border-amber-800 px-6 py-4 flex justify-between">
-              <Button 
-                variant="destructive" 
-                className="bg-red-600 hover:bg-red-700 text-white border-2 border-red-800"
-                onClick={handleDelete}
-                disabled={user.role === "admin"} // Prevent deleting admin users
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Delete User
-              </Button>
               
-              <Link href={`/admin/users/${userId}/edit`}> {/* Use unwrapped userId instead of params.id */}
-                <Button className="bg-amber-800 hover:bg-amber-900 text-amber-100 border-2 border-amber-900">
+              <h2 className="text-2xl font-bold text-amber-900">{user.name}</h2>
+              <div className="mt-2">{getRoleBadge(user.role)}</div>
+              <div className="mt-2">{getStatusBadge(user.status)}</div>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="flex items-start">
+                <Mail className="w-5 h-5 text-amber-800 mt-0.5 mr-3" />
+                <div>
+                  <h3 className="text-sm font-medium text-amber-700">Email</h3>
+                  <p className="text-amber-900">{user.email}</p>
+                </div>
+              </div>
+              
+              <div className="flex items-start">
+                <Phone className="w-5 h-5 text-amber-800 mt-0.5 mr-3" />
+                <div>
+                  <h3 className="text-sm font-medium text-amber-700">Phone</h3>
+                  <p className="text-amber-900">{user.phone}</p>
+                </div>
+              </div>
+              
+              <div className="flex items-start">
+                <MapPin className="w-5 h-5 text-amber-800 mt-0.5 mr-3" />
+                <div>
+                  <h3 className="text-sm font-medium text-amber-700">Address</h3>
+                  <p className="text-amber-900">{user.address}</p>
+                </div>
+              </div>
+              
+              <div className="flex items-start">
+                <Calendar className="w-5 h-5 text-amber-800 mt-0.5 mr-3" />
+                <div>
+                  <h3 className="text-sm font-medium text-amber-700">Member Since</h3>
+                  <p className="text-amber-900">{new Date(user.createdAt).toLocaleDateString()}</p>
+                </div>
+              </div>
+              
+              <div className="flex items-start">
+                <Calendar className="w-5 h-5 text-amber-800 mt-0.5 mr-3" />
+                <div>
+                  <h3 className="text-sm font-medium text-amber-700">Last Login</h3>
+                  <p className="text-amber-900">{new Date(user.lastLogin).toLocaleDateString()}</p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="mt-6 flex flex-col space-y-3">
+              <Link href={`/admin/users/${userId}/edit`}>
+                <Button className="w-full bg-amber-800 hover:bg-amber-900 text-amber-100 border-2 border-amber-900">
                   <Edit className="mr-2 h-4 w-4" />
                   Edit User
                 </Button>
               </Link>
-            </CardFooter>
-          </Card>
-          
-          <Card className="border-4 border-amber-800 shadow-[8px_8px_0px_0px_rgba(120,53,15,0.5)] bg-amber-100">
-            <CardHeader className="border-b-4 border-amber-800 bg-amber-200 px-6 py-4">
-              <CardTitle className="text-xl font-bold text-amber-900">
-                User Warranties
-              </CardTitle>
-              <CardDescription className="text-amber-800">
-                All warranties registered to this user
-              </CardDescription>
-            </CardHeader>
+              
+              <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" className="w-full border-2 border-red-800 text-red-800 hover:bg-red-100">
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete User
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="border-4 border-amber-800 shadow-[8px_8px_0px_0px_rgba(120,53,15,0.5)] bg-amber-100">
+                  <DialogHeader>
+                    <DialogTitle className="text-xl font-bold text-amber-900">Confirm Deletion</DialogTitle>
+                    <DialogDescription className="text-amber-800">
+                      Are you sure you want to delete this user? This action cannot be undone.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <DialogFooter className="mt-4">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setDeleteDialogOpen(false)}
+                      className="border-2 border-amber-800 text-amber-800"
+                    >
+                      Cancel
+                    </Button>
+                    <Button 
+                      onClick={handleDelete}
+                      className="bg-red-800 hover:bg-red-900 text-white border-2 border-red-900"
+                    >
+                      Delete User
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <div className="md:w-2/3">
+          <Tabs defaultValue="products" className="w-full">
+            <TabsList className="bg-amber-200 border-4 border-amber-800 mb-6 p-1">
+              <TabsTrigger 
+                value="products" 
+                className="data-[state=active]:bg-amber-800 data-[state=active]:text-amber-100 text-amber-900"
+              >
+                <FileText className="w-4 h-4 mr-2" />
+                Products
+              </TabsTrigger>
+              <TabsTrigger 
+                value="warranties" 
+                className="data-[state=active]:bg-amber-800 data-[state=active]:text-amber-100 text-amber-900"
+              >
+                <Shield className="w-4 h-4 mr-2" />
+                Warranties
+              </TabsTrigger>
+              <TabsTrigger 
+                value="payment" 
+                className="data-[state=active]:bg-amber-800 data-[state=active]:text-amber-100 text-amber-900"
+              >
+                <CreditCard className="w-4 h-4 mr-2" />
+                Payment Methods
+              </TabsTrigger>
+            </TabsList>
             
-            <CardContent className="p-0">
-              {user.warranties.length === 0 ? (
-                <div className="p-6 text-center text-amber-800">
-                  <p>This user has no registered warranties.</p>
-                </div>
-              ) : (
-                <Table>
-                  <TableHeader className="bg-amber-200">
-                    <TableRow className="hover:bg-amber-100 border-b-2 border-amber-300">
-                      <TableHead className="text-amber-900 font-bold">ID</TableHead>
-                      <TableHead className="text-amber-900 font-bold">Product</TableHead>
-                      <TableHead className="text-amber-900 font-bold">Category</TableHead>
-                      <TableHead className="text-amber-900 font-bold">End Date</TableHead>
-                      <TableHead className="text-amber-900 font-bold">Status</TableHead>
-                      <TableHead className="text-amber-900 font-bold text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {user.warranties.map((warranty) => (
-                      <TableRow key={warranty.id} className="hover:bg-amber-50 border-b border-amber-200">
-                        <TableCell className="font-medium text-amber-900">{warranty.id}</TableCell>
-                        <TableCell className="text-amber-900">{warranty.product}</TableCell>
-                        <TableCell className="text-amber-900">{warranty.category}</TableCell>
-                        <TableCell className="text-amber-900">{warranty.endDate}</TableCell>
-                        <TableCell>{getStatusBadge(warranty.status)}</TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Link href={`/admin/warranties/${warranty.id}`}>
-                              <Button variant="outline" size="sm" className="h-8 border-amber-800 text-amber-800">
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                            </Link>
-                            <Link href={`/admin/warranties/${warranty.id}/edit`}>
-                              <Button variant="outline" size="sm" className="h-8 border-amber-800 text-amber-800">
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                            </Link>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
+            <TabsContent value="products">
+              <Card className="border-4 border-amber-800 shadow-[8px_8px_0px_0px_rgba(120,53,15,0.5)] bg-amber-100">
+                <CardHeader className="border-b-4 border-amber-800 bg-amber-200 px-6 py-4">
+                  <div className="flex justify-between items-center">
+                    <CardTitle className="text-2xl font-bold text-amber-900">
+                      User Products
+                    </CardTitle>
+                    <Link href={`/admin/products/add?userId=${userId}`}>
+                      <Button className="bg-amber-800 hover:bg-amber-900 text-amber-100 border-2 border-amber-900">
+                        Add Product
+                      </Button>
+                    </Link>
+                  </div>
+                </CardHeader>
+                
+                <CardContent className="p-6">
+                  {user.products.length > 0 ? (
+                    <div className="space-y-4">
+                      {user.products.map((product) => (
+                        <Card key={product.id} className="border-2 border-amber-300 bg-amber-50">
+                          <CardContent className="p-4">
+                            <div className="flex justify-between items-center">
+                              <div>
+                                <h3 className="text-lg font-semibold text-amber-900">{product.name}</h3>
+                                <p className="text-amber-700">{product.category}</p>
+                                <div className="flex space-x-4 mt-1">
+                                  <p className="text-sm text-amber-700">
+                                    <span className="font-medium">Purchased:</span> {product.purchaseDate}
+                                  </p>
+                                  <p className="text-sm text-amber-700">
+                                    <span className="font-medium">Warranty Until:</span> {product.warrantyEndDate}
+                                  </p>
+                                </div>
+                              </div>
+                              <Link href={`/admin/products/${product.id}`}>
+                                <Button variant="outline" className="border-2 border-amber-800 text-amber-800">
+                                  View
+                                </Button>
+                              </Link>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <p className="text-amber-800 mb-4">This user has no registered products.</p>
+                      <Link href={`/admin/products/add?userId=${userId}`}>
+                        <Button className="bg-amber-800 hover:bg-amber-900 text-amber-100 border-2 border-amber-900">
+                          Add First Product
+                        </Button>
+                      </Link>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+            
+            <TabsContent value="warranties">
+              <Card className="border-4 border-amber-800 shadow-[8px_8px_0px_0px_rgba(120,53,15,0.5)] bg-amber-100">
+                <CardHeader className="border-b-4 border-amber-800 bg-amber-200 px-6 py-4">
+                  <div className="flex justify-between items-center">
+                    <CardTitle className="text-2xl font-bold text-amber-900">
+                      User Warranties
+                    </CardTitle>
+                    <Link href={`/admin/warranties/add?userId=${userId}`}>
+                      <Button className="bg-amber-800 hover:bg-amber-900 text-amber-100 border-2 border-amber-900">
+                        Add Warranty
+                      </Button>
+                    </Link>
+                  </div>
+                </CardHeader>
+                
+                <CardContent className="p-6">
+                  {user.warranties.length > 0 ? (
+                    <div className="space-y-4">
+                      {user.warranties.map((warranty) => (
+                        <Card key={warranty.id} className="border-2 border-amber-300 bg-amber-50">
+                          <CardContent className="p-4">
+                            <div className="flex justify-between items-center">
+                              <div>
+                                <div className="flex items-center">
+                                  <h3 className="text-lg font-semibold text-amber-900 mr-3">{warranty.product}</h3>
+                                  {getWarrantyStatusBadge(warranty.status)}
+                                </div>
+                                <p className="text-amber-700">{warranty.provider}</p>
+                                <div className="flex space-x-4 mt-1">
+                                  <p className="text-sm text-amber-700">
+                                    <span className="font-medium">Start:</span> {warranty.startDate}
+                                  </p>
+                                  <p className="text-sm text-amber-700">
+                                    <span className="font-medium">End:</span> {warranty.endDate}
+                                  </p>
+                                </div>
+                              </div>
+                              <Link href={`/admin/warranties/${warranty.id}`}>
+                                <Button variant="outline" className="border-2 border-amber-800 text-amber-800">
+                                  View
+                                </Button>
+                              </Link>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <p className="text-amber-800 mb-4">This user has no registered warranties.</p>
+                      <Link href={`/admin/warranties/add?userId=${userId}`}>
+                        <Button className="bg-amber-800 hover:bg-amber-900 text-amber-100 border-2 border-amber-900">
+                          Add First Warranty
+                        </Button>
+                      </Link>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+            
+            <TabsContent value="payment">
+              <Card className="border-4 border-amber-800 shadow-[8px_8px_0px_0px_rgba(120,53,15,0.5)] bg-amber-100">
+                <CardHeader className="border-b-4 border-amber-800 bg-amber-200 px-6 py-4">
+                  <CardTitle className="text-2xl font-bold text-amber-900">
+                    Payment Methods
+                  </CardTitle>
+                </CardHeader>
+                
+                <CardContent className="p-6">
+                  {user.paymentMethods.length > 0 ? (
+                    <div className="space-y-4">
+                      {user.paymentMethods.map((method) => (
+                        <Card key={method.id} className="border-2 border-amber-300 bg-amber-50">
+                          <CardContent className="p-4">
+                            <div className="flex justify-between items-center">
+                              <div>
+                                <div className="flex items-center">
+                                  <h3 className="text-lg font-semibold text-amber-900 mr-3">{method.type}</h3>
+                                  {method.isDefault && (
+                                    <Badge className="bg-amber-100 text-amber-800 border-amber-300">
+                                      Default
+                                    </Badge>
+                                  )}
+                                </div>
+                                {method.type === "Credit Card" ? (
+                                  <div className="flex space-x-4 mt-1">
+                                    <p className="text-sm text-amber-700">
+                                      <span className="font-medium">Card ending in:</span> {method.last4}
+                                    </p>
+                                    <p className="text-sm text-amber-700">
+                                      <span className="font-medium">Expires:</span> {method.expiry}
+                                    </p>
+                                  </div>
+                                ) : (
+                                  <p className="text-amber-700 mt-1">{method.email}</p>
+                                )}
+                              </div>
+                              <div className="flex space-x-2">
+                                <Button variant="outline" size="sm" className="border-2 border-amber-800 text-amber-800">
+                                  Edit
+                                </Button>
+                                <Button variant="outline" size="sm" className="border-2 border-red-800 text-red-800">
+                                  Remove
+                                </Button>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <p className="text-amber-800">No payment methods found.</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
     </div>

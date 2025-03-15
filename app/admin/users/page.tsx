@@ -201,149 +201,147 @@ export default function AdminUsersPage() {
   }
   
   return (
-    <div className="min-h-screen bg-amber-50 p-6">
-      <div className="max-w-6xl mx-auto">
-        <div className="mb-6">
-          <Link href="/admin" className="flex items-center text-amber-800 hover:text-amber-600 transition-colors">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Dashboard
-          </Link>
-        </div>
-        
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold text-amber-900">Manage Users</h1>
-          <Link href="/admin/users/add">
-            <Button className="bg-amber-800 hover:bg-amber-900 text-amber-100 border-2 border-amber-900">
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Add User
-            </Button>
-          </Link>
-        </div>
-        
-        <Card className="border-4 border-amber-800 shadow-[8px_8px_0px_0px_rgba(120,53,15,0.5)] bg-amber-100 mb-6">
-          <CardContent className="p-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-amber-800" />
-              <Input
-                placeholder="Search users by name or email..."
-                value={searchQuery}
-                onChange={handleSearchChange}
-                className="pl-10 border-2 border-amber-800 bg-amber-50"
-              />
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card className="border-4 border-amber-800 shadow-[8px_8px_0px_0px_rgba(120,53,15,0.5)] bg-amber-100">
-          <CardHeader className="border-b-4 border-amber-800 bg-amber-200 px-6 py-4">
-            <div className="flex justify-between items-center">
-              <CardTitle className="text-xl font-bold text-amber-900">
-                {filteredUsers.length} {filteredUsers.length === 1 ? 'User' : 'Users'}
-              </CardTitle>
-              <div className="flex items-center text-sm text-amber-800">
-                Sort by:
-                <button 
-                  className="ml-2 flex items-center font-medium hover:text-amber-600"
-                  onClick={() => handleSortChange('name')}
-                >
-                  Name {getSortIcon('name')}
-                </button>
-                <span className="mx-2">|</span>
-                <button 
-                  className="flex items-center font-medium hover:text-amber-600"
-                  onClick={() => handleSortChange('joinDate')}
-                >
-                  Join Date {getSortIcon('joinDate')}
-                </button>
-                <span className="mx-2">|</span>
-                <button 
-                  className="flex items-center font-medium hover:text-amber-600"
-                  onClick={() => handleSortChange('warranties')}
-                >
-                  Warranties {getSortIcon('warranties')}
-                </button>
-              </div>
-            </div>
-          </CardHeader>
-          
-          <CardContent className="p-6">
-            {filteredUsers.length === 0 ? (
-              <div className="text-center py-8">
-                <User className="h-12 w-12 text-amber-800 mx-auto mb-4 opacity-50" />
-                <p className="text-amber-800 text-lg mb-2">No users found</p>
-                <p className="text-amber-700 mb-6">
-                  {searchQuery 
-                    ? "Try adjusting your search" 
-                    : "Add your first user to get started"}
-                </p>
-                
-                <Link href="/admin/users/add">
-                  <Button className="bg-amber-800 hover:bg-amber-900 text-amber-100 border-2 border-amber-900">
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Add User
-                  </Button>
-                </Link>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse">
-                  <thead>
-                    <tr className="border-b-2 border-amber-800">
-                      <th className="text-left py-3 px-4 text-amber-900">Name</th>
-                      <th className="text-left py-3 px-4 text-amber-900">Email</th>
-                      <th className="text-left py-3 px-4 text-amber-900">Role</th>
-                      <th className="text-left py-3 px-4 text-amber-900">Status</th>
-                      <th className="text-left py-3 px-4 text-amber-900">Join Date</th>
-                      <th className="text-left py-3 px-4 text-amber-900">Warranties</th>
-                      <th className="text-right py-3 px-4 text-amber-900">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredUsers.map(user => (
-                      <tr key={user.id} className="border-b border-amber-300 hover:bg-amber-50">
-                        <td className="py-3 px-4 text-amber-900 font-medium">{user.name}</td>
-                        <td className="py-3 px-4">
-                          <div className="flex items-center text-amber-800">
-                            <Mail className="h-4 w-4 mr-2" />
-                            {user.email}
-                          </div>
-                        </td>
-                        <td className="py-3 px-4">{getRoleBadge(user.role)}</td>
-                        <td className="py-3 px-4">{getStatusBadge(user.status)}</td>
-                        <td className="py-3 px-4">
-                          <div className="flex items-center text-amber-800">
-                            <Calendar className="h-4 w-4 mr-2" />
-                            {user.joinDate}
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 text-amber-800">{user.warranties}</td>
-                        <td className="py-3 px-4 text-right">
-                          <div className="flex justify-end space-x-2">
-                            <Link href={`/admin/users/${user.id}/edit`}>
-                              <Button size="sm" variant="outline" className="border-2 border-amber-800 text-amber-800 h-8 px-2">
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                            </Link>
-                            <Button 
-                              size="sm" 
-                              variant="outline" 
-                              className="border-2 border-red-800 text-red-800 h-8 px-2 hover:bg-red-100"
-                              onClick={() => handleDelete(user.id)}
-                              disabled={user.role === 'admin'} // Prevent deleting admin users
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+    <div className="max-w-6xl mx-auto">
+      <div className="mb-6">
+        <Link href="/admin" className="flex items-center text-amber-800 hover:text-amber-600 transition-colors">
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to Dashboard
+        </Link>
       </div>
+      
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold text-amber-900">Manage Users</h1>
+        <Link href="/admin/users/add">
+          <Button className="bg-amber-800 hover:bg-amber-900 text-amber-100 border-2 border-amber-900">
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Add User
+          </Button>
+        </Link>
+      </div>
+      
+      <Card className="border-4 border-amber-800 shadow-[8px_8px_0px_0px_rgba(120,53,15,0.5)] bg-amber-100 mb-6">
+        <CardContent className="p-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-3 h-4 w-4 text-amber-800" />
+            <Input
+              placeholder="Search users by name or email..."
+              value={searchQuery}
+              onChange={handleSearchChange}
+              className="pl-10 border-2 border-amber-800 bg-amber-50"
+            />
+          </div>
+        </CardContent>
+      </Card>
+      
+      <Card className="border-4 border-amber-800 shadow-[8px_8px_0px_0px_rgba(120,53,15,0.5)] bg-amber-100">
+        <CardHeader className="border-b-4 border-amber-800 bg-amber-200 px-6 py-4">
+          <div className="flex justify-between items-center">
+            <CardTitle className="text-xl font-bold text-amber-900">
+              {filteredUsers.length} {filteredUsers.length === 1 ? 'User' : 'Users'}
+            </CardTitle>
+            <div className="flex items-center text-sm text-amber-800">
+              Sort by:
+              <button 
+                className="ml-2 flex items-center font-medium hover:text-amber-600"
+                onClick={() => handleSortChange('name')}
+              >
+                Name {getSortIcon('name')}
+              </button>
+              <span className="mx-2">|</span>
+              <button 
+                className="flex items-center font-medium hover:text-amber-600"
+                onClick={() => handleSortChange('joinDate')}
+              >
+                Join Date {getSortIcon('joinDate')}
+              </button>
+              <span className="mx-2">|</span>
+              <button 
+                className="flex items-center font-medium hover:text-amber-600"
+                onClick={() => handleSortChange('warranties')}
+              >
+                Warranties {getSortIcon('warranties')}
+              </button>
+            </div>
+          </div>
+        </CardHeader>
+        
+        <CardContent className="p-6">
+          {filteredUsers.length === 0 ? (
+            <div className="text-center py-8">
+              <User className="h-12 w-12 text-amber-800 mx-auto mb-4 opacity-50" />
+              <p className="text-amber-800 text-lg mb-2">No users found</p>
+              <p className="text-amber-700 mb-6">
+                {searchQuery 
+                  ? "Try adjusting your search" 
+                  : "Add your first user to get started"}
+              </p>
+              
+              <Link href="/admin/users/add">
+                <Button className="bg-amber-800 hover:bg-amber-900 text-amber-100 border-2 border-amber-900">
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  Add User
+                </Button>
+              </Link>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="border-b-2 border-amber-800">
+                    <th className="text-left py-3 px-4 text-amber-900">Name</th>
+                    <th className="text-left py-3 px-4 text-amber-900">Email</th>
+                    <th className="text-left py-3 px-4 text-amber-900">Role</th>
+                    <th className="text-left py-3 px-4 text-amber-900">Status</th>
+                    <th className="text-left py-3 px-4 text-amber-900">Join Date</th>
+                    <th className="text-left py-3 px-4 text-amber-900">Warranties</th>
+                    <th className="text-right py-3 px-4 text-amber-900">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredUsers.map(user => (
+                    <tr key={user.id} className="border-b border-amber-300 hover:bg-amber-50">
+                      <td className="py-3 px-4 text-amber-900 font-medium">{user.name}</td>
+                      <td className="py-3 px-4">
+                        <div className="flex items-center text-amber-800">
+                          <Mail className="h-4 w-4 mr-2" />
+                          {user.email}
+                        </div>
+                      </td>
+                      <td className="py-3 px-4">{getRoleBadge(user.role)}</td>
+                      <td className="py-3 px-4">{getStatusBadge(user.status)}</td>
+                      <td className="py-3 px-4">
+                        <div className="flex items-center text-amber-800">
+                          <Calendar className="h-4 w-4 mr-2" />
+                          {user.joinDate}
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 text-amber-800">{user.warranties}</td>
+                      <td className="py-3 px-4 text-right">
+                        <div className="flex justify-end space-x-2">
+                          <Link href={`/admin/users/${user.id}/edit`}>
+                            <Button size="sm" variant="outline" className="border-2 border-amber-800 text-amber-800 h-8 px-2">
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          </Link>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="border-2 border-red-800 text-red-800 h-8 px-2 hover:bg-red-100"
+                            onClick={() => handleDelete(user.id)}
+                            disabled={user.role === 'admin'} // Prevent deleting admin users
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }

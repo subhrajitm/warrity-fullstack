@@ -76,7 +76,7 @@ export default function AddProductPage() {
         <CardHeader>
           <CardTitle>Add New Product</CardTitle>
           <CardDescription>
-            Enter the details of your product to register it in the warranty management system.
+            Enter the details of your product to register it in the Warrity system.
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>

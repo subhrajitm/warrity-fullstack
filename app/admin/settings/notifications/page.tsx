@@ -5,22 +5,23 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ArrowLeft, Bell, Cog, Save, Shield } from "lucide-react"
 
 // Mock data for demonstration
-const mockGeneralSettings = {
-  siteName: "Warrity",
-  supportEmail: "support@warrity.com",
-  defaultCurrency: "USD",
-  dateFormat: "MM/DD/YYYY"
+const mockNotificationSettings = {
+  enableEmailNotifications: true,
+  sendExpiryReminders: true,
+  reminderDays: 30,
+  sendWelcomeEmail: true,
+  adminNotifyNewUser: true
 }
 
-export default function AdminSettingsPage() {
+export default function NotificationSettingsPage() {
   const router = useRouter()
-  const [settings, setSettings] = useState(mockGeneralSettings)
+  const [settings, setSettings] = useState(mockNotificationSettings)
   const [isLoading, setIsLoading] = useState(true)
   
   // Check if admin is logged in and fetch settings
@@ -38,7 +39,7 @@ export default function AdminSettingsPage() {
     setIsLoading(false)
   }, [router])
   
-  const handleInputChange = (field: string, value: string) => {
+  const handleInputChange = (field: string, value: boolean | number) => {
     setSettings(prev => ({
       ...prev,
       [field]: value
@@ -46,7 +47,7 @@ export default function AdminSettingsPage() {
   }
   
   const handleSaveSettings = () => {
-    console.log("Saving general settings:", settings)
+    console.log("Saving notification settings:", settings)
     // In a real app, you would send the updated settings to your backend
     alert("Settings saved successfully!")
   }
@@ -76,7 +77,7 @@ export default function AdminSettingsPage() {
             <Link href="/admin/settings">
               <Button 
                 variant="outline" 
-                className="border-2 border-amber-800 bg-amber-800 text-amber-100"
+                className="border-2 border-amber-800 text-amber-800 hover:bg-amber-100"
               >
                 <Cog className="mr-2 h-4 w-4" />
                 General
@@ -86,7 +87,7 @@ export default function AdminSettingsPage() {
             <Link href="/admin/settings/notifications">
               <Button 
                 variant="outline" 
-                className="border-2 border-amber-800 text-amber-800 hover:bg-amber-100"
+                className="border-2 border-amber-800 bg-amber-800 text-amber-100"
               >
                 <Bell className="mr-2 h-4 w-4" />
                 Notifications
@@ -108,70 +109,96 @@ export default function AdminSettingsPage() {
         <Card className="border-4 border-amber-800 shadow-[8px_8px_0px_0px_rgba(120,53,15,0.5)] bg-amber-100">
           <CardHeader className="border-b-4 border-amber-800 bg-amber-200 px-6 py-4">
             <CardTitle className="text-2xl font-bold text-amber-900">
-              General Settings
+              Notification Settings
             </CardTitle>
             <CardDescription className="text-amber-800">
-              Configure basic system settings for the Warrity platform
+              Configure how and when notifications are sent to users
             </CardDescription>
           </CardHeader>
           
           <CardContent className="p-6">
             <div className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="siteName" className="text-amber-900">Site Name</Label>
-                <Input
-                  id="siteName"
-                  value={settings.siteName}
-                  onChange={(e) => handleInputChange("siteName", e.target.value)}
-                  className="border-2 border-amber-800 bg-amber-50"
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="enableEmailNotifications" className="text-amber-900">
+                    Enable Email Notifications
+                  </Label>
+                  <p className="text-sm text-amber-700">
+                    Send email notifications to users for important events
+                  </p>
+                </div>
+                <Switch
+                  id="enableEmailNotifications"
+                  checked={settings.enableEmailNotifications}
+                  onCheckedChange={(checked) => handleInputChange("enableEmailNotifications", checked)}
+                />
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="sendExpiryReminders" className="text-amber-900">
+                    Send Warranty Expiry Reminders
+                  </Label>
+                  <p className="text-sm text-amber-700">
+                    Notify users when their warranties are about to expire
+                  </p>
+                </div>
+                <Switch
+                  id="sendExpiryReminders"
+                  checked={settings.sendExpiryReminders}
+                  onCheckedChange={(checked) => handleInputChange("sendExpiryReminders", checked)}
                 />
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="supportEmail" className="text-amber-900">Support Email</Label>
-                <Input
-                  id="supportEmail"
-                  type="email"
-                  value={settings.supportEmail}
-                  onChange={(e) => handleInputChange("supportEmail", e.target.value)}
-                  className="border-2 border-amber-800 bg-amber-50"
+                <Label htmlFor="reminderDays" className="text-amber-900">Reminder Days Before Expiry</Label>
+                <Select 
+                  value={settings.reminderDays.toString()} 
+                  onValueChange={(value) => handleInputChange("reminderDays", parseInt(value))}
+                >
+                  <SelectTrigger id="reminderDays" className="border-2 border-amber-800 bg-amber-50">
+                    <SelectValue placeholder="Select days" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="7">7 days</SelectItem>
+                    <SelectItem value="14">14 days</SelectItem>
+                    <SelectItem value="30">30 days</SelectItem>
+                    <SelectItem value="60">60 days</SelectItem>
+                    <SelectItem value="90">90 days</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="sendWelcomeEmail" className="text-amber-900">
+                    Send Welcome Email
+                  </Label>
+                  <p className="text-sm text-amber-700">
+                    Send a welcome email when a new user registers
+                  </p>
+                </div>
+                <Switch
+                  id="sendWelcomeEmail"
+                  checked={settings.sendWelcomeEmail}
+                  onCheckedChange={(checked) => handleInputChange("sendWelcomeEmail", checked)}
                 />
               </div>
               
-              <div className="space-y-2">
-                <Label htmlFor="defaultCurrency" className="text-amber-900">Default Currency</Label>
-                <Select 
-                  value={settings.defaultCurrency} 
-                  onValueChange={(value) => handleInputChange("defaultCurrency", value)}
-                >
-                  <SelectTrigger id="defaultCurrency" className="border-2 border-amber-800 bg-amber-50">
-                    <SelectValue placeholder="Select currency" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="USD">USD ($)</SelectItem>
-                    <SelectItem value="EUR">EUR (€)</SelectItem>
-                    <SelectItem value="GBP">GBP (£)</SelectItem>
-                    <SelectItem value="JPY">JPY (¥)</SelectItem>
-                    <SelectItem value="CAD">CAD ($)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="dateFormat" className="text-amber-900">Date Format</Label>
-                <Select 
-                  value={settings.dateFormat} 
-                  onValueChange={(value) => handleInputChange("dateFormat", value)}
-                >
-                  <SelectTrigger id="dateFormat" className="border-2 border-amber-800 bg-amber-50">
-                    <SelectValue placeholder="Select date format" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="MM/DD/YYYY">MM/DD/YYYY</SelectItem>
-                    <SelectItem value="DD/MM/YYYY">DD/MM/YYYY</SelectItem>
-                    <SelectItem value="YYYY-MM-DD">YYYY-MM-DD</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="adminNotifyNewUser" className="text-amber-900">
+                    Notify Admin of New Users
+                  </Label>
+                  <p className="text-sm text-amber-700">
+                    Send notification to admin when a new user registers
+                  </p>
+                </div>
+                <Switch
+                  id="adminNotifyNewUser"
+                  checked={settings.adminNotifyNewUser}
+                  onCheckedChange={(checked) => handleInputChange("adminNotifyNewUser", checked)}
+                />
               </div>
             </div>
           </CardContent>
@@ -189,4 +216,4 @@ export default function AdminSettingsPage() {
       </div>
     </div>
   )
-}
+} 

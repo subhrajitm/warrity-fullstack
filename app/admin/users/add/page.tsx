@@ -6,10 +6,10 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ArrowLeft, Save, UserPlus } from "lucide-react"
-import AdminSidebar from "../../components/sidebar"
 
 export default function AdminAddUserPage() {
   const router = useRouter()
@@ -62,9 +62,7 @@ export default function AdminAddUserPage() {
   
   return (
     <div className="flex min-h-screen bg-amber-50">
-      <AdminSidebar />
-      
-      <div className="flex-1 p-6 ml-64">
+      <div className="flex-1 p-6">
         <div className="mb-6">
           <Link href="/admin/users" className="flex items-center text-amber-800 hover:text-amber-600 transition-colors">
             <ArrowLeft className="mr-2 h-4 w-4" />

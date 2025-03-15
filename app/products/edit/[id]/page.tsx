@@ -107,7 +107,7 @@ export default function EditProductPage({ params }: EditProductPageProps) {
       <Card>
         <CardHeader>
           <CardTitle>Edit Product</CardTitle>
-          <CardDescription>Update the details of your product in the warranty management system.</CardDescription>
+          <CardDescription>Update the details of your product in the Warrity system.</CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-6">

@@ -81,7 +81,7 @@ export default function AdminSidebar() {
   }
   
   return (
-    <div className="fixed left-0 top-0 bottom-0 w-64 bg-amber-800 text-amber-100 p-6 flex flex-col overflow-y-auto">
+    <div className="h-screen bg-amber-800 text-amber-100 p-6 flex flex-col overflow-y-auto shadow-lg">
       <div className="mb-8">
         <h1 className="text-2xl font-bold font-mono tracking-tight">Warrity</h1>
         <p className="text-amber-200 text-sm mt-1">Admin Panel</p>

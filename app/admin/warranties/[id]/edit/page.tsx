@@ -10,7 +10,6 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ArrowLeft, Save } from "lucide-react"
-import AdminSidebar from "../../../components/sidebar"
 
 // Mock data for demonstration
 const mockWarranty = {
@@ -41,6 +40,10 @@ const mockUsers = [
 ]
 
 export default function AdminEditWarrantyPage({ params }) {
+  // Unwrap params using React.use()
+  const unwrappedParams = React.use(params);
+  const warrantyId = unwrappedParams.id;
+  
   const router = useRouter()
   const [formData, setFormData] = useState({
     product: "",
@@ -72,13 +75,13 @@ export default function AdminEditWarrantyPage({ params }) {
     }
     
     // In a real app, you would fetch the warranty data based on the ID
-    console.log(`Fetching warranty with ID: ${params.id} for editing`)
+    console.log(`Fetching warranty with ID: ${warrantyId} for editing`)
     
     // Set mock data
     setFormData(mockWarranty)
     setUsers(mockUsers)
     setIsLoading(false)
-  }, [router, params.id])
+  }, [router, warrantyId])
   
   const handleInputChange = (e) => {
     const { name, value } = e.target
@@ -96,52 +99,159 @@ export default function AdminEditWarrantyPage({ params }) {
     // In a real app, you would send the updated data to your backend
     
     // Redirect to warranty details page
-    router.push(`/admin/warranties/${params.id}`)
+    router.push(`/admin/warranties/${warrantyId}`)
   }
   
   if (isLoading) {
     return (
-      <div className="flex min-h-screen bg-amber-50">
-        <AdminSidebar />
-        <div className="flex-1 p-6 ml-64 flex items-center justify-center">
-          <p className="text-amber-800 text-xl">Loading warranty data...</p>
-        </div>
+      <div className="flex items-center justify-center h-full">
+        <p className="text-amber-800 text-xl">Loading warranty data...</p>
       </div>
     )
   }
   
   return (
-    <div className="flex min-h-screen bg-amber-50">
-      <AdminSidebar />
+    <div>
+      <div className="mb-6">
+        <Link href={`/admin/warranties/${warrantyId}`} className="flex items-center text-amber-800 hover:text-amber-600 transition-colors">
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to Warranty Details
+        </Link>
+      </div>
       
-      <div className="flex-1 p-6 ml-64">
-        <div className="mb-6">
-          <Link href={`/admin/warranties/${params.id}`} className="flex items-center text-amber-800 hover:text-amber-600 transition-colors">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Warranty Details
-          </Link>
-        </div>
+      <Card className="max-w-4xl mx-auto border-4 border-amber-800 shadow-[8px_8px_0px_0px_rgba(120,53,15,0.5)] bg-amber-100">
+        <CardHeader className="border-b-4 border-amber-800 bg-amber-200 px-6 py-4">
+          <CardTitle className="text-2xl font-bold text-amber-900">
+            Edit Warranty
+          </CardTitle>
+          <CardDescription className="text-amber-800">
+            Update the warranty information for {formData.product}
+          </CardDescription>
+        </CardHeader>
         
-        <Card className="max-w-4xl mx-auto border-4 border-amber-800 shadow-[8px_8px_0px_0px_rgba(120,53,15,0.5)] bg-amber-100">
-          <CardHeader className="border-b-4 border-amber-800 bg-amber-200 px-6 py-4">
-            <CardTitle className="text-2xl font-bold text-amber-900">
-              Edit Warranty
-            </CardTitle>
-            <CardDescription className="text-amber-800">
-              Update the warranty information for {formData.product}
-            </CardDescription>
-          </CardHeader>
-          
-          <CardContent className="p-6">
-            <form onSubmit={handleSubmit}>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
+        <CardContent className="p-6">
+          <form onSubmit={handleSubmit}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="product" className="text-amber-900">Product Name</Label>
+                  <Input
+                    id="product"
+                    name="product"
+                    value={formData.product}
+                    onChange={handleInputChange}
+                    className="border-2 border-amber-800 bg-amber-50"
+                    required
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="category" className="text-amber-900">Category</Label>
+                  <Select 
+                    value={formData.category} 
+                    onValueChange={(value) => handleSelectChange("category", value)}
+                  >
+                    <SelectTrigger className="border-2 border-amber-800 bg-amber-50">
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Electronics">Electronics</SelectItem>
+                      <SelectItem value="Appliances">Appliances</SelectItem>
+                      <SelectItem value="Furniture">Furniture</SelectItem>
+                      <SelectItem value="Automotive">Automotive</SelectItem>
+                      <SelectItem value="Other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="provider" className="text-amber-900">Provider/Manufacturer</Label>
+                  <Input
+                    id="provider"
+                    name="provider"
+                    value={formData.provider}
+                    onChange={handleInputChange}
+                    className="border-2 border-amber-800 bg-amber-50"
+                    required
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="price" className="text-amber-900">Product Price</Label>
+                  <Input
+                    id="price"
+                    name="price"
+                    value={formData.price}
+                    onChange={handleInputChange}
+                    className="border-2 border-amber-800 bg-amber-50"
+                    placeholder="Enter price without currency symbol"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="type" className="text-amber-900">Warranty Type</Label>
+                  <Select 
+                    value={formData.type} 
+                    onValueChange={(value) => handleSelectChange("type", value)}
+                  >
+                    <SelectTrigger className="border-2 border-amber-800 bg-amber-50">
+                      <SelectValue placeholder="Select warranty type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="limited">Limited</SelectItem>
+                      <SelectItem value="lifetime">Lifetime</SelectItem>
+                      <SelectItem value="extended">Extended</SelectItem>
+                      <SelectItem value="manufacturer">Manufacturer</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="extendable" className="text-amber-900">Extendable</Label>
+                  <Select 
+                    value={formData.extendable} 
+                    onValueChange={(value) => handleSelectChange("extendable", value)}
+                  >
+                    <SelectTrigger className="border-2 border-amber-800 bg-amber-50">
+                      <SelectValue placeholder="Is warranty extendable?" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="yes">Yes</SelectItem>
+                      <SelectItem value="no">No</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="userId" className="text-amber-900">User</Label>
+                  <Select 
+                    value={formData.userId.toString()} 
+                    onValueChange={(value) => handleSelectChange("userId", value)}
+                  >
+                    <SelectTrigger className="border-2 border-amber-800 bg-amber-50">
+                      <SelectValue placeholder="Select user" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {users.map(user => (
+                        <SelectItem key={user.id} value={user.id.toString()}>
+                          {user.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="product" className="text-amber-900">Product Name</Label>
+                    <Label htmlFor="purchaseDate" className="text-amber-900">Purchase Date</Label>
                     <Input
-                      id="product"
-                      name="product"
-                      value={formData.product}
+                      id="purchaseDate"
+                      name="purchaseDate"
+                      type="date"
+                      value={formData.purchaseDate}
                       onChange={handleInputChange}
                       className="border-2 border-amber-800 bg-amber-50"
                       required
@@ -149,30 +259,12 @@ export default function AdminEditWarrantyPage({ params }) {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="category" className="text-amber-900">Category</Label>
-                    <Select 
-                      value={formData.category} 
-                      onValueChange={(value) => handleSelectChange("category", value)}
-                    >
-                      <SelectTrigger className="border-2 border-amber-800 bg-amber-50">
-                        <SelectValue placeholder="Select category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Electronics">Electronics</SelectItem>
-                        <SelectItem value="Appliances">Appliances</SelectItem>
-                        <SelectItem value="Furniture">Furniture</SelectItem>
-                        <SelectItem value="Automotive">Automotive</SelectItem>
-                        <SelectItem value="Other">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="provider" className="text-amber-900">Provider/Manufacturer</Label>
+                    <Label htmlFor="startDate" className="text-amber-900">Start Date</Label>
                     <Input
-                      id="provider"
-                      name="provider"
-                      value={formData.provider}
+                      id="startDate"
+                      name="startDate"
+                      type="date"
+                      value={formData.startDate}
                       onChange={handleInputChange}
                       className="border-2 border-amber-800 bg-amber-50"
                       required
@@ -180,169 +272,73 @@ export default function AdminEditWarrantyPage({ params }) {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="price" className="text-amber-900">Product Price</Label>
+                    <Label htmlFor="endDate" className="text-amber-900">End Date</Label>
                     <Input
-                      id="price"
-                      name="price"
-                      value={formData.price}
+                      id="endDate"
+                      name="endDate"
+                      type="date"
+                      value={formData.endDate}
                       onChange={handleInputChange}
                       className="border-2 border-amber-800 bg-amber-50"
-                      placeholder="Enter price without currency symbol"
+                      required
                     />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="type" className="text-amber-900">Warranty Type</Label>
-                    <Select 
-                      value={formData.type} 
-                      onValueChange={(value) => handleSelectChange("type", value)}
-                    >
-                      <SelectTrigger className="border-2 border-amber-800 bg-amber-50">
-                        <SelectValue placeholder="Select warranty type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="limited">Limited</SelectItem>
-                        <SelectItem value="lifetime">Lifetime</SelectItem>
-                        <SelectItem value="extended">Extended</SelectItem>
-                        <SelectItem value="manufacturer">Manufacturer</SelectItem>
-                        <SelectItem value="other">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="extendable" className="text-amber-900">Extendable</Label>
-                    <Select 
-                      value={formData.extendable} 
-                      onValueChange={(value) => handleSelectChange("extendable", value)}
-                    >
-                      <SelectTrigger className="border-2 border-amber-800 bg-amber-50">
-                        <SelectValue placeholder="Is warranty extendable?" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="yes">Yes</SelectItem>
-                        <SelectItem value="no">No</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="userId" className="text-amber-900">User</Label>
-                    <Select 
-                      value={formData.userId.toString()} 
-                      onValueChange={(value) => handleSelectChange("userId", value)}
-                    >
-                      <SelectTrigger className="border-2 border-amber-800 bg-amber-50">
-                        <SelectValue placeholder="Select user" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {users.map(user => (
-                          <SelectItem key={user.id} value={user.id.toString()}>
-                            {user.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
                   </div>
                 </div>
                 
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="purchaseDate" className="text-amber-900">Purchase Date</Label>
-                      <Input
-                        id="purchaseDate"
-                        name="purchaseDate"
-                        type="date"
-                        value={formData.purchaseDate}
-                        onChange={handleInputChange}
-                        className="border-2 border-amber-800 bg-amber-50"
-                        required
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="startDate" className="text-amber-900">Start Date</Label>
-                      <Input
-                        id="startDate"
-                        name="startDate"
-                        type="date"
-                        value={formData.startDate}
-                        onChange={handleInputChange}
-                        className="border-2 border-amber-800 bg-amber-50"
-                        required
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="endDate" className="text-amber-900">End Date</Label>
-                      <Input
-                        id="endDate"
-                        name="endDate"
-                        type="date"
-                        value={formData.endDate}
-                        onChange={handleInputChange}
-                        className="border-2 border-amber-800 bg-amber-50"
-                        required
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="terms" className="text-amber-900">Terms</Label>
-                    <Textarea
-                      id="terms"
-                      name="terms"
-                      value={formData.terms}
-                      onChange={handleInputChange}
-                      className="border-2 border-amber-800 bg-amber-50 min-h-[80px]"
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="coverageDetails" className="text-amber-900">Coverage Details</Label>
-                    <Textarea
-                      id="coverageDetails"
-                      name="coverageDetails"
-                      value={formData.coverageDetails}
-                      onChange={handleInputChange}
-                      className="border-2 border-amber-800 bg-amber-50 min-h-[100px]"
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="claimProcess" className="text-amber-900">Claim Process</Label>
-                    <Textarea
-                      id="claimProcess"
-                      name="claimProcess"
-                      value={formData.claimProcess}
-                      onChange={handleInputChange}
-                      className="border-2 border-amber-800 bg-amber-50 min-h-[100px]"
-                    />
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="terms" className="text-amber-900">Terms</Label>
+                  <Textarea
+                    id="terms"
+                    name="terms"
+                    value={formData.terms}
+                    onChange={handleInputChange}
+                    className="border-2 border-amber-800 bg-amber-50 min-h-[80px]"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="coverageDetails" className="text-amber-900">Coverage Details</Label>
+                  <Textarea
+                    id="coverageDetails"
+                    name="coverageDetails"
+                    value={formData.coverageDetails}
+                    onChange={handleInputChange}
+                    className="border-2 border-amber-800 bg-amber-50 min-h-[100px]"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="claimProcess" className="text-amber-900">Claim Process</Label>
+                  <Textarea
+                    id="claimProcess"
+                    name="claimProcess"
+                    value={formData.claimProcess}
+                    onChange={handleInputChange}
+                    className="border-2 border-amber-800 bg-amber-50 min-h-[100px]"
+                  />
                 </div>
               </div>
-            </form>
-          </CardContent>
-          
-          <CardFooter className="bg-amber-200 border-t-4 border-amber-800 px-6 py-4 flex justify-between">
-            <Link href={`/admin/warranties/${params.id}`}>
-              <Button variant="outline" className="border-2 border-amber-800 text-amber-800">
-                Cancel
-              </Button>
-            </Link>
-            
-            <Button 
-              type="submit"
-              onClick={handleSubmit}
-              className="bg-amber-800 hover:bg-amber-900 text-amber-100 border-2 border-amber-900"
-            >
-              <Save className="mr-2 h-4 w-4" />
-              Save Changes
+            </div>
+          </form>
+        </CardContent>
+        
+        <CardFooter className="bg-amber-200 border-t-4 border-amber-800 px-6 py-4 flex justify-between">
+          <Link href={`/admin/warranties/${warrantyId}`}>
+            <Button variant="outline" className="border-2 border-amber-800 text-amber-800">
+              Cancel
             </Button>
-          </CardFooter>
-        </Card>
-      </div>
+          </Link>
+          
+          <Button 
+            type="submit"
+            onClick={handleSubmit}
+            className="bg-amber-800 hover:bg-amber-900 text-amber-100 border-2 border-amber-900"
+          >
+            <Save className="mr-2 h-4 w-4" />
+            Save Changes
+          </Button>
+        </CardFooter>
+      </Card>
     </div>
   )
 }
