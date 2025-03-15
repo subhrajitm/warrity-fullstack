@@ -81,13 +81,13 @@ export default function AdminSidebar() {
   }
   
   return (
-    <div className="h-screen bg-amber-800 text-amber-100 p-6 flex flex-col overflow-y-auto shadow-lg">
+    <div className="h-screen bg-amber-800 text-amber-100 p-6 flex flex-col overflow-hidden shadow-lg">
       <div className="mb-8">
         <h1 className="text-2xl font-bold font-mono tracking-tight">Warrity</h1>
         <p className="text-amber-200 text-sm mt-1">Admin Panel</p>
       </div>
       
-      <nav className="flex-1 space-y-1">
+      <nav className="flex-1 space-y-1 overflow-y-auto pr-2 custom-scrollbar">
         <Link href="/admin">
           <Button 
             variant="ghost" 
@@ -354,7 +354,7 @@ export default function AdminSidebar() {
         </Collapsible>
       </nav>
       
-      <div className="mt-auto pt-6 border-t border-amber-700">
+      <div className="mt-6 pt-6 border-t border-amber-700">
         <Button 
           variant="ghost" 
           className="w-full justify-start text-amber-100 hover:bg-amber-700"

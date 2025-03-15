@@ -14,11 +14,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <div className="min-h-screen bg-amber-50 flex relative">
-      {/* Sidebar with transition */}
+      {/* Sidebar with transition - now fixed on all screen sizes */}
       <div 
-        className={`h-screen transition-all duration-300 ease-in-out ${
-          sidebarVisible ? 'w-64 opacity-100' : 'w-0 opacity-0 md:opacity-0'
-        } overflow-hidden z-30 fixed md:relative`}
+        className={`h-screen transition-all duration-300 ease-in-out fixed top-0 left-0 ${
+          sidebarVisible ? 'w-64 opacity-100' : 'w-0 opacity-0'
+        } overflow-hidden z-30`}
       >
         <AdminSidebar />
       </div>
@@ -33,8 +33,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         {sidebarVisible ? <X size={18} /> : <Menu size={18} />}
       </Button>
       
-      {/* Main content */}
-      <div className={`flex-1 p-6 ${sidebarVisible ? 'md:ml-0' : 'ml-0'} transition-all duration-300 w-full`}>
+      {/* Main content - adjusted margin to account for fixed sidebar */}
+      <div className={`flex-1 p-6 ${sidebarVisible ? 'md:ml-64' : 'ml-0'} transition-all duration-300 w-full`}>
         {/* Toggle button for larger screens - inline */}
         <div className="mb-6 hidden md:block">
           <Button 
