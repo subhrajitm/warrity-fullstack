@@ -11,7 +11,9 @@ import {
   CheckCircle, 
   AlertTriangle,
   Home,
-  LogOut
+  LogOut,
+  User,
+  Settings
 } from "lucide-react"
 
 export default function WarrantySidebar() {
@@ -26,7 +28,10 @@ export default function WarrantySidebar() {
     if (path === '/user' && pathname === '/user') {
       return true
     }
-    if (path === '/user/warranties' && pathname === '/user/warranties') {
+    if (path === '/user/profile' && pathname === '/user/profile') {
+      return true
+    }
+    if (path === '/user/settings' && pathname === '/user/settings') {
       return true
     }
     if (path.includes('active') && pathname.includes('active')) {
@@ -64,6 +69,16 @@ export default function WarrantySidebar() {
           >
             <Home className="mr-2 h-5 w-5" />
             Dashboard
+          </Button>
+        </Link>
+        
+        <Link href="/user/profile">
+          <Button 
+            variant="ghost" 
+            className={`w-full justify-start ${isActive('/user/profile') ? 'bg-amber-900 text-amber-50' : 'text-amber-100 hover:bg-amber-700'}`}
+          >
+            <User className="mr-2 h-5 w-5" />
+            My Profile
           </Button>
         </Link>
         
@@ -114,6 +129,16 @@ export default function WarrantySidebar() {
           >
             <PlusCircle className="mr-2 h-5 w-5" />
             Add Warranty
+          </Button>
+        </Link>
+        
+        <Link href="/user/settings">
+          <Button 
+            variant="ghost" 
+            className={`w-full justify-start ${isActive('/user/settings') ? 'bg-amber-900 text-amber-50' : 'text-amber-100 hover:bg-amber-700'}`}
+          >
+            <Settings className="mr-2 h-5 w-5" />
+            Settings
           </Button>
         </Link>
       </nav>
