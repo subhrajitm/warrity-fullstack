@@ -19,51 +19,176 @@ import {
   Phone, 
   Calendar,
   Clock,
-  AlertTriangle
+  AlertTriangle,
+  AlertCircle
 } from "lucide-react"
 import WarrantySidebar from "../warranties/components/sidebar"
 import { useAuth } from "@/lib/auth-context"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import * as z from "zod"
+import { authApi } from "@/lib/auth-api"
+import { toast } from "sonner"
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+
+// Mock user data type
+interface MockUser {
+  id: number;
+  name: string;
+  email: string;
+  phone: string;
+  preferences?: {
+    emailNotifications: boolean;
+    reminderDays: number;
+  };
+}
 
 // Mock user data for demonstration
-const mockUser = {
+const mockUser: MockUser = {
   id: 1,
   name: "John Doe",
-  email: "john.doe@example.com",
-  phone: "555-123-4567",
-  notifications: {
-    email: true,
-    push: true,
-    expiringWarranties: true,
-    expiredWarranties: true,
+  email: "john@example.com",
+  phone: "+1234567890",
+  preferences: {
+    emailNotifications: true,
     reminderDays: 30
   }
 }
 
+// Form validation schemas
+const profileFormSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  email: z.string().email("Invalid email address"),
+  phone: z.string().optional()
+})
+
+const passwordFormSchema = z.object({
+  currentPassword: z.string()
+    .min(8, "Current password must be at least 8 characters"),
+  newPassword: z.string()
+    .min(8, "New password must be at least 8 characters")
+    .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+    .regex(/[a-z]/, "Password must contain at least one lowercase letter")
+    .regex(/[0-9]/, "Password must contain at least one number")
+    .regex(/[^A-Za-z0-9]/, "Password must contain at least one special character"),
+  confirmPassword: z.string()
+    .min(8, "Confirm password must be at least 8 characters"),
+}).refine((data) => data.newPassword === data.confirmPassword, {
+  message: "Passwords do not match",
+  path: ["confirmPassword"],
+})
+
+const notificationsFormSchema = z.object({
+  emailNotifications: z.boolean().default(true),
+  reminderDays: z.number()
+    .min(1, "Reminder days must be at least 1")
+    .max(365, "Reminder days must not exceed 365")
+    .default(30),
+})
+
+// Add password strength indicator component
+const PasswordStrengthIndicator = ({ password }: { password: string }) => {
+  const getStrength = (password: string) => {
+    let strength = 0;
+    if (password.length >= 8) strength++;
+    if (/[A-Z]/.test(password)) strength++;
+    if (/[a-z]/.test(password)) strength++;
+    if (/[0-9]/.test(password)) strength++;
+    if (/[^A-Za-z0-9]/.test(password)) strength++;
+    return strength;
+  }
+
+  const strength = getStrength(password);
+  const getColor = () => {
+    switch (strength) {
+      case 0:
+      case 1:
+        return "bg-red-500";
+      case 2:
+      case 3:
+        return "bg-yellow-500";
+      case 4:
+      case 5:
+        return "bg-green-500";
+      default:
+        return "bg-gray-200";
+    }
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex gap-1 h-1">
+        {[...Array(5)].map((_, i) => (
+          <div
+            key={i}
+            className={`h-full w-full rounded-full ${i < strength ? getColor() : "bg-gray-200"}`}
+          />
+        ))}
+      </div>
+      <p className="text-sm text-amber-700">
+        {strength === 0 && "Very weak"}
+        {strength === 1 && "Weak"}
+        {strength === 2 && "Fair"}
+        {strength === 3 && "Good"}
+        {strength === 4 && "Strong"}
+        {strength === 5 && "Very strong"}
+      </p>
+    </div>
+  );
+};
+
 export default function UserSettingsPage() {
   const router = useRouter()
-  const { user: authUser, isAuthenticated, isLoading: authLoading } = useAuth()
-  const [user, setUser] = useState<typeof mockUser | null>(null)
-  const [profileForm, setProfileForm] = useState({
-    name: "",
-    email: "",
-    phone: ""
+  const { user: authUser, isAuthenticated, isLoading: authLoading, updateProfile } = useAuth()
+  const [user, setUser] = useState<MockUser | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [isPasswordSaving, setIsPasswordSaving] = useState(false)
+  const [isPreferencesSaving, setIsPreferencesSaving] = useState(false)
+  const [isProfileSaving, setIsProfileSaving] = useState(false)
+
+  // Initialize forms
+  const passwordForm = useForm<z.infer<typeof passwordFormSchema>>({
+    resolver: zodResolver(passwordFormSchema),
+    defaultValues: {
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: ""
+    }
   })
-  const [passwordForm, setPasswordForm] = useState({
-    currentPassword: "",
-    newPassword: "",
-    confirmPassword: ""
+
+  const notificationsForm = useForm<z.infer<typeof notificationsFormSchema>>({
+    resolver: zodResolver(notificationsFormSchema),
+    defaultValues: {
+      emailNotifications: true,
+      reminderDays: 30
+    }
   })
-  const [notificationSettings, setNotificationSettings] = useState({
-    email: false,
-    push: false,
-    expiringWarranties: false,
-    expiredWarranties: false,
-    reminderDays: 30
+
+  const profileForm = useForm<z.infer<typeof profileFormSchema>>({
+    resolver: zodResolver(profileFormSchema),
+    defaultValues: {
+      name: "",
+      email: "",
+      phone: ""
+    }
   })
-  const [isLoading, setIsLoading] = useState(false)
-  const [activeTab, setActiveTab] = useState("profile")
-  
-  // Check if user is logged in and fetch user data
+
+  // Update form values when user data is loaded
   useEffect(() => {
     if (!authLoading) {
       if (!isAuthenticated) {
@@ -71,101 +196,92 @@ export default function UserSettingsPage() {
       } else if (authUser && authUser.role !== 'user') {
         router.replace(authUser.role === 'admin' ? '/admin' : '/login')
       } else {
-        // In a real app, you would fetch the user data from your backend
         setUser(mockUser)
-        setProfileForm({
+        profileForm.reset({
           name: mockUser.name,
           email: mockUser.email,
           phone: mockUser.phone
         })
-        setNotificationSettings(mockUser.notifications)
+        notificationsForm.reset({
+          emailNotifications: mockUser.preferences?.emailNotifications || true,
+          reminderDays: mockUser.preferences?.reminderDays || 30
+        })
       }
     }
-  }, [router, authLoading, isAuthenticated, authUser])
-  
-  const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
-    setProfileForm(prev => ({
-      ...prev,
-      [name]: value
-    }))
-  }
-  
-  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
-    setPasswordForm(prev => ({
-      ...prev,
-      [name]: value
-    }))
-  }
-  
-  const handleNotificationToggle = (name: keyof typeof notificationSettings) => {
-    setNotificationSettings(prev => ({
-      ...prev,
-      [name]: !prev[name]
-    }))
-  }
-  
-  const handleReminderDaysChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = parseInt(e.target.value) || 0
-    setNotificationSettings(prev => ({
-      ...prev,
-      reminderDays: value
-    }))
-  }
-  
-  const handleProfileSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    setIsLoading(true)
-    
-    // In a real app, you would send the updated profile data to your backend
-    console.log("Updating profile:", profileForm)
-    
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false)
-      alert("Profile updated successfully!")
-    }, 1000)
-  }
-  
-  const handlePasswordSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    setIsLoading(true)
-    
-    // Validate passwords
-    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      alert("New passwords don't match!")
-      setIsLoading(false)
-      return
-    }
-    
-    // In a real app, you would send the updated password to your backend
-    console.log("Updating password")
-    
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false)
-      alert("Password updated successfully!")
-      setPasswordForm({
-        currentPassword: "",
-        newPassword: "",
-        confirmPassword: ""
+  }, [router, authLoading, isAuthenticated, authUser, notificationsForm, profileForm])
+
+  const onProfileSubmit = async (data: z.infer<typeof profileFormSchema>) => {
+    setIsProfileSaving(true)
+    setError(null)
+
+    try {
+      const success = await updateProfile({
+        name: data.name,
+        phone: data.phone
       })
-    }, 1000)
+
+      if (success) {
+        toast.success("Profile updated successfully!")
+      } else {
+        setError("Failed to update profile. Please try again.")
+      }
+    } catch (err) {
+      console.error("Profile update error:", err)
+      setError("An unexpected error occurred. Please try again.")
+    } finally {
+      setIsProfileSaving(false)
+    }
   }
-  
-  const handleNotificationSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    setIsLoading(true)
-    
-    // In a real app, you would send the updated notification settings to your backend
-    console.log("Updating notification settings:", notificationSettings)
-    
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false)
-      alert("Notification settings updated successfully!")
-    }, 1000)
+
+  // Form submission handlers
+  const onPasswordSubmit = async (data: z.infer<typeof passwordFormSchema>) => {
+    setIsPasswordSaving(true)
+    setError(null)
+
+    try {
+      const response = await authApi.changePassword({
+        currentPassword: data.currentPassword,
+        newPassword: data.newPassword
+      })
+
+      if (response.error) {
+        setError(response.error)
+        return
+      }
+
+      passwordForm.reset()
+      toast.success("Password updated successfully!")
+    } catch (err) {
+      console.error("Password update error:", err)
+      setError("An unexpected error occurred. Please try again.")
+    } finally {
+      setIsPasswordSaving(false)
+    }
+  }
+
+  const onNotificationsSubmit = async (data: z.infer<typeof notificationsFormSchema>) => {
+    setIsPreferencesSaving(true)
+    setError(null)
+
+    try {
+      const success = await updateProfile({
+        preferences: {
+          emailNotifications: data.emailNotifications,
+          reminderDays: data.reminderDays
+        }
+      })
+
+      if (success) {
+        toast.success("Notification preferences updated successfully!")
+      } else {
+        setError("Failed to update notification preferences. Please try again.")
+      }
+    } catch (err) {
+      console.error("Notification preferences update error:", err)
+      setError("An unexpected error occurred. Please try again.")
+    } finally {
+      setIsPreferencesSaving(false)
+    }
   }
   
   if (!user) {
@@ -187,7 +303,14 @@ export default function UserSettingsPage() {
         <div className="max-w-4xl mx-auto">
           <h1 className="text-3xl font-bold text-amber-900 mb-6">Account Settings</h1>
           
-          <Tabs defaultValue="profile" value={activeTab} onValueChange={setActiveTab} className="w-full">
+          {error && (
+            <div className="mb-4 p-3 bg-red-100 border-2 border-red-400 rounded-md flex items-center text-red-800">
+              <AlertCircle className="h-5 w-5 mr-2 flex-shrink-0" />
+              <p>{error}</p>
+            </div>
+          )}
+          
+          <Tabs defaultValue="profile" className="w-full">
             <TabsList className="grid grid-cols-3 mb-6 bg-amber-200 border-2 border-amber-800">
               <TabsTrigger 
                 value="profile" 
@@ -224,74 +347,89 @@ export default function UserSettingsPage() {
                 </CardHeader>
                 
                 <CardContent className="p-6">
-                  <form onSubmit={handleProfileSubmit}>
-                    <div className="space-y-6">
-                      <div className="space-y-2">
-                        <Label htmlFor="name" className="text-amber-900">Full Name</Label>
-                        <div className="flex">
-                          <User className="h-5 w-5 text-amber-800 mr-3 mt-2" />
-                          <Input
-                            id="name"
-                            name="name"
-                            value={profileForm.name}
-                            onChange={handleProfileChange}
-                            className="border-2 border-amber-800 bg-amber-50"
-                            required
-                          />
-                        </div>
-                      </div>
+                  <Form {...profileForm}>
+                    <form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="space-y-6">
+                      <FormField
+                        control={profileForm.control}
+                        name="name"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-amber-900">Full Name</FormLabel>
+                            <FormControl>
+                              <div className="flex">
+                                <User className="h-5 w-5 text-amber-800 mr-3 mt-2" />
+                                <Input
+                                  {...field}
+                                  className="border-2 border-amber-800 bg-amber-50"
+                                />
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                       
-                      <div className="space-y-2">
-                        <Label htmlFor="email" className="text-amber-900">Email Address</Label>
-                        <div className="flex">
-                          <Mail className="h-5 w-5 text-amber-800 mr-3 mt-2" />
-                          <Input
-                            id="email"
-                            name="email"
-                            type="email"
-                            value={profileForm.email}
-                            onChange={handleProfileChange}
-                            className="border-2 border-amber-800 bg-amber-50"
-                            required
-                          />
-                        </div>
-                      </div>
+                      <FormField
+                        control={profileForm.control}
+                        name="email"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-amber-900">Email Address</FormLabel>
+                            <FormControl>
+                              <div className="flex">
+                                <Mail className="h-5 w-5 text-amber-800 mr-3 mt-2" />
+                                <Input
+                                  {...field}
+                                  type="email"
+                                  disabled
+                                  className="border-2 border-amber-800 bg-amber-50 opacity-70"
+                                />
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                       
-                      <div className="space-y-2">
-                        <Label htmlFor="phone" className="text-amber-900">Phone Number</Label>
-                        <div className="flex">
-                          <Phone className="h-5 w-5 text-amber-800 mr-3 mt-2" />
-                          <Input
-                            id="phone"
-                            name="phone"
-                            value={profileForm.phone}
-                            onChange={handleProfileChange}
-                            className="border-2 border-amber-800 bg-amber-50"
-                          />
-                        </div>
-                      </div>
+                      <FormField
+                        control={profileForm.control}
+                        name="phone"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-amber-900">Phone Number</FormLabel>
+                            <FormControl>
+                              <div className="flex">
+                                <Phone className="h-5 w-5 text-amber-800 mr-3 mt-2" />
+                                <Input
+                                  {...field}
+                                  className="border-2 border-amber-800 bg-amber-50"
+                                />
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                       
-                      <div className="flex justify-end">
-                        <Button 
-                          type="submit"
-                          className="bg-amber-800 hover:bg-amber-900 text-amber-100 border-2 border-amber-900"
-                          disabled={isLoading}
-                        >
-                          {isLoading ? (
-                            <div className="flex items-center">
-                              <div className="animate-spin mr-2 h-4 w-4 border-2 border-amber-100 border-t-transparent rounded-full" />
-                              Saving...
-                            </div>
-                          ) : (
-                            <>
-                              <Save className="mr-2 h-4 w-4" />
-                              Save Changes
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                    </div>
-                  </form>
+                      <Button 
+                        type="submit"
+                        className="bg-amber-800 hover:bg-amber-900 text-amber-100 border-2 border-amber-900"
+                        disabled={isProfileSaving}
+                      >
+                        {isProfileSaving ? (
+                          <div className="flex items-center">
+                            <div className="animate-spin mr-2 h-4 w-4 border-2 border-amber-100 border-t-transparent rounded-full" />
+                            Saving...
+                          </div>
+                        ) : (
+                          <>
+                            <Save className="mr-2 h-4 w-4" />
+                            Save Changes
+                          </>
+                        )}
+                      </Button>
+                    </form>
+                  </Form>
                 </CardContent>
               </Card>
             </TabsContent>
@@ -308,68 +446,86 @@ export default function UserSettingsPage() {
                 </CardHeader>
                 
                 <CardContent className="p-6">
-                  <form onSubmit={handlePasswordSubmit}>
-                    <div className="space-y-6">
-                      <div className="space-y-2">
-                        <Label htmlFor="currentPassword" className="text-amber-900">Current Password</Label>
-                        <Input
-                          id="currentPassword"
+                  <Form {...passwordForm}>
+                    <form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)} className="space-y-4">
+                      <div className="space-y-4">
+                        <h3 className="text-lg font-semibold text-amber-900">Change Password</h3>
+                        
+                        <FormField
+                          control={passwordForm.control}
                           name="currentPassword"
-                          type="password"
-                          value={passwordForm.currentPassword}
-                          onChange={handlePasswordChange}
-                          className="border-2 border-amber-800 bg-amber-50"
-                          required
-                        />
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="newPassword" className="text-amber-900">New Password</Label>
-                        <Input
-                          id="newPassword"
-                          name="newPassword"
-                          type="password"
-                          value={passwordForm.newPassword}
-                          onChange={handlePasswordChange}
-                          className="border-2 border-amber-800 bg-amber-50"
-                          required
-                        />
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="confirmPassword" className="text-amber-900">Confirm New Password</Label>
-                        <Input
-                          id="confirmPassword"
-                          name="confirmPassword"
-                          type="password"
-                          value={passwordForm.confirmPassword}
-                          onChange={handlePasswordChange}
-                          className="border-2 border-amber-800 bg-amber-50"
-                          required
-                        />
-                      </div>
-                      
-                      <div className="flex justify-end">
-                        <Button 
-                          type="submit"
-                          className="bg-amber-800 hover:bg-amber-900 text-amber-100 border-2 border-amber-900"
-                          disabled={isLoading}
-                        >
-                          {isLoading ? (
-                            <div className="flex items-center">
-                              <div className="animate-spin mr-2 h-4 w-4 border-2 border-amber-100 border-t-transparent rounded-full" />
-                              Updating...
-                            </div>
-                          ) : (
-                            <>
-                              <Save className="mr-2 h-4 w-4" />
-                              Update Password
-                            </>
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-amber-900">Current Password</FormLabel>
+                              <FormControl>
+                                <Input
+                                  {...field}
+                                  type="password"
+                                  className="border-2 border-amber-800 bg-amber-50"
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
                           )}
-                        </Button>
+                        />
+
+                        <FormField
+                          control={passwordForm.control}
+                          name="newPassword"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-amber-900">New Password</FormLabel>
+                              <FormControl>
+                                <Input
+                                  {...field}
+                                  type="password"
+                                  className="border-2 border-amber-800 bg-amber-50"
+                                />
+                              </FormControl>
+                              <PasswordStrengthIndicator password={field.value} />
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={passwordForm.control}
+                          name="confirmPassword"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-amber-900">Confirm New Password</FormLabel>
+                              <FormControl>
+                                <Input
+                                  {...field}
+                                  type="password"
+                                  className="border-2 border-amber-800 bg-amber-50"
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
                       </div>
-                    </div>
-                  </form>
+                      
+                      <Button 
+                        type="submit"
+                        className="bg-amber-800 hover:bg-amber-900 text-amber-100 border-2 border-amber-900"
+                        disabled={isPasswordSaving}
+                      >
+                        {isPasswordSaving ? (
+                          <div className="flex items-center">
+                            <div className="animate-spin mr-2 h-4 w-4 border-2 border-amber-100 border-t-transparent rounded-full" />
+                            Updating...
+                          </div>
+                        ) : (
+                          <>
+                            <Save className="mr-2 h-4 w-4" />
+                            Update Password
+                          </>
+                        )}
+                      </Button>
+                    </form>
+                  </Form>
                 </CardContent>
               </Card>
             </TabsContent>
@@ -386,103 +542,73 @@ export default function UserSettingsPage() {
                 </CardHeader>
                 
                 <CardContent className="p-6">
-                  <form onSubmit={handleNotificationSubmit}>
-                    <div className="space-y-6">
-                      <div className="space-y-4">
-                        <h3 className="text-lg font-semibold text-amber-900">Notification Channels</h3>
-                        
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-2">
-                            <Mail className="h-5 w-5 text-amber-800" />
-                            <Label htmlFor="emailNotifications" className="text-amber-900">Email Notifications</Label>
-                          </div>
-                          <Switch
-                            id="emailNotifications"
-                            checked={notificationSettings.email}
-                            onCheckedChange={() => handleNotificationToggle('email')}
-                            className="data-[state=checked]:bg-amber-800"
-                          />
-                        </div>
-                        
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-2">
-                            <Bell className="h-5 w-5 text-amber-800" />
-                            <Label htmlFor="pushNotifications" className="text-amber-900">Push Notifications</Label>
-                          </div>
-                          <Switch
-                            id="pushNotifications"
-                            checked={notificationSettings.push}
-                            onCheckedChange={() => handleNotificationToggle('push')}
-                            className="data-[state=checked]:bg-amber-800"
-                          />
-                        </div>
-                        
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-2">
-                            <Clock className="h-5 w-5 text-amber-800" />
-                            <Label htmlFor="expiringWarranties" className="text-amber-900">Expiring Warranties</Label>
-                          </div>
-                          <Switch
-                            id="expiringWarranties"
-                            checked={notificationSettings.expiringWarranties}
-                            onCheckedChange={() => handleNotificationToggle('expiringWarranties')}
-                            className="data-[state=checked]:bg-amber-800"
-                          />
-                        </div>
-                        
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-2">
-                            <AlertTriangle className="h-5 w-5 text-amber-800" />
-                            <Label htmlFor="expiredWarranties" className="text-amber-900">Expired Warranties</Label>
-                          </div>
-                          <Switch
-                            id="expiredWarranties"
-                            checked={notificationSettings.expiredWarranties}
-                            onCheckedChange={() => handleNotificationToggle('expiredWarranties')}
-                            className="data-[state=checked]:bg-amber-800"
-                          />
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <Label htmlFor="reminderDays" className="text-amber-900">
-                            Remind me before warranty expires (days)
-                          </Label>
-                          <div className="flex">
-                            <Calendar className="h-5 w-5 text-amber-800 mr-3 mt-2" />
-                            <Input
-                              id="reminderDays"
-                              type="number"
-                              min="1"
-                              max="365"
-                              value={notificationSettings.reminderDays}
-                              onChange={handleReminderDaysChange}
-                              className="border-2 border-amber-800 bg-amber-50"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="flex justify-end">
-                        <Button 
-                          type="submit"
-                          className="bg-amber-800 hover:bg-amber-900 text-amber-100 border-2 border-amber-900"
-                          disabled={isLoading}
-                        >
-                          {isLoading ? (
-                            <div className="flex items-center">
-                              <div className="animate-spin mr-2 h-4 w-4 border-2 border-amber-100 border-t-transparent rounded-full" />
-                              Saving...
+                  <Form {...notificationsForm}>
+                    <form onSubmit={notificationsForm.handleSubmit(onNotificationsSubmit)} className="space-y-6">
+                      <FormField
+                        control={notificationsForm.control}
+                        name="emailNotifications"
+                        render={({ field }) => (
+                          <FormItem className="flex items-center justify-between">
+                            <div>
+                              <FormLabel className="text-lg font-semibold text-amber-900">Email Notifications</FormLabel>
+                              <p className="text-sm text-amber-700">Receive email notifications for warranty expirations and updates</p>
                             </div>
-                          ) : (
-                            <>
-                              <Save className="mr-2 h-4 w-4" />
-                              Save Preferences
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                    </div>
-                  </form>
+                            <FormControl>
+                              <Switch
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                                className="data-[state=checked]:bg-amber-800"
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={notificationsForm.control}
+                        name="reminderDays"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-amber-900">Reminder Days Before Expiration</FormLabel>
+                            <Select
+                              value={field.value.toString()}
+                              onValueChange={(value: string) => field.onChange(parseInt(value))}
+                            >
+                              <SelectTrigger className="border-2 border-amber-800 bg-amber-50">
+                                <SelectValue placeholder="Select days" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="7">7 days</SelectItem>
+                                <SelectItem value="14">14 days</SelectItem>
+                                <SelectItem value="30">30 days</SelectItem>
+                                <SelectItem value="60">60 days</SelectItem>
+                                <SelectItem value="90">90 days</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <Button 
+                        type="submit"
+                        className="bg-amber-800 hover:bg-amber-900 text-amber-100 border-2 border-amber-900"
+                        disabled={isPreferencesSaving}
+                      >
+                        {isPreferencesSaving ? (
+                          <div className="flex items-center">
+                            <div className="animate-spin mr-2 h-4 w-4 border-2 border-amber-100 border-t-transparent rounded-full" />
+                            Saving...
+                          </div>
+                        ) : (
+                          <>
+                            <Save className="mr-2 h-4 w-4" />
+                            Save Preferences
+                          </>
+                        )}
+                      </Button>
+                    </form>
+                  </Form>
                 </CardContent>
               </Card>
             </TabsContent>

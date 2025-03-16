@@ -27,10 +27,15 @@ interface FormData {
   notes: string;
 }
 
+interface FormErrors {
+  [key: string]: string;
+}
+
 export default function AddProductPage() {
   const router = useRouter()
   const { user, isAuthenticated, isLoading: authLoading } = useAuth()
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [errors, setErrors] = useState<FormErrors>({})
   const [formData, setFormData] = useState<FormData>({
     name: "",
     category: "",
@@ -65,25 +70,78 @@ export default function AddProductPage() {
     setFormData(prev => ({ ...prev, [name]: value }))
   }
   
+  const validateForm = (): boolean => {
+    const newErrors: FormErrors = {};
+    
+    // Required fields
+    if (!formData.name.trim()) {
+      newErrors.name = "Product name is required";
+    }
+    if (!formData.category) {
+      newErrors.category = "Category is required";
+    }
+    if (!formData.serialNumber.trim()) {
+      newErrors.serialNumber = "Serial number is required";
+    }
+    
+    // Price validation
+    if (formData.price && !/^\$?\d+(\.\d{2})?$/.test(formData.price.replace(/,/g, ''))) {
+      newErrors.price = "Invalid price format. Example: $1,999.99";
+    }
+    
+    // Purchase date validation
+    if (formData.purchaseDate) {
+      const purchaseDate = new Date(formData.purchaseDate);
+      const today = new Date();
+      if (purchaseDate > today) {
+        newErrors.purchaseDate = "Purchase date cannot be in the future";
+      }
+    }
+    
+    // Serial number format validation
+    if (formData.serialNumber && !/^[A-Za-z0-9-]+$/.test(formData.serialNumber)) {
+      newErrors.serialNumber = "Serial number can only contain letters, numbers, and hyphens";
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setIsSubmitting(true)
     
-    // Validate form
-    if (!formData.name || !formData.category || !formData.serialNumber) {
-      alert("Please fill in all required fields")
-      setIsSubmitting(false)
-      return
-    }
-    
-    // In a real app, you would send the form data to your backend
-    console.log("Form submitted:", formData)
-    
-    // Simulate API call
-    setTimeout(() => {
-      setIsSubmitting(false)
+    try {
+      // Validate form
+      if (!validateForm()) {
+        setIsSubmitting(false)
+        return
+      }
+      
+      // Sanitize and format data
+      const sanitizedData = {
+        ...formData,
+        name: formData.name.trim(),
+        serialNumber: formData.serialNumber.trim().toUpperCase(),
+        price: formData.price ? formData.price.replace(/[^0-9.]/g, '') : '',
+        description: formData.description.trim(),
+        notes: formData.notes.trim()
+      };
+      
+      // In a real app, you would send the form data to your backend
+      console.log("Form submitted:", sanitizedData)
+      
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000))
       router.push('/user/products')
-    }, 1000)
+    } catch (error) {
+      console.error("Failed to add product:", error)
+      setErrors({
+        submit: "Failed to add product. Please try again."
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
   }
   
   return (
@@ -113,6 +171,12 @@ export default function AddProductPage() {
             </CardHeader>
             
             <CardContent className="p-6">
+              {errors.submit && (
+                <div className="mb-6 p-3 bg-red-100 border-2 border-red-400 rounded-md">
+                  <p className="text-red-800">{errors.submit}</p>
+                </div>
+              )}
+              
               <form onSubmit={handleSubmit}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-4">
@@ -126,9 +190,12 @@ export default function AddProductPage() {
                         placeholder="e.g. MacBook Pro"
                         value={formData.name}
                         onChange={handleChange}
-                        className="border-2 border-amber-800 bg-amber-50"
+                        className={`border-2 ${errors.name ? 'border-red-400' : 'border-amber-800'} bg-amber-50`}
                         required
                       />
+                      {errors.name && (
+                        <p className="text-sm text-red-600">{errors.name}</p>
+                      )}
                     </div>
                     
                     <div className="space-y-2">

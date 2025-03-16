@@ -71,15 +71,23 @@ export default function LoginPage() {
       const params = new URLSearchParams(window.location.search);
       const returnUrl = params.get('returnUrl');
       
+      // Validate returnUrl to prevent open redirect vulnerabilities
+      const isValidReturnUrl = returnUrl && (
+        returnUrl.startsWith('/') && 
+        !returnUrl.startsWith('//') && 
+        !returnUrl.includes('http') &&
+        !returnUrl.includes('javascript:')
+      );
+      
       // Only redirect to dashboard if there's no return URL
       const success = await login(email, password, !returnUrl)
       
       if (success) {
         console.log("Login successful")
-        if (returnUrl && returnUrl.startsWith('/')) {
+        if (isValidReturnUrl) {
           router.replace(returnUrl)
         }
-        // If no returnUrl, the auth context will handle redirection
+        // If no returnUrl or invalid returnUrl, the auth context will handle redirection
       } else {
         console.log("Login failed")
         setError("Invalid email or password. Please try again.")

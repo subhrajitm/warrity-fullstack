@@ -108,7 +108,7 @@ export default function EditProductPage({ params }: { params: Params }) {
     submitForm()
   }
   
-  const submitForm = () => {
+  const submitForm = async () => {
     setIsSubmitting(true)
     
     // Validate form
@@ -118,14 +118,20 @@ export default function EditProductPage({ params }: { params: Params }) {
       return
     }
     
-    // In a real app, you would send the updated data to your backend
-    console.log("Submitting updated product data:", formData)
-    
-    // Simulate API call
-    setTimeout(() => {
-      setIsSubmitting(false)
+    try {
+      // In a real app, you would send the updated data to your backend
+      console.log("Submitting updated product data:", formData)
+      
+      // Wait for console to flush and state to update
+      await new Promise(resolve => setTimeout(resolve, 100))
+      
+      // Navigate to product details
       router.push(`/user/products/${params.id}`)
-    }, 1000)
+    } catch (error) {
+      console.error('Error updating product:', error)
+      alert("Failed to update product. Please try again.")
+      setIsSubmitting(false)
+    }
   }
   
   if (isLoading) {

@@ -89,7 +89,7 @@ export default function AddWarrantyPage() {
     }
   }
   
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setError("")
     
@@ -101,16 +101,22 @@ export default function AddWarrantyPage() {
     
     setIsLoading(true)
     
-    // In a real app, you would send the data to your backend
-    console.log("Submitting warranty data:", formData)
-    console.log("Receipt file:", receiptFile)
-    console.log("Warranty file:", warrantyFile)
-    
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false)
+    try {
+      // In a real app, you would send the data to your backend
+      console.log("Submitting warranty data:", formData)
+      console.log("Receipt file:", receiptFile)
+      console.log("Warranty file:", warrantyFile)
+      
+      // Wait for console to flush and state to update
+      await new Promise(resolve => setTimeout(resolve, 100))
+      
+      // Navigate to warranties list
       router.push('/user/warranties')
-    }, 1000)
+    } catch (error) {
+      console.error('Error adding warranty:', error)
+      setError("Failed to add warranty. Please try again.")
+      setIsLoading(false)
+    }
   }
   
   return (

@@ -13,6 +13,22 @@ interface User {
   [key: string]: any;
 }
 
+interface ProfileUpdateData {
+  name?: string;
+  phone?: string;
+  bio?: string;
+  socialLinks?: {
+    twitter?: string;
+    linkedin?: string;
+    github?: string;
+    instagram?: string;
+  };
+  preferences?: {
+    emailNotifications?: boolean;
+    reminderDays?: number;
+  };
+}
+
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
@@ -20,11 +36,77 @@ interface AuthContextType {
   login: (email: string, password: string, shouldRedirect: boolean) => Promise<boolean>;
   logout: () => Promise<void>;
   register: (userData: any) => Promise<boolean>;
-  updateProfile: (profileData: any) => Promise<boolean>;
+  updateProfile: (profileData: ProfileUpdateData) => Promise<boolean>;
   refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+// Validation utilities
+function validateProfileData(data: ProfileUpdateData): { isValid: boolean; error?: string } {
+  // Validate name
+  if (data.name && (data.name.length < 2 || data.name.length > 50)) {
+    return {
+      isValid: false,
+      error: 'Name must be between 2 and 50 characters'
+    };
+  }
+
+  // Validate phone
+  if (data.phone) {
+    const phoneRegex = /^\+?[\d\s-()]{8,}$/;
+    if (!phoneRegex.test(data.phone)) {
+      return {
+        isValid: false,
+        error: 'Invalid phone number format'
+      };
+    }
+  }
+
+  // Validate bio
+  if (data.bio && data.bio.length > 500) {
+    return {
+      isValid: false,
+      error: 'Bio must not exceed 500 characters'
+    };
+  }
+
+  // Validate social links
+  if (data.socialLinks) {
+    const urlRegex = /^[a-zA-Z0-9_-]{1,50}$/;
+    for (const [platform, username] of Object.entries(data.socialLinks)) {
+      if (username && !urlRegex.test(username)) {
+        return {
+          isValid: false,
+          error: `Invalid ${platform} username. Use only letters, numbers, underscores, and hyphens.`
+        };
+      }
+    }
+  }
+
+  // Validate preferences
+  if (data.preferences) {
+    if (typeof data.preferences.emailNotifications !== 'undefined' && 
+        typeof data.preferences.emailNotifications !== 'boolean') {
+      return {
+        isValid: false,
+        error: 'Email notifications must be a boolean value'
+      };
+    }
+
+    if (typeof data.preferences.reminderDays !== 'undefined') {
+      const days = Number(data.preferences.reminderDays);
+      if (isNaN(days) || days < 1 || days > 365) {
+        return {
+          isValid: false,
+          error: 'Reminder days must be between 1 and 365'
+        };
+      }
+    }
+  }
+
+  return { isValid: true };
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -108,21 +190,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Save token
       localStorage.setItem('authToken', token);
       
-      // Transform and save user data
-      const user: User = {
-        id: userData.id || userData._id,
-        name: userData.name,
-        email: userData.email,
-        role: userData.role,
-        ...userData
-      };
-      
-      setUser(user);
+      // Set user data
+      setUser(userData);
       toast.success('Login successful');
       
       // Only redirect if shouldRedirect is true
       if (shouldRedirect) {
-        const redirectPath = user.role === 'admin' ? '/admin' : '/user';
+        const redirectPath = userData.role === 'admin' ? '/admin' : '/user';
         router.push(redirectPath);
       }
       
@@ -139,20 +213,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async (): Promise<void> => {
     setIsLoading(true);
     try {
-      // First clear local state
+      // Clear local state
       localStorage.removeItem('authToken');
       setUser(null);
       
-      // Then show success message
+      // Show success message
       toast.success('Logged out successfully');
       
-      // Then redirect
+      // Redirect to login
       router.push('/login');
-      
-      // Finally call the API (non-blocking)
-      authApi.logout().catch(error => {
-        console.error('Logout API call failed:', error);
-      });
     } catch (error) {
       console.error('Logout failed:', error);
       toast.error('Logout failed');
@@ -188,26 +257,72 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const updateProfile = async (profileData: any): Promise<boolean> => {
+  const updateProfile = async (profileData: ProfileUpdateData): Promise<boolean> => {
     setIsLoading(true);
     try {
-      const response = await userApi.updateProfile(profileData);
+      // Validate profile data
+      const validation = validateProfileData(profileData);
+      if (!validation.isValid) {
+        toast.error(validation.error);
+        return false;
+      }
+
+      console.log('Updating profile with:', profileData);
+
+      // Transform preferences data
+      const transformedData = {
+        ...profileData,
+        preferences: profileData.preferences ? {
+          emailNotifications: Boolean(profileData.preferences.emailNotifications),
+          reminderDays: Number(profileData.preferences.reminderDays) || 30
+        } : undefined
+      };
+
+      // First try to update profile
+      const response = await userApi.updateProfile(transformedData);
       
       if (response.error) {
-        handleApiError(response.error);
+        console.error('Profile update error:', response.error);
+        toast.error(response.error);
         return false;
       }
       
-      if (response.data?.user) {
-        setUser(response.data.user);
-        toast.success('Profile updated successfully');
-        return true;
+      if (!response.data?.user) {
+        console.error('No user data in response');
+        toast.error('Failed to update profile');
+        return false;
       }
+
+      // Update local user state
+      setUser(currentUser => {
+        if (!currentUser) return response.data!.user;
+        
+        return {
+          ...currentUser,
+          ...response.data!.user,
+          socialLinks: {
+            ...currentUser.socialLinks,
+            ...response.data!.user.socialLinks
+          },
+          preferences: {
+            ...currentUser.preferences,
+            ...response.data!.user.preferences
+          }
+        };
+      });
+
+      // Show success message
+      toast.success(response.data.message || 'Profile updated successfully');
       
-      return false;
+      // Refresh user data in background
+      refreshUser().catch(error => {
+        console.error('Failed to refresh user data:', error);
+      });
+
+      return true;
     } catch (error) {
       console.error('Profile update failed:', error);
-      toast.error('Profile update failed');
+      toast.error('Profile update failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
       return false;
     } finally {
       setIsLoading(false);

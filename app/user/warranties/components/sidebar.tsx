@@ -20,14 +20,18 @@ import { useAuth } from "@/lib/auth-context"
 
 export default function WarrantySidebar() {
   const pathname = usePathname()
-  const [activeLink, setActiveLink] = useState("")
+  const [activeLink, setActiveLink] = useState<string>("")
   const { logout } = useAuth()
   
   useEffect(() => {
-    setActiveLink(pathname)
+    if (pathname) {
+      setActiveLink(pathname)
+    }
   }, [pathname])
   
-  const isActive = (path) => {
+  const isActive = (path: string): boolean => {
+    if (!pathname) return false
+    
     if (path === '/user' && pathname === '/user') {
       return true
     }
@@ -73,16 +77,6 @@ export default function WarrantySidebar() {
           >
             <Home className="mr-2 h-5 w-5" />
             Dashboard
-          </Button>
-        </Link>
-        
-        <Link href="/user/profile">
-          <Button 
-            variant="ghost" 
-            className={`w-full justify-start ${isActive('/user/profile') ? 'bg-amber-900 text-amber-50' : 'text-amber-100 hover:bg-amber-700'}`}
-          >
-            <User className="mr-2 h-5 w-5" />
-            My Profile
           </Button>
         </Link>
         
@@ -143,6 +137,16 @@ export default function WarrantySidebar() {
           >
             <PlusCircle className="mr-2 h-5 w-5" />
             Add Warranty
+          </Button>
+        </Link>
+
+        <Link href="/user/profile">
+          <Button 
+            variant="ghost" 
+            className={`w-full justify-start ${isActive('/user/profile') ? 'bg-amber-900 text-amber-50' : 'text-amber-100 hover:bg-amber-700'}`}
+          >
+            <User className="mr-2 h-5 w-5" />
+            My Profile
           </Button>
         </Link>
         
