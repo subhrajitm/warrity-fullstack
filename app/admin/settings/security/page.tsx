@@ -9,7 +9,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ArrowLeft, Bell, Cog, Save, Shield } from "lucide-react"
+import { ArrowLeft, Bell, Cog, Save, Shield, AlertTriangle } from "lucide-react"
+import { useAuth } from "@/lib/auth-context"
 
 // Mock data for demonstration
 const mockSecuritySettings = {
@@ -22,23 +23,23 @@ const mockSecuritySettings = {
 
 export default function SecuritySettingsPage() {
   const router = useRouter()
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth()
   const [settings, setSettings] = useState(mockSecuritySettings)
   const [isLoading, setIsLoading] = useState(true)
   
   // Check if admin is logged in and fetch settings
   useEffect(() => {
-    const isLoggedIn = localStorage.getItem('userLoggedIn')
-    const role = localStorage.getItem('userRole')
-    
-    if (!isLoggedIn) {
-      router.replace('/login')
-    } else if (role !== 'admin') {
-      router.replace(role === 'user' ? '/user' : '/login')
+    if (!authLoading) {
+      if (!isAuthenticated) {
+        router.replace('/login')
+      } else if (user?.role !== 'admin') {
+        router.replace(user?.role === 'user' ? '/user' : '/login')
+      } else {
+        // In a real app, you would fetch the settings from your backend
+        setIsLoading(false)
+      }
     }
-    
-    // In a real app, you would fetch the settings from your backend
-    setIsLoading(false)
-  }, [router])
+  }, [router, authLoading, isAuthenticated, user])
   
   const handleInputChange = (field: string, value: string | number | boolean) => {
     setSettings(prev => ({

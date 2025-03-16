@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { ArrowLeft, Calendar, DollarSign, Clock, Tag, ShoppingBag, FileText, Edit, Trash } from "lucide-react"
 // Fix the import path to point to the correct location
 import ProductSidebar from "../components/sidebar"
+import { useAuth } from "@/lib/auth-context"
 
 // Mock product data
 const mockProducts = [
@@ -35,67 +36,89 @@ const mockProducts = [
   // ... other products
 ];
 
+interface WarrantyDocument {
+  name: string;
+  url: string;
+}
+
+interface Product {
+  id: string;
+  name: string;
+  category: string;
+  purchaseDate: string;
+  price: number;
+  image: string;
+  warrantyExpiration: string;
+  status: string;
+  description: string;
+  serialNumber: string;
+  purchaseLocation: string;
+  receiptImage: string;
+  warrantyDocuments: WarrantyDocument[];
+  notes: string;
+}
+
 export default function ProductDetailPage() {
   const router = useRouter()
-  const params = useParams()
-  const [product, setProduct] = useState(null)
+  const params = useParams() as { id: string }
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth()
+  const [product, setProduct] = useState<Product | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   
   useEffect(() => {
-    // Check if user is logged in
-    const isLoggedIn = localStorage.getItem('userLoggedIn')
-    const role = localStorage.getItem('userRole')
-    
-    if (!isLoggedIn) {
-      router.replace('/login')
-      return
-    } else if (role !== 'user') {
-      router.replace(role === 'admin' ? '/admin' : '/login')
-      return
-    }
-    
-    // Fetch product data
-    const productId = params.id
-    
-    // In a real app, you would fetch from an API
-    setTimeout(() => {
-      const foundProduct = mockProducts.find(p => p.id === productId)
-      
-      if (foundProduct) {
-        setProduct(foundProduct)
+    if (!authLoading) {
+      if (!isAuthenticated) {
+        router.replace('/login')
+      } else if (user?.role !== 'user') {
+        router.replace(user?.role === 'admin' ? '/admin' : '/login')
       } else {
-        // Product not found, redirect to products page
-        router.replace('/user/products')
+        // Fetch product data
+        const productId = params.id
+        
+        // In a real app, you would fetch from an API
+        setTimeout(() => {
+          const foundProduct = mockProducts.find(p => p.id === productId)
+          
+          if (foundProduct) {
+            setProduct(foundProduct)
+          } else {
+            // Product not found, redirect to products page
+            router.replace('/user/products')
+          }
+          
+          setIsLoading(false)
+        }, 500)
       }
-      
-      setIsLoading(false)
-    }, 500)
-  }, [params.id, router])
+    }
+  }, [params.id, router, authLoading, isAuthenticated, user])
   
-  const formatDate = (dateString) => {
-    const options = { year: 'numeric', month: 'long', day: 'numeric' }
-    return new Date(dateString).toLocaleDateString(undefined, options)
+  const formatDate = (dateString: string): string => {
+    const date = new Date(dateString)
+    return date.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    })
   }
   
-  const getStatusColor = (status) => {
-    switch (status) {
+  const getStatusColor = (status: string): string => {
+    switch(status) {
       case 'Active':
-        return 'bg-green-100 text-green-800 border-green-300'
+        return 'bg-green-500'
       case 'Expiring Soon':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-300'
+        return 'bg-amber-500'
       case 'Expired':
-        return 'bg-red-100 text-red-800 border-red-300'
+        return 'bg-red-500'
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-300'
+        return 'bg-gray-500'
     }
   }
   
-  const getDaysRemaining = (expirationDate) => {
+  const getDaysRemaining = (expirationDate: string): number => {
+    const expDate = new Date(expirationDate)
     const today = new Date()
-    const expiry = new Date(expirationDate)
-    const diffTime = expiry - today
+    const diffTime = expDate.getTime() - today.getTime()
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-    
     return diffDays
   }
   

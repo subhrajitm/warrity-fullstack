@@ -9,26 +9,29 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ArrowLeft, Save } from "lucide-react"
+import { ArrowLeft, Save, User, Mail, Phone, MapPin } from "lucide-react"
+import { useAuth } from "@/lib/auth-context"
 
-// Mock user data
+// Mock user data for demonstration
 const mockUser = {
-  id: 2,
-  name: "Jane Smith",
-  email: "jane.smith@example.com",
-  phone: "+1 (555) 987-6543",
-  address: "456 Maple Avenue, Springfield, IL 62704",
+  id: 1,
+  name: "John Doe",
+  email: "john.doe@example.com",
+  phone: "555-123-4567",
+  address: "123 Main St, Anytown, USA",
   role: "user",
   status: "active"
 }
 
-export default function AdminEditUserPage({ params }) {
-  // Unwrap params using React.use()
-  const unwrappedParams = React.use(params);
-  const userId = unwrappedParams.id;
-  
+interface PageParams {
+  id: string;
+}
+
+export default function AdminEditUserPage({ params }: { params: PageParams }) {
   const router = useRouter()
-  const [formData, setFormData] = useState({
+  const { user: authUser, isAuthenticated, isLoading: authLoading } = useAuth()
+  const userId = params.id
+  const [userData, setUserData] = useState({
     name: "",
     email: "",
     phone: "",
@@ -40,44 +43,43 @@ export default function AdminEditUserPage({ params }) {
   
   // Check if admin is logged in and fetch user data
   useEffect(() => {
-    const isLoggedIn = localStorage.getItem('userLoggedIn')
-    const role = localStorage.getItem('userRole')
-    
-    if (!isLoggedIn) {
-      router.replace('/login')
-    } else if (role !== 'admin') {
-      router.replace(role === 'user' ? '/user' : '/login')
+    if (!authLoading) {
+      if (!isAuthenticated) {
+        router.replace('/login')
+      } else if (authUser?.role !== 'admin') {
+        router.replace(authUser?.role === 'user' ? '/user' : '/login')
+      } else {
+        // In a real app, you would fetch the user data based on the ID
+        console.log(`Fetching user with ID: ${userId} for editing`)
+        
+        // Simulate API call with timeout
+        setTimeout(() => {
+          setUserData({
+            name: mockUser.name,
+            email: mockUser.email,
+            phone: mockUser.phone,
+            address: mockUser.address,
+            role: mockUser.role,
+            status: mockUser.status
+          })
+          setIsLoading(false)
+        }, 500)
+      }
     }
-    
-    // In a real app, you would fetch the user data based on the ID
-    console.log(`Fetching user with ID: ${userId} for editing`)
-    
-    // Simulate API call with timeout
-    setTimeout(() => {
-      setFormData({
-        name: mockUser.name,
-        email: mockUser.email,
-        phone: mockUser.phone,
-        address: mockUser.address,
-        role: mockUser.role,
-        status: mockUser.status
-      })
-      setIsLoading(false)
-    }, 500)
-  }, [router, userId])
+  }, [router, userId, authLoading, isAuthenticated, authUser])
   
-  const handleInputChange = (e) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
-    setFormData(prev => ({ ...prev, [name]: value }))
+    setUserData(prev => ({ ...prev, [name]: value }))
   }
   
-  const handleSelectChange = (name, value) => {
-    setFormData(prev => ({ ...prev, [name]: value }))
+  const handleSelectChange = (name: string, value: string) => {
+    setUserData(prev => ({ ...prev, [name]: value }))
   }
   
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    console.log("Submitting updated user data:", formData)
+    console.log("Submitting updated user data:", userData)
     
     // In a real app, you would send the updated data to your backend
     
@@ -108,7 +110,7 @@ export default function AdminEditUserPage({ params }) {
             Edit User
           </CardTitle>
           <CardDescription className="text-amber-800">
-            Update the user information for {formData.name}
+            Update the user information for {userData.name}
           </CardDescription>
         </CardHeader>
         
@@ -121,7 +123,7 @@ export default function AdminEditUserPage({ params }) {
                   <Input
                     id="name"
                     name="name"
-                    value={formData.name}
+                    value={userData.name}
                     onChange={handleInputChange}
                     className="border-2 border-amber-800 bg-amber-50"
                     required
@@ -134,7 +136,7 @@ export default function AdminEditUserPage({ params }) {
                     id="email"
                     name="email"
                     type="email"
-                    value={formData.email}
+                    value={userData.email}
                     onChange={handleInputChange}
                     className="border-2 border-amber-800 bg-amber-50"
                     required
@@ -148,7 +150,7 @@ export default function AdminEditUserPage({ params }) {
                   <Input
                     id="phone"
                     name="phone"
-                    value={formData.phone}
+                    value={userData.phone}
                     onChange={handleInputChange}
                     className="border-2 border-amber-800 bg-amber-50"
                   />
@@ -157,7 +159,7 @@ export default function AdminEditUserPage({ params }) {
                 <div className="space-y-2">
                   <Label htmlFor="role" className="text-amber-900">Role</Label>
                   <Select 
-                    value={formData.role} 
+                    value={userData.role} 
                     onValueChange={(value) => handleSelectChange("role", value)}
                   >
                     <SelectTrigger className="border-2 border-amber-800 bg-amber-50">
@@ -175,7 +177,7 @@ export default function AdminEditUserPage({ params }) {
                 <div className="space-y-2">
                   <Label htmlFor="status" className="text-amber-900">Status</Label>
                   <Select 
-                    value={formData.status} 
+                    value={userData.status} 
                     onValueChange={(value) => handleSelectChange("status", value)}
                   >
                     <SelectTrigger className="border-2 border-amber-800 bg-amber-50">
@@ -195,7 +197,7 @@ export default function AdminEditUserPage({ params }) {
                 <Input
                   id="address"
                   name="address"
-                  value={formData.address}
+                  value={userData.address}
                   onChange={handleInputChange}
                   className="border-2 border-amber-800 bg-amber-50"
                 />

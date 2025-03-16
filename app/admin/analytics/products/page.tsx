@@ -25,6 +25,7 @@ import {
 } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
+import { useAuth } from "@/lib/auth-context"
 
 // Mock data for product analytics
 const mockProductAnalytics = {
@@ -79,6 +80,7 @@ const mockProductAnalytics = {
 
 export default function ProductAnalyticsPage() {
   const router = useRouter()
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth()
   const [productData, setProductData] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const [timeRange, setTimeRange] = useState("year")
@@ -86,21 +88,20 @@ export default function ProductAnalyticsPage() {
   
   // Check if admin is logged in
   useEffect(() => {
-    const isLoggedIn = localStorage.getItem('userLoggedIn')
-    const role = localStorage.getItem('userRole')
-    
-    if (!isLoggedIn) {
-      router.replace('/login')
-    } else if (role !== 'admin') {
-      router.replace(role === 'user' ? '/user' : '/login')
+    if (!authLoading) {
+      if (!isAuthenticated) {
+        router.replace('/login')
+      } else if (user?.role !== 'admin') {
+        router.replace(user?.role === 'user' ? '/user' : '/login')
+      } else {
+        // In a real app, you would fetch the product analytics data from your backend
+        setTimeout(() => {
+          setProductData(mockProductAnalytics)
+          setIsLoading(false)
+        }, 500)
+      }
     }
-    
-    // In a real app, you would fetch the product analytics data from your backend
-    setTimeout(() => {
-      setProductData(mockProductAnalytics)
-      setIsLoading(false)
-    }, 500)
-  }, [router])
+  }, [router, authLoading, isAuthenticated, user])
   
   // Calculate max value for the bar chart
   const maxMonthlySales = productData 

@@ -1,13 +1,13 @@
-# Warrex - Warranty Management System
+# Warrity - Warranty Management System
 
 <div align="center">
-  <img src="public/images/warrex-logo.png" alt="Warrex Logo" width="200"/>
+  <img src="public/images/warrity-logo.png" alt="Warrity Logo" width="200"/>
   <p><em>Your Complete Warranty Management Solution</em></p>
 </div>
 
 ## Overview
 
-Warrex is a comprehensive warranty management application designed to help users track, manage, and organize product warranties efficiently. The platform provides a user-friendly interface for both regular users and administrators, offering features like warranty tracking, calendar scheduling, profile management, and administrative controls.
+Warrity is a comprehensive warranty management application designed to help users track, manage, and organize product warranties efficiently. The platform provides a user-friendly interface for both regular users and administrators, offering features like warranty tracking, calendar scheduling, profile management, and administrative controls.
 
 ## Features
 
@@ -97,8 +97,8 @@ Warrex is a comprehensive warranty management application designed to help users
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/warrex.git
-   cd warrex
+   git clone https://github.com/yourusername/warrity.git
+   cd warrity
    ```
 
 2. Install dependencies:
@@ -130,7 +130,7 @@ pnpm start
 ## Project Structure
 
 ```
-warrex/
+warrity/
 ├── app/                  # Next.js app directory
 │   ├── admin/            # Admin panel pages
 │   ├── user/             # User pages

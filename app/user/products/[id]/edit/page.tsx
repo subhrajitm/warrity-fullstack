@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ArrowLeft, Save, Package } from "lucide-react"
 import ProductSidebar from "../../components/sidebar"
+import { useAuth } from "@/lib/auth-context"
 
 // Mock data for demonstration
 const mockProduct = {
@@ -28,11 +29,30 @@ const mockProduct = {
   notes: "Space Gray color. Includes AppleCare+ warranty."
 }
 
-export default function EditProductPage({ params }) {
+interface FormData {
+  name: string;
+  category: string;
+  model: string;
+  manufacturer: string;
+  serialNumber: string;
+  purchaseDate: string;
+  price: string;
+  purchaseLocation: string;
+  receiptNumber: string;
+  description: string;
+  notes: string;
+}
+
+interface Params {
+  id: string;
+}
+
+export default function EditProductPage({ params }: { params: Params }) {
   const router = useRouter()
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     name: "",
     category: "",
     model: "",
@@ -48,44 +68,47 @@ export default function EditProductPage({ params }) {
   
   // Check if user is logged in and fetch product data
   useEffect(() => {
-    const isLoggedIn = localStorage.getItem('userLoggedIn')
-    const role = localStorage.getItem('userRole')
-    
-    if (!isLoggedIn) {
-      router.replace('/login')
-    } else if (role !== 'user') {
-      router.replace(role === 'admin' ? '/admin' : '/login')
-    }
-    
-    // In a real app, you would fetch the product data based on the ID
-    console.log(`Fetching product with ID: ${params.id}`)
-    
-    // Simulate API call to get product data
-    setTimeout(() => {
-      // Format the price to remove the $ sign for the input field
-      const formattedProduct = {
-        ...mockProduct,
-        price: mockProduct.price.replace('$', ''),
-        // Format the date to YYYY-MM-DD for the date input
-        purchaseDate: mockProduct.purchaseDate
+    if (!authLoading) {
+      if (!isAuthenticated) {
+        router.replace('/login')
+      } else if (user?.role !== 'user') {
+        router.replace(user?.role === 'admin' ? '/admin' : '/login')
+      } else {
+        // In a real app, you would fetch the product data based on the ID
+        console.log(`Fetching product with ID: ${params.id}`)
+        
+        // Simulate API call to get product data
+        setTimeout(() => {
+          // Format the price to remove the $ sign for the input field
+          const formattedProduct = {
+            ...mockProduct,
+            price: mockProduct.price.replace('$', ''),
+            // Format the date to YYYY-MM-DD for the date input
+            purchaseDate: mockProduct.purchaseDate
+          }
+          
+          setFormData(formattedProduct as FormData)
+          setIsLoading(false)
+        }, 500)
       }
-      
-      setFormData(formattedProduct)
-      setIsLoading(false)
-    }, 500)
-  }, [router, params.id])
+    }
+  }, [router, params.id, authLoading, isAuthenticated, user])
   
-  const handleChange = (e) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
   }
   
-  const handleSelectChange = (name, value) => {
+  const handleSelectChange = (name: string, value: string) => {
     setFormData(prev => ({ ...prev, [name]: value }))
   }
   
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
+    submitForm()
+  }
+  
+  const submitForm = () => {
     setIsSubmitting(true)
     
     // Validate form
@@ -95,13 +118,12 @@ export default function EditProductPage({ params }) {
       return
     }
     
-    // In a real app, you would send the form data to your backend
-    console.log("Updating product data:", formData)
+    // In a real app, you would send the updated data to your backend
+    console.log("Submitting updated product data:", formData)
     
     // Simulate API call
     setTimeout(() => {
       setIsSubmitting(false)
-      alert("Product updated successfully!")
       router.push(`/user/products/${params.id}`)
     }, 1000)
   }
@@ -315,7 +337,7 @@ export default function EditProductPage({ params }) {
               
               <Button 
                 className="bg-amber-800 hover:bg-amber-900 text-amber-100 border-2 border-amber-900"
-                onClick={handleSubmit}
+                type="submit"
                 disabled={isSubmitting}
               >
                 <Save className="mr-2 h-4 w-4" />

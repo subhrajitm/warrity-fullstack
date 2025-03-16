@@ -11,18 +11,31 @@ import { RecentActivity } from "@/components/recent-activity"
 import { WarrantyStats } from "@/components/warranty-stats"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
+import { useAuth } from "@/lib/auth-context"
 
 export default function Home() {
   const router = useRouter()
+  const { isAuthenticated, isLoading } = useAuth()
   
   // Check if user is logged in
   useEffect(() => {
-    const isLoggedIn = localStorage.getItem('userLoggedIn')
-    if (!isLoggedIn) {
+    if (!isLoading && !isAuthenticated) {
       // Redirect to login if not logged in
       router.replace('/login')
     }
-  }, [router])
+  }, [isAuthenticated, isLoading, router])
+  
+  // Show loading state while checking authentication
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-amber-50 flex items-center justify-center p-6">
+        <div className="text-amber-800 text-xl flex items-center">
+          <div className="animate-spin mr-3 h-5 w-5 border-2 border-amber-800 border-t-transparent rounded-full" />
+          Loading...
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="container grid items-center gap-6 pb-8 pt-6 md:py-10 bg-amber-50">

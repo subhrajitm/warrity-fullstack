@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ArrowLeft, Save, Shield } from "lucide-react"
 import ProductSidebar from "../../components/sidebar"
+import { useAuth } from "@/lib/auth-context"
 
 // Mock data for demonstration
 const mockProduct = {
@@ -22,12 +23,38 @@ const mockProduct = {
   serialNumber: "APPL87654321"
 }
 
-export default function AddWarrantyPage({ params }) {
+interface Product {
+  id: number;
+  name: string;
+  category: string;
+  purchaseDate: string;
+  manufacturer: string;
+  serialNumber: string;
+}
+
+interface FormData {
+  provider: string;
+  type: string;
+  startDate: string;
+  endDate: string;
+  duration: string;
+  coverageDetails: string;
+  claimProcess: string;
+  contactInfo: string;
+  documents: string[];
+}
+
+interface Params {
+  id: string;
+}
+
+export default function AddWarrantyPage({ params }: { params: Params }) {
   const router = useRouter()
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
-  const [product, setProduct] = useState(null)
-  const [formData, setFormData] = useState({
+  const [product, setProduct] = useState<Product | null>(null)
+  const [formData, setFormData] = useState<FormData>({
     provider: "",
     type: "",
     startDate: "",
@@ -41,77 +68,73 @@ export default function AddWarrantyPage({ params }) {
   
   // Check if user is logged in and fetch product data
   useEffect(() => {
-    const isLoggedIn = localStorage.getItem('userLoggedIn')
-    const role = localStorage.getItem('userRole')
-    
-    if (!isLoggedIn) {
-      router.replace('/login')
-    } else if (role !== 'user') {
-      router.replace(role === 'admin' ? '/admin' : '/login')
-    }
-    
-    // In a real app, you would fetch the product data based on the ID
-    console.log(`Fetching product with ID: ${params.id}`)
-    
-    // Simulate API call to get product data
-    setTimeout(() => {
-      setProduct(mockProduct)
-      
-      // Pre-fill the start date with the purchase date if available
-      if (mockProduct.purchaseDate) {
-        setFormData(prev => ({
-          ...prev,
-          startDate: mockProduct.purchaseDate,
-          provider: mockProduct.manufacturer // Pre-fill provider with manufacturer
-        }))
+    if (!authLoading) {
+      if (!isAuthenticated) {
+        router.replace('/login')
+      } else if (user?.role !== 'user') {
+        router.replace(user?.role === 'admin' ? '/admin' : '/login')
+      } else {
+        // In a real app, you would fetch the product data based on the ID
+        console.log(`Fetching product with ID: ${params.id}`)
+        
+        // Simulate API call to get product data
+        setTimeout(() => {
+          setProduct(mockProduct)
+          
+          // Pre-fill the start date with the purchase date if available
+          if (mockProduct.purchaseDate) {
+            setFormData(prev => ({
+              ...prev,
+              startDate: mockProduct.purchaseDate,
+              provider: mockProduct.manufacturer // Pre-fill provider with manufacturer
+            }))
+          }
+          
+          setIsLoading(false)
+        }, 500)
       }
-      
-      setIsLoading(false)
-    }, 500)
-  }, [router, params.id])
+    }
+  }, [router, params.id, authLoading, isAuthenticated, user])
   
-  const handleChange = (e) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
   }
   
-  const handleSelectChange = (name, value) => {
+  const handleSelectChange = (name: string, value: string) => {
     setFormData(prev => ({ ...prev, [name]: value }))
   }
   
   const calculateEndDate = () => {
-    if (!formData.startDate || !formData.duration) return ""
+    if (!formData.startDate || !formData.duration) return
     
     const startDate = new Date(formData.startDate)
-    const durationMatch = formData.duration.match(/(\d+)\s+(day|month|year)s?/)
-    
-    if (!durationMatch) return ""
-    
-    const amount = parseInt(durationMatch[1])
-    const unit = durationMatch[2]
+    const durationParts = formData.duration.split(' ')
+    const durationValue = parseInt(durationParts[0])
+    const durationType = durationParts[1].toLowerCase()
     
     let endDate = new Date(startDate)
     
-    if (unit === "day") {
-      endDate.setDate(endDate.getDate() + amount)
-    } else if (unit === "month") {
-      endDate.setMonth(endDate.getMonth() + amount)
-    } else if (unit === "year") {
-      endDate.setFullYear(endDate.getFullYear() + amount)
+    if (durationType.includes('year')) {
+      endDate.setFullYear(endDate.getFullYear() + durationValue)
+    } else if (durationType.includes('month')) {
+      endDate.setMonth(endDate.getMonth() + durationValue)
+    } else if (durationType.includes('day')) {
+      endDate.setDate(endDate.getDate() + durationValue)
     }
     
-    return endDate.toISOString().split('T')[0]
+    const formattedEndDate = endDate.toISOString().split('T')[0]
+    setFormData(prev => ({ ...prev, endDate: formattedEndDate }))
   }
   
-  // Update end date when start date or duration changes
+  // Effect to calculate end date when start date or duration changes
   useEffect(() => {
-    const calculatedEndDate = calculateEndDate()
-    if (calculatedEndDate) {
-      setFormData(prev => ({ ...prev, endDate: calculatedEndDate }))
+    if (formData.startDate && formData.duration) {
+      calculateEndDate()
     }
   }, [formData.startDate, formData.duration])
   
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setIsSubmitting(true)
     
@@ -122,13 +145,33 @@ export default function AddWarrantyPage({ params }) {
       return
     }
     
-    // In a real app, you would send the form data to your backend
-    console.log("Submitting warranty data:", formData)
+    // In a real app, you would send the warranty data to your backend
+    console.log("Submitting warranty data:", {
+      productId: params.id,
+      ...formData
+    })
     
     // Simulate API call
     setTimeout(() => {
       setIsSubmitting(false)
       alert("Warranty added successfully!")
+      router.push(`/user/products/${params.id}`)
+    }, 1000)
+  }
+  
+  // For the button click handler
+  const handleButtonSubmit = () => {
+    setIsSubmitting(true)
+    
+    // In a real app, you would send the warranty data to your backend
+    console.log("Submitting warranty data:", {
+      productId: params.id,
+      ...formData
+    })
+    
+    // Simulate API call
+    setTimeout(() => {
+      setIsSubmitting(false)
       router.push(`/user/products/${params.id}`)
     }, 1000)
   }
@@ -152,7 +195,7 @@ export default function AddWarrantyPage({ params }) {
         <div className="mb-6">
           <Link href={`/user/products/${params.id}`} className="flex items-center text-amber-800 hover:text-amber-600 transition-colors">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Product Details
+            Back to {product && product.name ? product.name : 'Product'}
           </Link>
         </div>
         
@@ -329,7 +372,7 @@ export default function AddWarrantyPage({ params }) {
               
               <Button 
                 className="bg-amber-800 hover:bg-amber-900 text-amber-100 border-2 border-amber-900"
-                onClick={handleSubmit}
+                onClick={handleButtonSubmit}
                 disabled={isSubmitting}
               >
                 <Save className="mr-2 h-4 w-4" />

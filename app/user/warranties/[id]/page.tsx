@@ -21,6 +21,7 @@ import {
   Phone
 } from "lucide-react"
 import WarrantySidebar from "../components/sidebar"
+import { useAuth } from "@/lib/auth-context"
 
 // Mock data for demonstration
 const mockWarranty = {
@@ -39,60 +40,76 @@ const mockWarranty = {
   claimProcess: "Contact Samsung customer service at the provided number. Have your serial number and proof of purchase ready. For in-store service, visit any authorized Samsung service center."
 }
 
+interface Warranty {
+  id: number;
+  product: string;
+  category: string;
+  provider: string;
+  providerContact: string;
+  purchaseDate: string;
+  endDate: string;
+  status: string;
+  purchasePrice: string;
+  receiptImage: string;
+  warrantyDocument: string;
+  notes: string;
+  claimProcess: string;
+}
+
 export default function WarrantyDetailPage() {
   const router = useRouter()
-  const params = useParams()
-  const [warranty, setWarranty] = useState(null)
+  const params = useParams() as { id: string }
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth()
+  const [warranty, setWarranty] = useState<Warranty | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   
   // Check if user is logged in and fetch data
   useEffect(() => {
-    const isLoggedIn = localStorage.getItem('userLoggedIn')
-    const role = localStorage.getItem('userRole')
-    
-    if (!isLoggedIn) {
-      router.replace('/login')
-    } else if (role !== 'user') {
-      router.replace(role === 'admin' ? '/admin' : '/login')
+    if (!authLoading) {
+      if (!isAuthenticated) {
+        router.replace('/login')
+      } else if (user?.role !== 'user') {
+        router.replace(user?.role === 'admin' ? '/admin' : '/login')
+      } else {
+        // In a real app, you would fetch the warranty details from your backend
+        setTimeout(() => {
+          setWarranty(mockWarranty)
+          setIsLoading(false)
+        }, 500)
+      }
     }
-    
-    // In a real app, you would fetch the warranty details from your backend
-    setTimeout(() => {
-      setWarranty(mockWarranty)
-      setIsLoading(false)
-    }, 500)
-  }, [router, params])
+  }, [router, params, authLoading, isAuthenticated, user])
   
   const handleDelete = () => {
     if (confirm("Are you sure you want to delete this warranty? This action cannot be undone.")) {
       // In a real app, you would send a delete request to your backend
       console.log(`Deleting warranty with ID: ${params.id}`)
       
-      // Redirect back to warranties list
+      // Redirect to warranties list
       router.push('/user/warranties')
     }
   }
   
-  const getStatusBadge = (status) => {
-    switch (status) {
-      case 'active':
+  const getStatusBadge = (status: string) => {
+    switch(status) {
+      case "active":
         return (
-          <Badge className="bg-green-500 hover:bg-green-600">
-            <CheckCircle className="h-3 w-3 mr-1" />
+          <Badge className="bg-green-500 text-white">
+            <CheckCircle className="mr-1 h-3 w-3" />
             Active
           </Badge>
         )
-      case 'expiring':
+      case "expiring":
         return (
-          <Badge className="bg-amber-500 hover:bg-amber-600">
-            <Clock className="h-3 w-3 mr-1" />
+          <Badge className="bg-amber-500 text-white">
+            <Clock className="mr-1 h-3 w-3" />
             Expiring Soon
           </Badge>
         )
-      case 'expired':
+      case "expired":
         return (
-          <Badge className="bg-red-500 hover:bg-red-600">
-            <AlertTriangle className="h-3 w-3 mr-1" />
+          <Badge className="bg-red-500 text-white">
+            <AlertTriangle className="mr-1 h-3 w-3" />
             Expired
           </Badge>
         )

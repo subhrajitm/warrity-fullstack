@@ -21,6 +21,7 @@ import {
   SortDesc
 } from "lucide-react"
 import WarrantySidebar from "./components/sidebar"
+import { useAuth } from "@/lib/auth-context"
 
 // Define the warranty type
 interface Warranty {
@@ -95,6 +96,7 @@ const mockWarranties: Warranty[] = [
 function WarrantiesContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth()
   const [warranties, setWarranties] = useState<Warranty[]>([])
   const [filteredWarranties, setFilteredWarranties] = useState<Warranty[]>([])
   const [searchTerm, setSearchTerm] = useState("")
@@ -112,34 +114,33 @@ function WarrantiesContent() {
   
   // Check if user is logged in and fetch warranties
   useEffect(() => {
-    const isLoggedIn = localStorage.getItem('userLoggedIn')
-    const role = localStorage.getItem('userRole')
-    
-    if (!isLoggedIn) {
-      router.replace('/login')
-    } else if (role !== 'user') {
-      router.replace(role === 'admin' ? '/admin' : '/login')
+    if (!authLoading) {
+      if (!isAuthenticated) {
+        router.replace('/login')
+      } else if (user && user.role !== 'user') {
+        router.replace(user.role === 'admin' ? '/admin' : '/login')
+      } else {
+        // In a real app, you would fetch the warranties from your backend
+        setWarranties(mockWarranties)
+        setFilteredWarranties(mockWarranties)
+        
+        // Check if there's a category filter in the URL
+        const category = searchParams?.get('category')
+        if (category) {
+          filterWarrantiesByCategory(category)
+        }
+        
+        // Check if there's a status filter in the URL
+        const status = searchParams?.get('status')
+        if (status) {
+          setStatusFilter(status)
+          const filtered = mockWarranties.filter(warranty => warranty.status === status)
+          setFilteredWarranties(filtered)
+        }
+      }
+      setIsLoading(false)
     }
-    
-    // In a real app, you would fetch the warranties from your backend
-    setWarranties(mockWarranties)
-    setFilteredWarranties(mockWarranties)
-    setIsLoading(false)
-    
-    // Check if there's a category filter in the URL
-    const category = searchParams?.get('category')
-    if (category) {
-      filterWarrantiesByCategory(category)
-    }
-    
-    // Check if there's a status filter in the URL
-    const status = searchParams?.get('status')
-    if (status) {
-      setStatusFilter(status)
-      const filtered = mockWarranties.filter(warranty => warranty.status === status)
-      setFilteredWarranties(filtered)
-    }
-  }, [router, searchParams])
+  }, [router, searchParams, authLoading, isAuthenticated, user])
   
   // Filter and sort warranties
   useEffect(() => {

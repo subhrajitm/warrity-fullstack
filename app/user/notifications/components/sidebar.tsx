@@ -4,12 +4,14 @@ import { useState, useEffect } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Home, Package, Shield, Bell, Settings, LogOut } from "lucide-react"
+import { Bell, Home, User, Settings, LogOut, Filter, CheckCircle, Clock, AlertTriangle, Package, Shield } from "lucide-react"
+import { useAuth } from "@/lib/auth-context"
 
 export default function NotificationSidebar() {
   const router = useRouter()
   const pathname = usePathname()
-  const [userName, setUserName] = useState("")
+  const [userName, setUserName] = useState("User")
+  const { logout } = useAuth()
   
   useEffect(() => {
     const email = localStorage.getItem('userEmail')
@@ -19,15 +21,12 @@ export default function NotificationSidebar() {
     }
   }, [])
   
-  const handleLogout = () => {
-    localStorage.removeItem('userLoggedIn')
-    localStorage.removeItem('userEmail')
-    localStorage.removeItem('userRole')
-    router.replace('/login')
+  const handleLogout = async () => {
+    await logout()
   }
   
-  const isActive = (path) => {
-    return pathname === path || pathname.startsWith(`${path}/`)
+  const isActive = (path: string): boolean => {
+    return pathname === path || (pathname !== null && pathname.startsWith(`${path}/`))
   }
   
   return (

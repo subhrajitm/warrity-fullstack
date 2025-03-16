@@ -11,11 +11,27 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ArrowLeft, Save, Package } from "lucide-react"
 import ProductSidebar from "../components/sidebar"
+import { useAuth } from "@/lib/auth-context"
+
+interface FormData {
+  name: string;
+  category: string;
+  model: string;
+  manufacturer: string;
+  serialNumber: string;
+  purchaseDate: string;
+  price: string;
+  purchaseLocation: string;
+  receiptNumber: string;
+  description: string;
+  notes: string;
+}
 
 export default function AddProductPage() {
   const router = useRouter()
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth()
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     name: "",
     category: "",
     model: "",
@@ -31,26 +47,25 @@ export default function AddProductPage() {
   
   // Check if user is logged in
   useEffect(() => {
-    const isLoggedIn = localStorage.getItem('userLoggedIn')
-    const role = localStorage.getItem('userRole')
-    
-    if (!isLoggedIn) {
-      router.replace('/login')
-    } else if (role !== 'user') {
-      router.replace(role === 'admin' ? '/admin' : '/login')
+    if (!authLoading) {
+      if (!isAuthenticated) {
+        router.replace('/login')
+      } else if (user?.role !== 'user') {
+        router.replace(user?.role === 'admin' ? '/admin' : '/login')
+      }
     }
-  }, [router])
+  }, [router, authLoading, isAuthenticated, user])
   
-  const handleChange = (e) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
   }
   
-  const handleSelectChange = (name, value) => {
+  const handleSelectChange = (name: string, value: string) => {
     setFormData(prev => ({ ...prev, [name]: value }))
   }
   
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setIsSubmitting(true)
     
@@ -62,12 +77,11 @@ export default function AddProductPage() {
     }
     
     // In a real app, you would send the form data to your backend
-    console.log("Submitting product data:", formData)
+    console.log("Form submitted:", formData)
     
     // Simulate API call
     setTimeout(() => {
       setIsSubmitting(false)
-      alert("Product added successfully!")
       router.push('/user/products')
     }, 1000)
   }

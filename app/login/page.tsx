@@ -8,9 +8,11 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { LogIn, User, Lock, AlertCircle } from "lucide-react"
+import { useAuth } from "@/lib/auth-context"
 
 export default function LoginPage() {
   const router = useRouter()
+  const { login, isAuthenticated, user, isLoading: authLoading } = useAuth()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
@@ -18,44 +20,49 @@ export default function LoginPage() {
   
   // Check if user is already logged in
   useEffect(() => {
-    const isLoggedIn = localStorage.getItem('userLoggedIn')
-    const role = localStorage.getItem('userRole')
-    
-    if (isLoggedIn) {
-      router.replace(role === 'admin' ? '/admin' : '/user')
+    if (isAuthenticated && user) {
+      router.replace(user.role === 'admin' ? '/admin' : '/user')
     }
-  }, [router])
+  }, [isAuthenticated, user, router])
   
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setError("")
-    setIsLoading(true)
     
     // Validate form
     if (!email || !password) {
       setError("Please enter both email and password")
-      setIsLoading(false)
       return
     }
     
-    // In a real app, you would send a login request to your backend
-    // For demo purposes, we'll use mock credentials
-    setTimeout(() => {
-      if (email === "admin@example.com" && password === "admin123") {
-        // Admin login
-        localStorage.setItem('userLoggedIn', 'true')
-        localStorage.setItem('userRole', 'admin')
-        router.push('/admin')
-      } else if (email === "user@example.com" && password === "user123") {
-        // User login
-        localStorage.setItem('userLoggedIn', 'true')
-        localStorage.setItem('userRole', 'user')
-        router.push('/user')
+    setIsLoading(true)
+    
+    try {
+      const success = await login(email, password)
+      
+      if (success) {
+        // Login successful, the auth context will handle redirection
       } else {
-        setError("Invalid email or password")
+        setError("Login failed. Please check your credentials.")
       }
+    } catch (err) {
+      setError("An unexpected error occurred. Please try again.")
+      console.error("Login error:", err)
+    } finally {
       setIsLoading(false)
-    }, 1000)
+    }
+  }
+  
+  // Show loading state while checking authentication
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-amber-50 flex items-center justify-center p-6">
+        <div className="text-amber-800 text-xl flex items-center">
+          <div className="animate-spin mr-3 h-5 w-5 border-2 border-amber-800 border-t-transparent rounded-full" />
+          Loading...
+        </div>
+      </div>
+    )
   }
   
   return (

@@ -21,6 +21,8 @@ import {
   ChevronRight,
   ExternalLink
 } from "lucide-react"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useAuth } from "@/lib/auth-context"
 
 // Mock data for demonstration
 const mockAnalyticsData = {
@@ -62,18 +64,16 @@ const mockAnalyticsData = {
 
 export default function AdminAnalyticsPage() {
   const router = useRouter()
+  const { user, isAuthenticated } = useAuth()
   const [analyticsData, setAnalyticsData] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   
   // Check if admin is logged in
   useEffect(() => {
-    const isLoggedIn = localStorage.getItem('userLoggedIn')
-    const role = localStorage.getItem('userRole')
-    
-    if (!isLoggedIn) {
+    if (!isAuthenticated) {
       router.replace('/login')
-    } else if (role !== 'admin') {
-      router.replace(role === 'user' ? '/user' : '/login')
+    } else if (user?.role !== 'admin') {
+      router.replace(user?.role === 'user' ? '/user' : '/login')
     }
     
     // In a real app, you would fetch the analytics data from your backend

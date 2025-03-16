@@ -22,6 +22,7 @@ import {
   AlertTriangle
 } from "lucide-react"
 import WarrantySidebar from "../warranties/components/sidebar"
+import { useAuth } from "@/lib/auth-context"
 
 // Mock user data for demonstration
 const mockUser = {
@@ -40,6 +41,7 @@ const mockUser = {
 
 export default function UserSettingsPage() {
   const router = useRouter()
+  const { user: authUser, isAuthenticated, isLoading: authLoading } = useAuth()
   const [user, setUser] = useState<typeof mockUser | null>(null)
   const [profileForm, setProfileForm] = useState({
     name: "",
@@ -63,24 +65,23 @@ export default function UserSettingsPage() {
   
   // Check if user is logged in and fetch user data
   useEffect(() => {
-    const isLoggedIn = localStorage.getItem('userLoggedIn')
-    const role = localStorage.getItem('userRole')
-    
-    if (!isLoggedIn) {
-      router.replace('/login')
-    } else if (role !== 'user') {
-      router.replace(role === 'admin' ? '/admin' : '/login')
+    if (!authLoading) {
+      if (!isAuthenticated) {
+        router.replace('/login')
+      } else if (authUser && authUser.role !== 'user') {
+        router.replace(authUser.role === 'admin' ? '/admin' : '/login')
+      } else {
+        // In a real app, you would fetch the user data from your backend
+        setUser(mockUser)
+        setProfileForm({
+          name: mockUser.name,
+          email: mockUser.email,
+          phone: mockUser.phone
+        })
+        setNotificationSettings(mockUser.notifications)
+      }
     }
-    
-    // In a real app, you would fetch the user data from your backend
-    setUser(mockUser)
-    setProfileForm({
-      name: mockUser.name,
-      email: mockUser.email,
-      phone: mockUser.phone
-    })
-    setNotificationSettings(mockUser.notifications)
-  }, [router])
+  }, [router, authLoading, isAuthenticated, authUser])
   
   const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target

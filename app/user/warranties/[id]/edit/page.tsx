@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ArrowLeft, Save, PlusCircle } from "lucide-react"
 import WarrantySidebar from "../../components/sidebar"
+import { useAuth } from "@/lib/auth-context"
 
 // Mock data for demonstration
 const mockWarranty = {
@@ -30,8 +31,13 @@ const mockWarranty = {
   coverageDetails: "Covers manufacturing defects, battery service, and up to two incidents of accidental damage protection every 12 months."
 }
 
-export default function EditWarrantyPage({ params }) {
+interface Params {
+  id: string;
+}
+
+export default function EditWarrantyPage({ params }: { params: Params }) {
   const router = useRouter()
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth()
   const [formData, setFormData] = useState({
     product: "",
     category: "",
@@ -46,27 +52,27 @@ export default function EditWarrantyPage({ params }) {
     claimProcess: "",
     coverageDetails: ""
   })
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
   
   // Check if user is logged in and fetch warranty data
   useEffect(() => {
-    const isLoggedIn = localStorage.getItem('userLoggedIn')
-    const role = localStorage.getItem('userRole')
-    
-    if (!isLoggedIn) {
-      router.replace('/login')
-    } else if (role !== 'user') {
-      router.replace(role === 'admin' ? '/admin' : '/login')
+    if (!authLoading) {
+      if (!isAuthenticated) {
+        router.replace('/login')
+      } else if (user?.role !== 'user') {
+        router.replace(user?.role === 'admin' ? '/admin' : '/login')
+      } else {
+        // In a real app, you would fetch the warranty data based on the ID
+        console.log(`Fetching warranty with ID: ${params.id}`)
+        
+        // Set mock data
+        setFormData(mockWarranty)
+        setIsLoading(false)
+      }
     }
-    
-    // In a real app, you would fetch the warranty data based on the ID
-    console.log(`Fetching warranty with ID: ${params.id}`)
-    
-    // Set mock data
-    setFormData(mockWarranty)
-  }, [router, params.id])
+  }, [router, params.id, authLoading, isAuthenticated, user])
   
-  const handleInputChange = (e) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({
       ...prev,
@@ -74,25 +80,23 @@ export default function EditWarrantyPage({ params }) {
     }))
   }
   
-  const handleSelectChange = (name, value) => {
+  const handleSelectChange = (name: string, value: string) => {
     setFormData(prev => ({
       ...prev,
       [name]: value
     }))
   }
   
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setIsLoading(true)
     
-    // In a real app, you would send the updated warranty data to your backend
-    console.log(`Updating warranty with ID: ${params.id}`, formData)
+    // In a real app, you would send the updated data to your backend
+    console.log("Submitting updated warranty data:", formData)
     
     // Simulate API call
     setTimeout(() => {
       setIsLoading(false)
-      
-      // Redirect to warranty details page
       router.push(`/user/warranties/${params.id}`)
     }, 1000)
   }

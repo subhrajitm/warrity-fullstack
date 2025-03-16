@@ -12,29 +12,30 @@ import {
   Clock,
   BarChart3
 } from "lucide-react"
+import { useAuth } from "@/lib/auth-context"
 
 export default function AdminDashboard() {
   const router = useRouter()
-  const [isLoading, setIsLoading] = useState(true)
+  const { user, isAuthenticated, isLoading } = useAuth()
   
   // Check if admin is logged in
   useEffect(() => {
-    const isLoggedIn = localStorage.getItem('userLoggedIn')
-    const role = localStorage.getItem('userRole')
-    
-    if (!isLoggedIn) {
-      router.replace('/login')
-    } else if (role !== 'admin') {
-      router.replace(role === 'user' ? '/user' : '/login')
-    } else {
-      setIsLoading(false)
+    if (!isLoading) {
+      if (!isAuthenticated) {
+        router.replace('/login')
+      } else if (user && user.role !== 'admin') {
+        router.replace(user.role === 'user' ? '/user' : '/login')
+      }
     }
-  }, [router])
+  }, [isAuthenticated, isLoading, router, user])
   
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <p className="text-amber-800 text-xl">Loading dashboard...</p>
+      <div className="min-h-screen bg-amber-50 flex items-center justify-center p-6">
+        <div className="text-amber-800 text-xl flex items-center">
+          <div className="animate-spin mr-3 h-5 w-5 border-2 border-amber-800 border-t-transparent rounded-full" />
+          Loading...
+        </div>
       </div>
     )
   }

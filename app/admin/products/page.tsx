@@ -17,6 +17,7 @@ import {
   SortAsc,
   SortDesc
 } from "lucide-react"
+import { useAuth } from "@/lib/auth-context"
 
 // Define Product interface
 interface Product {
@@ -68,6 +69,7 @@ const mockProducts: Product[] = [
 
 export default function AdminProductsPage() {
   const router = useRouter()
+  const { user, isAuthenticated } = useAuth()
   const [products, setProducts] = useState<Product[]>([])
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([])
   const [searchQuery, setSearchQuery] = useState("")
@@ -77,13 +79,10 @@ export default function AdminProductsPage() {
   
   // Check if admin is logged in and fetch products
   useEffect(() => {
-    const isLoggedIn = localStorage.getItem('userLoggedIn')
-    const role = localStorage.getItem('userRole')
-    
-    if (!isLoggedIn) {
+    if (!isAuthenticated) {
       router.replace('/login')
-    } else if (role !== 'admin') {
-      router.replace(role === 'user' ? '/user' : '/login')
+    } else if (user?.role !== 'admin') {
+      router.replace(user?.role === 'user' ? '/user' : '/login')
     }
     
     // In a real app, you would fetch the products from your backend

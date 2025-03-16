@@ -10,9 +10,22 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Package, PlusCircle, Search, Shield, Calendar, Clock, AlertTriangle } from "lucide-react"
 import ProductSidebar from "./components/sidebar"
+import { useAuth } from "@/lib/auth-context"
+
+// Define product interface
+interface Product {
+  id: number;
+  name: string;
+  category: string;
+  purchaseDate: string;
+  price: number;
+  image: string;
+  warrantyExpiration: string;
+  status: string;
+}
 
 // Add mock products data
-const mockProducts = [
+const mockProducts: Product[] = [
   {
     id: 1,
     name: "Samsung 55\" QLED TV",
@@ -67,24 +80,24 @@ const mockProducts = [
 
 export default function ProductsPage() {
   const router = useRouter()
-  const [products, setProducts] = useState([])
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth()
+  const [products, setProducts] = useState<Product[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [activeCategory, setActiveCategory] = useState("all")
   
   // Check if user is logged in and fetch products
   useEffect(() => {
-    const isLoggedIn = localStorage.getItem('userLoggedIn')
-    const role = localStorage.getItem('userRole')
-    
-    if (!isLoggedIn) {
-      router.replace('/login')
-    } else if (role !== 'user') {
-      router.replace(role === 'admin' ? '/admin' : '/login')
+    if (!authLoading) {
+      if (!isAuthenticated) {
+        router.replace('/login')
+      } else if (user && user.role !== 'user') {
+        router.replace(user.role === 'admin' ? '/admin' : '/login')
+      } else {
+        // In a real app, you would fetch the products from your backend
+        setProducts(mockProducts)
+      }
     }
-    
-    // In a real app, you would fetch the products from your backend
-    setProducts(mockProducts)
-  }, [router])
+  }, [router, authLoading, isAuthenticated, user])
   
   // Filter products based on search term and active category
   const filteredProducts = products.filter(product => {
@@ -102,11 +115,11 @@ export default function ProductsPage() {
   });
   
   // Update the getWarrantyStatusBadge function to work with the mockProducts structure
-  const getWarrantyStatusBadge = (product) => {
+  const getWarrantyStatusBadge = (product: Product) => {
     if (product.status === "Active") {
       const endDate = new Date(product.warrantyExpiration);
       const today = new Date();
-      const daysRemaining = Math.ceil((endDate - today) / (1000 * 60 * 60 * 24));
+      const daysRemaining = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
       
       if (daysRemaining <= 30) {
         return (
@@ -130,7 +143,7 @@ export default function ProductsPage() {
     return <Badge variant="outline" className="border-amber-500 text-amber-500">No Warranty</Badge>;
   };
   
-  const getCategoryIcon = (category) => {
+  const getCategoryIcon = (category: string) => {
     switch(category) {
       case "electronics":
         return "💻"
@@ -243,12 +256,12 @@ export default function ProductsPage() {
                             <Package className="h-4 w-4 mr-1" />
                             <span>View Details</span>
                           </div>
-                          {product.hasWarranty && (
+                          {product.status === "Active" || product.status === "Expiring Soon" ? (
                             <div className="flex items-center text-amber-800 text-sm">
                               <Shield className="h-4 w-4 mr-1" />
                               <span>Warranty Info</span>
                             </div>
-                          )}
+                          ) : null}
                         </div>
                       </CardFooter>
                     </Card>

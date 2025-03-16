@@ -8,9 +8,11 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { UserPlus, User, Lock, Mail, AlertCircle, ArrowLeft } from "lucide-react"
+import { useAuth } from "@/lib/auth-context"
 
 export default function RegisterPage() {
   const router = useRouter()
+  const { isAuthenticated, user } = useAuth()
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -22,15 +24,12 @@ export default function RegisterPage() {
   
   // Check if user is already logged in
   useEffect(() => {
-    const isLoggedIn = localStorage.getItem('userLoggedIn')
-    const role = localStorage.getItem('userRole')
-    
-    if (isLoggedIn) {
-      router.replace(role === 'admin' ? '/admin' : '/user')
+    if (isAuthenticated) {
+      router.replace(user?.role === 'admin' ? '/admin' : '/user')
     }
-  }, [router])
+  }, [router, isAuthenticated, user])
   
-  const handleChange = (e) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({
       ...prev,
@@ -38,7 +37,7 @@ export default function RegisterPage() {
     }))
   }
   
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setError("")
     setIsLoading(true)

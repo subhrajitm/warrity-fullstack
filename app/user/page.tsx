@@ -17,9 +17,21 @@ import {
   Bell
 } from "lucide-react"
 import WarrantySidebar from "./warranties/components/sidebar"
+import { useAuth } from "@/lib/auth-context"
+
+// Define warranty type
+interface Warranty {
+  id: number;
+  product: string;
+  category: string;
+  provider: string;
+  purchaseDate: string;
+  endDate: string;
+  status: string;
+}
 
 // Mock data for demonstration
-const mockWarranties = [
+const mockWarranties: Warranty[] = [
   {
     id: 1,
     product: "Samsung TV",
@@ -51,26 +63,38 @@ const mockWarranties = [
 
 export default function UserDashboard() {
   const router = useRouter()
-  const [warranties, setWarranties] = useState([])
-  const [expiringWarranties, setExpiringWarranties] = useState([])
+  const { user, isAuthenticated, isLoading } = useAuth()
+  const [warranties, setWarranties] = useState<Warranty[]>([])
+  const [expiringWarranties, setExpiringWarranties] = useState<Warranty[]>([])
   
   // Check if user is logged in
   useEffect(() => {
-    const isLoggedIn = localStorage.getItem('userLoggedIn')
-    const role = localStorage.getItem('userRole')
-    
-    if (!isLoggedIn) {
-      router.replace('/login')
-    } else if (role !== 'user') {
-      router.replace(role === 'admin' ? '/admin' : '/login')
+    if (!isLoading) {
+      if (!isAuthenticated) {
+        router.replace('/login')
+      } else if (user && user.role !== 'user') {
+        router.replace(user.role === 'admin' ? '/admin' : '/login')
+      }
     }
     
     // In a real app, you would fetch the warranties from your backend
     setWarranties(mockWarranties)
     setExpiringWarranties(mockWarranties.filter(w => w.status === 'expiring'))
-  }, [router])
+  }, [isAuthenticated, isLoading, router, user])
   
-  const getStatusBadge = (status) => {
+  // Show loading state while checking authentication
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-amber-50 flex items-center justify-center p-6">
+        <div className="text-amber-800 text-xl flex items-center">
+          <div className="animate-spin mr-3 h-5 w-5 border-2 border-amber-800 border-t-transparent rounded-full" />
+          Loading...
+        </div>
+      </div>
+    )
+  }
+
+  const getStatusBadge = (status: string) => {
     switch (status) {
       case 'active':
         return (

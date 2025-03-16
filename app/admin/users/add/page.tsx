@@ -9,10 +9,13 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ArrowLeft, Save, UserPlus } from "lucide-react"
+import { ArrowLeft, Save, UserPlus, User, Mail, Lock, Check } from "lucide-react"
+import { useAuth } from "@/lib/auth-context"
 
 export default function AdminAddUserPage() {
   const router = useRouter()
+  const { user: authUser, isAuthenticated, isLoading: authLoading } = useAuth()
+  const [isLoading, setIsLoading] = useState(false)
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -24,26 +27,25 @@ export default function AdminAddUserPage() {
   
   // Check if admin is logged in
   useEffect(() => {
-    const isLoggedIn = localStorage.getItem('userLoggedIn')
-    const role = localStorage.getItem('userRole')
-    
-    if (!isLoggedIn) {
-      router.replace('/login')
-    } else if (role !== 'admin') {
-      router.replace(role === 'user' ? '/user' : '/login')
+    if (!authLoading) {
+      if (!isAuthenticated) {
+        router.replace('/login')
+      } else if (authUser?.role !== 'admin') {
+        router.replace(authUser?.role === 'user' ? '/user' : '/login')
+      }
     }
-  }, [router])
+  }, [router, authLoading, isAuthenticated, authUser])
   
-  const handleInputChange = (e) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
   }
   
-  const handleSelectChange = (name, value) => {
+  const handleSelectChange = (name: string, value: string) => {
     setFormData(prev => ({ ...prev, [name]: value }))
   }
   
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     
     // Validate passwords match

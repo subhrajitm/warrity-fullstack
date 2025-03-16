@@ -27,8 +27,11 @@ import {
   CreditCard,
   FileText,
   User,
-  Shield
+  Shield,
+  CheckCircle,
+  AlertTriangle
 } from "lucide-react"
+import { useAuth } from "@/lib/auth-context"
 
 // Mock user data
 const mockUser = {
@@ -101,36 +104,63 @@ const mockUser = {
   ]
 }
 
-export default function AdminUserDetailPage({ params }) {
-  // Unwrap params using React.use()
-  const unwrappedParams = React.use(params);
-  const userId = unwrappedParams.id;
-  
+interface UserData {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  address: string;
+  role: string;
+  status: string;
+  joinDate: string;
+  lastActive: string;
+  profileImage: string;
+  warranties: Array<{
+    id: number;
+    product: string;
+    category: string;
+    purchaseDate: string;
+    expiryDate: string;
+    status: string;
+  }>;
+  recentActivity: Array<{
+    action: string;
+    date: string;
+    details: string;
+  }>;
+}
+
+interface Params {
+  id: string;
+}
+
+export default function AdminUserDetailPage({ params }: { params: Params }) {
   const router = useRouter()
-  const [user, setUser] = useState(null)
+  const userId = params.id
+  const { user: authUser, isAuthenticated, isLoading: authLoading } = useAuth()
+  const [user, setUser] = useState<UserData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   
   // Check if admin is logged in and fetch user data
   useEffect(() => {
-    const isLoggedIn = localStorage.getItem('userLoggedIn')
-    const role = localStorage.getItem('userRole')
-    
-    if (!isLoggedIn) {
-      router.replace('/login')
-    } else if (role !== 'admin') {
-      router.replace(role === 'user' ? '/user' : '/login')
+    if (!authLoading) {
+      if (!isAuthenticated) {
+        router.replace('/login')
+      } else if (authUser?.role !== 'admin') {
+        router.replace(authUser?.role === 'user' ? '/user' : '/login')
+      } else {
+        // In a real app, you would fetch the user data based on the ID
+        console.log(`Fetching user with ID: ${userId}`)
+        
+        // Simulate API call with timeout
+        setTimeout(() => {
+          setUser(mockUser)
+          setIsLoading(false)
+        }, 500)
+      }
     }
-    
-    // In a real app, you would fetch the user data based on the ID
-    console.log(`Fetching user with ID: ${userId}`)
-    
-    // Simulate API call with timeout
-    setTimeout(() => {
-      setUser(mockUser)
-      setIsLoading(false)
-    }, 500)
-  }, [router, userId])
+  }, [router, userId, authLoading, isAuthenticated, authUser])
   
   const getRoleBadge = (role) => {
     switch (role) {

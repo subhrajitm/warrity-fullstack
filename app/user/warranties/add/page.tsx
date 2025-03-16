@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ArrowLeft, Calendar, Upload, AlertCircle } from "lucide-react"
 import WarrantySidebar from "../components/sidebar"
+import { useAuth } from "@/lib/auth-context"
 
 // Mock categories for demonstration
 const categories = [
@@ -22,9 +23,22 @@ const categories = [
   { value: "other", label: "Other" }
 ]
 
+interface FormData {
+  product: string;
+  category: string;
+  provider: string;
+  providerContact: string;
+  purchaseDate: string;
+  warrantyPeriod: string;
+  purchasePrice: string;
+  notes: string;
+  claimProcess: string;
+}
+
 export default function AddWarrantyPage() {
   const router = useRouter()
-  const [formData, setFormData] = useState({
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth()
+  const [formData, setFormData] = useState<FormData>({
     product: "",
     category: "",
     provider: "",
@@ -35,24 +49,23 @@ export default function AddWarrantyPage() {
     notes: "",
     claimProcess: ""
   })
-  const [receiptFile, setReceiptFile] = useState(null)
-  const [warrantyFile, setWarrantyFile] = useState(null)
+  const [receiptFile, setReceiptFile] = useState<File | null>(null)
+  const [warrantyFile, setWarrantyFile] = useState<File | null>(null)
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   
   // Check if user is logged in
   useEffect(() => {
-    const isLoggedIn = localStorage.getItem('userLoggedIn')
-    const role = localStorage.getItem('userRole')
-    
-    if (!isLoggedIn) {
-      router.replace('/login')
-    } else if (role !== 'user') {
-      router.replace(role === 'admin' ? '/admin' : '/login')
+    if (!authLoading) {
+      if (!isAuthenticated) {
+        router.replace('/login')
+      } else if (user?.role !== 'user') {
+        router.replace(user?.role === 'admin' ? '/admin' : '/login')
+      }
     }
-  }, [router])
+  }, [router, authLoading, isAuthenticated, user])
   
-  const handleChange = (e) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({
       ...prev,
@@ -60,44 +73,42 @@ export default function AddWarrantyPage() {
     }))
   }
   
-  const handleSelectChange = (name, value) => {
+  const handleSelectChange = (name: string, value: string) => {
     setFormData(prev => ({
       ...prev,
       [name]: value
     }))
   }
   
-  const handleFileChange = (e, type) => {
-    const file = e.target.files[0]
-    if (file) {
-      if (type === 'receipt') {
-        setReceiptFile(file)
-      } else {
-        setWarrantyFile(file)
-      }
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'receipt' | 'warranty') => {
+    const file = e.target.files?.[0] || null
+    if (type === 'receipt') {
+      setReceiptFile(file)
+    } else {
+      setWarrantyFile(file)
     }
   }
   
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setError("")
-    setIsLoading(true)
     
     // Validate form
-    if (!formData.product || !formData.category || !formData.provider || !formData.purchaseDate) {
+    if (!formData.product || !formData.category || !formData.purchaseDate) {
       setError("Please fill in all required fields")
-      setIsLoading(false)
       return
     }
     
-    // In a real app, you would send the form data to your backend
+    setIsLoading(true)
+    
+    // In a real app, you would send the data to your backend
+    console.log("Submitting warranty data:", formData)
+    console.log("Receipt file:", receiptFile)
+    console.log("Warranty file:", warrantyFile)
+    
+    // Simulate API call
     setTimeout(() => {
-      console.log("Form submitted:", formData)
-      console.log("Receipt file:", receiptFile)
-      console.log("Warranty file:", warrantyFile)
-      
       setIsLoading(false)
-      alert("Warranty added successfully!")
       router.push('/user/warranties')
     }, 1000)
   }

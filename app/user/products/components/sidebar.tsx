@@ -4,19 +4,18 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Package, PlusCircle, Home, Bell, Shield, User, LogOut } from "lucide-react"
+import { useAuth } from "@/lib/auth-context"
 
 export default function ProductSidebar() {
   const pathname = usePathname()
+  const { logout } = useAuth()
   
-  const isActive = (path) => {
-    return pathname === path || pathname.startsWith(`${path}/`)
+  const isActive = (path: string): boolean => {
+    return pathname === path || (pathname !== null && pathname.startsWith(`${path}/`))
   }
   
-  const handleLogout = () => {
-    // In a real app, you would implement proper logout functionality
-    localStorage.removeItem('userLoggedIn')
-    localStorage.removeItem('userRole')
-    window.location.href = '/login'
+  const handleLogout = async () => {
+    await logout()
   }
   
   return (

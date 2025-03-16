@@ -20,9 +20,21 @@ import {
   Calendar,
   Shield
 } from "lucide-react"
+import { useAuth } from "@/lib/auth-context"
+
+// Define User interface
+interface UserData {
+  id: number;
+  name: string;
+  email: string;
+  role: string;
+  status: string;
+  joinDate: string;
+  warranties: number;
+}
 
 // Mock data for demonstration
-const mockUsers = [
+const mockUsers: UserData[] = [
   {
     id: 1,
     name: "John Doe",
@@ -72,26 +84,26 @@ const mockUsers = [
 
 export default function AdminUsersPage() {
   const router = useRouter()
-  const [users, setUsers] = useState([])
-  const [filteredUsers, setFilteredUsers] = useState([])
+  const { user: authUser, isAuthenticated, isLoading: authLoading } = useAuth()
+  const [users, setUsers] = useState<UserData[]>([])
+  const [filteredUsers, setFilteredUsers] = useState<UserData[]>([])
   const [searchQuery, setSearchQuery] = useState("")
-  const [sortField, setSortField] = useState("name")
-  const [sortDirection, setSortDirection] = useState("asc")
+  const [sortField, setSortField] = useState<keyof UserData>("name")
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
   
   // Check if admin is logged in
   useEffect(() => {
-    const isLoggedIn = localStorage.getItem('userLoggedIn')
-    const role = localStorage.getItem('userRole')
-    
-    if (!isLoggedIn) {
-      router.replace('/login')
-    } else if (role !== 'admin') {
-      router.replace(role === 'user' ? '/user' : '/login')
+    if (!authLoading) {
+      if (!isAuthenticated) {
+        router.replace('/login')
+      } else if (authUser?.role !== 'admin') {
+        router.replace(authUser?.role === 'user' ? '/user' : '/login')
+      } else {
+        // In a real app, you would fetch the users from your backend
+        setUsers(mockUsers)
+      }
     }
-    
-    // In a real app, you would fetch the users from your backend
-    setUsers(mockUsers)
-  }, [router])
+  }, [router, authLoading, isAuthenticated, authUser])
   
   // Filter and sort users
   useEffect(() => {
@@ -108,8 +120,8 @@ export default function AdminUsersPage() {
     
     // Apply sorting
     filtered.sort((a, b) => {
-      let aValue = a[sortField]
-      let bValue = b[sortField]
+      let aValue: any = a[sortField]
+      let bValue: any = b[sortField]
       
       // Handle date fields
       if (sortField === 'joinDate') {
@@ -129,11 +141,11 @@ export default function AdminUsersPage() {
     setFilteredUsers(filtered)
   }, [users, searchQuery, sortField, sortDirection])
   
-  const handleSearchChange = (e) => {
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value)
   }
   
-  const handleSortChange = (field) => {
+  const handleSortChange = (field: keyof UserData) => {
     if (sortField === field) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
     } else {
@@ -142,7 +154,7 @@ export default function AdminUsersPage() {
     }
   }
   
-  const handleDelete = (id) => {
+  const handleDelete = (id: number) => {
     if (confirm("Are you sure you want to delete this user? This action cannot be undone.")) {
       // In a real app, you would send a delete request to your backend
       console.log(`Deleting user with ID: ${id}`)
@@ -152,7 +164,7 @@ export default function AdminUsersPage() {
     }
   }
   
-  const getSortIcon = (field) => {
+  const getSortIcon = (field: keyof UserData) => {
     if (sortField !== field) return null
     
     return sortDirection === 'asc' 
@@ -160,7 +172,7 @@ export default function AdminUsersPage() {
       : <SortDesc className="h-4 w-4 ml-1" />
   }
   
-  const getStatusBadge = (status) => {
+  const getStatusBadge = (status: string) => {
     switch (status) {
       case 'active':
         return (
@@ -179,7 +191,7 @@ export default function AdminUsersPage() {
     }
   }
   
-  const getRoleBadge = (role) => {
+  const getRoleBadge = (role: string) => {
     switch (role) {
       case 'admin':
         return (

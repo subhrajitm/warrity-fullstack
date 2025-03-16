@@ -9,7 +9,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ArrowLeft, Save } from "lucide-react"
+import { ArrowLeft, Save, Shield } from "lucide-react"
+import { useAuth } from "@/lib/auth-context"
 
 // Mock data for demonstration
 const mockWarranty = {
@@ -32,26 +33,52 @@ const mockWarranty = {
 
 // Mock users for dropdown
 const mockUsers = [
-  { id: 1, name: "John Smith" },
-  { id: 2, name: "Sarah Johnson" },
-  { id: 3, name: "Michael Brown" },
-  { id: 4, name: "Robert Davis" },
-  { id: 5, name: "Emily Johnson" }
+  { id: "1", name: "John Smith", email: "john@example.com" },
+  { id: "2", name: "Sarah Johnson", email: "sarah@example.com" },
+  { id: "3", name: "Michael Brown", email: "michael@example.com" },
+  { id: "4", name: "Robert Davis", email: "robert@example.com" },
+  { id: "5", name: "Emily Johnson", email: "emily@example.com" }
 ]
 
-export default function AdminEditWarrantyPage({ params }) {
-  // Unwrap params using React.use()
-  const unwrappedParams = React.use(params);
-  const warrantyId = unwrappedParams.id;
-  
+interface FormData {
+  product: string;
+  category: string;
+  purchaseDate: string;
+  startDate: string;
+  endDate: string;
+  price: string;
+  status: string;
+  provider: string;
+  type: string;
+  terms: string;
+  extendable: string;
+  claimProcess: string;
+  coverageDetails: string;
+  userId: string;
+}
+
+interface User {
+  id: string;
+  name: string;
+  email: string;
+}
+
+interface Params {
+  id: string;
+}
+
+export default function AdminEditWarrantyPage({ params }: { params: Params }) {
   const router = useRouter()
-  const [formData, setFormData] = useState({
+  const warrantyId = React.use(Promise.resolve(params.id))
+  const { user: authUser, isAuthenticated, isLoading: authLoading } = useAuth()
+  const [formData, setFormData] = useState<FormData>({
     product: "",
     category: "",
     purchaseDate: "",
     startDate: "",
     endDate: "",
     price: "",
+    status: "",
     provider: "",
     type: "",
     terms: "",
@@ -60,45 +87,57 @@ export default function AdminEditWarrantyPage({ params }) {
     coverageDetails: "",
     userId: ""
   })
-  const [users, setUsers] = useState([])
+  const [users, setUsers] = useState<User[]>([])
   const [isLoading, setIsLoading] = useState(true)
   
   // Check if admin is logged in and fetch warranty data
   useEffect(() => {
-    const isLoggedIn = localStorage.getItem('userLoggedIn')
-    const role = localStorage.getItem('userRole')
-    
-    if (!isLoggedIn) {
-      router.replace('/login')
-    } else if (role !== 'admin') {
-      router.replace(role === 'user' ? '/user' : '/login')
+    if (!authLoading) {
+      if (!isAuthenticated) {
+        router.replace('/login')
+      } else if (authUser?.role !== 'admin') {
+        router.replace(authUser?.role === 'user' ? '/user' : '/login')
+      } else {
+        // In a real app, you would fetch the warranty data based on the ID
+        console.log(`Fetching warranty with ID: ${warrantyId} for editing`)
+        
+        // Set mock data
+        // Convert userId to string to match our FormData type
+        const formattedWarranty = {
+          ...mockWarranty,
+          userId: mockWarranty.userId.toString()
+        }
+        setFormData(formattedWarranty as FormData)
+        setUsers(mockUsers)
+        setIsLoading(false)
+      }
     }
-    
-    // In a real app, you would fetch the warranty data based on the ID
-    console.log(`Fetching warranty with ID: ${warrantyId} for editing`)
-    
-    // Set mock data
-    setFormData(mockWarranty)
-    setUsers(mockUsers)
-    setIsLoading(false)
-  }, [router, warrantyId])
+  }, [router, warrantyId, authLoading, isAuthenticated, authUser])
   
-  const handleInputChange = (e) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
   }
   
-  const handleSelectChange = (name, value) => {
+  const handleSelectChange = (name: string, value: string) => {
     setFormData(prev => ({ ...prev, [name]: value }))
   }
   
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    console.log("Submitting updated warranty data:", formData)
     
     // In a real app, you would send the updated data to your backend
+    console.log("Submitting updated warranty data:", formData)
     
-    // Redirect to warranty details page
+    // Redirect back to warranty details page
+    router.push(`/admin/warranties/${warrantyId}`)
+  }
+  
+  const handleButtonSubmit = () => {
+    // In a real app, you would send the updated data to your backend
+    console.log("Submitting updated warranty data:", formData)
+    
+    // Redirect back to warranty details page
     router.push(`/admin/warranties/${warrantyId}`)
   }
   
@@ -226,7 +265,7 @@ export default function AdminEditWarrantyPage({ params }) {
                 <div className="space-y-2">
                   <Label htmlFor="userId" className="text-amber-900">User</Label>
                   <Select 
-                    value={formData.userId.toString()} 
+                    value={formData.userId} 
                     onValueChange={(value) => handleSelectChange("userId", value)}
                   >
                     <SelectTrigger className="border-2 border-amber-800 bg-amber-50">
@@ -234,7 +273,7 @@ export default function AdminEditWarrantyPage({ params }) {
                     </SelectTrigger>
                     <SelectContent>
                       {users.map(user => (
-                        <SelectItem key={user.id} value={user.id.toString()}>
+                        <SelectItem key={user.id} value={user.id}>
                           {user.name}
                         </SelectItem>
                       ))}
@@ -330,8 +369,7 @@ export default function AdminEditWarrantyPage({ params }) {
           </Link>
           
           <Button 
-            type="submit"
-            onClick={handleSubmit}
+            onClick={handleButtonSubmit}
             className="bg-amber-800 hover:bg-amber-900 text-amber-100 border-2 border-amber-900"
           >
             <Save className="mr-2 h-4 w-4" />

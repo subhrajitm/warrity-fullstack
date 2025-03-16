@@ -16,10 +16,12 @@ import {
   Settings,
   Calendar
 } from "lucide-react"
+import { useAuth } from "@/lib/auth-context"
 
 export default function WarrantySidebar() {
   const pathname = usePathname()
   const [activeLink, setActiveLink] = useState("")
+  const { logout } = useAuth()
   
   useEffect(() => {
     setActiveLink(pathname)
@@ -53,10 +55,8 @@ export default function WarrantySidebar() {
     return false
   }
   
-  const handleLogout = () => {
-    localStorage.removeItem('userLoggedIn')
-    localStorage.removeItem('userRole')
-    window.location.href = '/login'
+  const handleLogout = async () => {
+    await logout()
   }
   
   return (

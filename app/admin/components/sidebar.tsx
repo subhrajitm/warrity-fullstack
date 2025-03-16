@@ -30,6 +30,7 @@ import {
   Bell,
   Shield
 } from "lucide-react"
+import { useAuth } from "@/lib/auth-context"
 
 export default function AdminSidebar() {
   const pathname = usePathname()
@@ -41,6 +42,8 @@ export default function AdminSidebar() {
     analytics: false,
     settings: false
   })
+  
+  const { logout } = useAuth()
   
   useEffect(() => {
     setActiveLink(pathname || "")
@@ -74,10 +77,8 @@ export default function AdminSidebar() {
     }))
   }
   
-  const handleLogout = (): void => {
-    localStorage.removeItem('userLoggedIn')
-    localStorage.removeItem('userRole')
-    window.location.href = '/login'
+  const handleLogout = async (): Promise<void> => {
+    await logout()
   }
   
   return (

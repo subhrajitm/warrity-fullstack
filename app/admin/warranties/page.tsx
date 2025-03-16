@@ -20,6 +20,7 @@ import {
   CheckCircle2,
   Clock
 } from "lucide-react"
+import { useAuth } from "@/lib/auth-context"
 
 // Define Warranty interface
 interface Warranty {
@@ -83,6 +84,7 @@ const mockWarranties: Warranty[] = [
 
 export default function AdminWarrantiesPage() {
   const router = useRouter()
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth()
   const [warranties, setWarranties] = useState<Warranty[]>([])
   const [filteredWarranties, setFilteredWarranties] = useState<Warranty[]>([])
   const [searchQuery, setSearchQuery] = useState("")
@@ -93,20 +95,19 @@ export default function AdminWarrantiesPage() {
   
   // Check if admin is logged in and fetch warranties
   useEffect(() => {
-    const isLoggedIn = localStorage.getItem('userLoggedIn')
-    const role = localStorage.getItem('userRole')
-    
-    if (!isLoggedIn) {
-      router.replace('/login')
-    } else if (role !== 'admin') {
-      router.replace(role === 'user' ? '/user' : '/login')
+    if (!authLoading) {
+      if (!isAuthenticated) {
+        router.replace('/login')
+      } else if (user?.role !== 'admin') {
+        router.replace(user?.role === 'user' ? '/user' : '/login')
+      } else {
+        // In a real app, you would fetch the warranties from your backend
+        setWarranties(mockWarranties)
+        setFilteredWarranties(mockWarranties)
+        setIsLoading(false)
+      }
     }
-    
-    // In a real app, you would fetch the warranties from your backend
-    setWarranties(mockWarranties)
-    setFilteredWarranties(mockWarranties)
-    setIsLoading(false)
-  }, [router])
+  }, [router, authLoading, isAuthenticated, user])
   
   // Filter and sort warranties
   useEffect(() => {

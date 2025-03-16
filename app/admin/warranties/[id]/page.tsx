@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { CalendarIcon, Clock, Edit, Trash2, AlertTriangle, CheckCircle, ArrowLeft, User } from "lucide-react"
+import { useAuth } from "@/lib/auth-context"
 
 // Mock data for demonstration
 const mockWarranty = {
@@ -29,38 +30,68 @@ const mockWarranty = {
     id: 5,
     name: "Emily Johnson",
     email: "emily.johnson@example.com"
-  }
+  },
+  documents: [],
+  notes: ""
 }
 
-export default function AdminWarrantyDetailsPage({ params }) {
-  // Unwrap params using React.use()
-  const unwrappedParams = React.use(params);
-  const warrantyId = unwrappedParams.id;
-  
+interface Warranty {
+  id: number;
+  product: string;
+  category: string;
+  purchaseDate: string;
+  startDate: string;
+  endDate: string;
+  status: string;
+  provider: string;
+  type: string;
+  terms: string;
+  extendable: string;
+  coverageDetails: string;
+  claimProcess: string;
+  user: {
+    id: number;
+    name: string;
+    email: string;
+  };
+  price: string;
+  documents: Array<{
+    name: string;
+    url: string;
+  }>;
+  notes: string;
+}
+
+interface Params {
+  id: string;
+}
+
+export default function AdminWarrantyDetailsPage({ params }: { params: Params }) {
   const router = useRouter()
-  const [warranty, setWarranty] = useState(null)
+  const warrantyId = React.use(Promise.resolve(params.id))
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth()
+  const [warranty, setWarranty] = useState<Warranty | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   
   // Check if admin is logged in and fetch warranty data
   useEffect(() => {
-    const isLoggedIn = localStorage.getItem('userLoggedIn')
-    const role = localStorage.getItem('userRole')
-    
-    if (!isLoggedIn) {
-      router.replace('/login')
-    } else if (role !== 'admin') {
-      router.replace(role === 'user' ? '/user' : '/login')
+    if (!authLoading) {
+      if (!isAuthenticated) {
+        router.replace('/login')
+      } else if (user?.role !== 'admin') {
+        router.replace(user?.role === 'user' ? '/user' : '/login')
+      } else {
+        // In a real app, you would fetch the warranty data based on the ID
+        console.log(`Fetching warranty with ID: ${warrantyId}`)
+        
+        // Set mock data
+        setWarranty(mockWarranty)
+        setIsLoading(false)
+      }
     }
-    
-    // In a real app, you would fetch the warranty data based on the ID
-    console.log(`Fetching warranty with ID: ${warrantyId}`)
-    
-    // Set mock data
-    setWarranty(mockWarranty)
-    setIsLoading(false)
-  }, [router, warrantyId])
+  }, [router, warrantyId, authLoading, isAuthenticated, user])
   
-  const getStatusBadge = (status) => {
+  const getStatusBadge = (status: string) => {
     switch(status) {
       case "active":
         return (
@@ -102,7 +133,7 @@ export default function AdminWarrantyDetailsPage({ params }) {
     }
   }
   
-  if (isLoading) {
+  if (isLoading || !warranty) {
     return (
       <div className="flex items-center justify-center h-full">
         <p className="text-amber-800 text-xl">Loading warranty details...</p>
@@ -127,7 +158,7 @@ export default function AdminWarrantyDetailsPage({ params }) {
                 {warranty.product}
               </CardTitle>
               <CardDescription className="text-amber-800 font-medium">
-                {warranty.category.charAt(0).toUpperCase() + warranty.category.slice(1)} • {warranty.provider}
+                {warranty.category} • {warranty.provider}
               </CardDescription>
             </div>
             <div>

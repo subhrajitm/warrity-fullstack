@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { ArrowLeft, Calendar as CalendarIcon, Shield, Wrench, AlertTriangle, Info, Plus, Trash2 } from "lucide-react"
 import WarrantySidebar from "../warranties/components/sidebar"
+import { useAuth } from "@/lib/auth-context"
 
 // Define the event type
 interface CalendarEvent {
@@ -105,6 +106,7 @@ const mockEvents: CalendarEvent[] = [
 
 export default function CalendarPage() {
   const router = useRouter()
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth()
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [filterType, setFilterType] = useState("all")
@@ -125,19 +127,18 @@ export default function CalendarPage() {
   
   // Check if user is logged in and fetch events
   useEffect(() => {
-    const isLoggedIn = localStorage.getItem('userLoggedIn')
-    const role = localStorage.getItem('userRole')
-    
-    if (!isLoggedIn) {
-      router.replace('/login')
-    } else if (role !== 'user') {
-      router.replace(role === 'admin' ? '/admin' : '/login')
+    if (!authLoading) {
+      if (!isAuthenticated) {
+        router.replace('/login')
+      } else if (user && user.role !== 'user') {
+        router.replace(user.role === 'admin' ? '/admin' : '/login')
+      } else {
+        // In a real app, you would fetch the events from your backend
+        setEvents(mockEvents)
+      }
+      setIsLoading(false)
     }
-    
-    // In a real app, you would fetch the events from your backend
-    setEvents(mockEvents)
-    setIsLoading(false)
-  }, [router])
+  }, [router, authLoading, isAuthenticated, user])
   
   // Filter events based on selected date and filter type
   const filteredEvents = events.filter(event => {

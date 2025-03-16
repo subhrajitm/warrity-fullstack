@@ -8,26 +8,81 @@ import { Badge } from "@/components/ui/badge"
 import { Bell, CheckCircle, Clock, AlertTriangle, Calendar, Package, Shield } from "lucide-react"
 import NotificationSidebar from "./components/sidebar"
 import ProductSidebar from "../products/components/sidebar"
+import { useAuth } from "@/lib/auth-context"
+
+// Define notification interface
+interface Notification {
+  id: number;
+  title: string;
+  message: string;
+  date: string;
+  type: string;
+  read: boolean;
+  product: {
+    id: number;
+    name: string;
+  };
+}
+
+// Mock notifications data
+const mockNotifications: Notification[] = [
+  {
+    id: 1,
+    title: "Warranty Expiring Soon",
+    message: "Your Samsung TV warranty will expire in 30 days.",
+    date: "2023-11-15",
+    type: "warranty-expiring",
+    read: false,
+    product: {
+      id: 1,
+      name: "Samsung TV"
+    }
+  },
+  {
+    id: 2,
+    title: "Maintenance Reminder",
+    message: "It's time for your Dyson Vacuum filter cleaning.",
+    date: "2023-11-10",
+    type: "maintenance-reminder",
+    read: true,
+    product: {
+      id: 4,
+      name: "Dyson Vacuum"
+    }
+  },
+  {
+    id: 3,
+    title: "Warranty Expired",
+    message: "Your IKEA Sofa warranty has expired.",
+    date: "2023-11-01",
+    type: "warranty-expired",
+    read: true,
+    product: {
+      id: 5,
+      name: "IKEA Sofa"
+    }
+  }
+];
 
 export default function NotificationsPage() {
   const router = useRouter()
-  const [notifications, setNotifications] = useState([])
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth()
+  const [notifications, setNotifications] = useState<Notification[]>([])
   const [activeFilter, setActiveFilter] = useState("all")
   
   // Check if user is logged in and fetch notifications
   useEffect(() => {
-    const isLoggedIn = localStorage.getItem('userLoggedIn')
-    const role = localStorage.getItem('userRole')
-    
-    if (!isLoggedIn) {
-      router.replace('/login')
-    } else if (role !== 'user') {
-      router.replace(role === 'admin' ? '/admin' : '/login')
+    if (!authLoading) {
+      if (!isAuthenticated) {
+        router.replace('/login')
+      } else if (user && user.role !== 'user') {
+        router.replace(user.role === 'admin' ? '/admin' : '/login')
+      } else {
+        // In a real app, you would fetch the notifications from your backend
+        setNotifications(mockNotifications)
+      }
     }
-    
-    // In a real app, you would fetch the notifications from your backend
-    setNotifications(mockNotifications)
-  }, [router])
+  }, [router, authLoading, isAuthenticated, user])
   
   // Filter notifications based on active filter
   const filteredNotifications = notifications.filter(notification => {
@@ -38,7 +93,7 @@ export default function NotificationsPage() {
     return true
   })
   
-  const markAsRead = (id) => {
+  const markAsRead = (id: number) => {
     setNotifications(prev => 
       prev.map(notification => 
         notification.id === id ? { ...notification, read: true } : notification
@@ -52,7 +107,7 @@ export default function NotificationsPage() {
     )
   }
   
-  const getNotificationIcon = (type) => {
+  const getNotificationIcon = (type: string) => {
     switch(type) {
       case "warranty-expiring":
         return <Clock className="h-5 w-5 text-amber-500" />
@@ -65,7 +120,7 @@ export default function NotificationsPage() {
     }
   }
   
-  const getNotificationBadge = (notification) => {
+  const getNotificationBadge = (notification: Notification) => {
     if (!notification.read) {
       return <Badge className="bg-amber-500 text-white">New</Badge>
     }

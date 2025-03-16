@@ -25,6 +25,7 @@ import {
 } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
+import { useAuth } from "@/lib/auth-context"
 
 // Mock data for user analytics
 const mockUserAnalytics = {
@@ -98,6 +99,7 @@ const mockUserAnalytics = {
 
 export default function UserAnalyticsPage() {
   const router = useRouter()
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth()
   const [userData, setUserData] = useState<typeof mockUserAnalytics | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [timeRange, setTimeRange] = useState("year")
@@ -105,21 +107,20 @@ export default function UserAnalyticsPage() {
   
   // Check if admin is logged in
   useEffect(() => {
-    const isLoggedIn = localStorage.getItem('userLoggedIn')
-    const role = localStorage.getItem('userRole')
-    
-    if (!isLoggedIn) {
-      router.replace('/login')
-    } else if (role !== 'admin') {
-      router.replace(role === 'user' ? '/user' : '/login')
+    if (!authLoading) {
+      if (!isAuthenticated) {
+        router.replace('/login')
+      } else if (user?.role !== 'admin') {
+        router.replace(user?.role === 'user' ? '/user' : '/login')
+      } else {
+        // In a real app, you would fetch the user analytics data from your backend
+        setTimeout(() => {
+          setUserData(mockUserAnalytics)
+          setIsLoading(false)
+        }, 500)
+      }
     }
-    
-    // In a real app, you would fetch the user analytics data from your backend
-    setTimeout(() => {
-      setUserData(mockUserAnalytics)
-      setIsLoading(false)
-    }, 500)
-  }, [router])
+  }, [router, authLoading, isAuthenticated, user])
   
   // Calculate max value for the bar chart
   const maxUserGrowth = userData 
