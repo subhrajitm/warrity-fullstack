@@ -21,9 +21,23 @@ export default function LoginPage() {
   // Check if user is already logged in
   useEffect(() => {
     if (isAuthenticated && user) {
-      router.replace(user.role === 'admin' ? '/admin' : '/user')
+      // Get the return URL from the query parameters
+      const params = new URLSearchParams(window.location.search);
+      const returnUrl = params.get('returnUrl');
+      
+      if (returnUrl) {
+        // Validate the return URL to ensure it's a relative path
+        if (returnUrl.startsWith('/')) {
+          router.replace(returnUrl);
+        } else {
+          console.error('Invalid return URL:', returnUrl);
+          router.replace(user.role === 'admin' ? '/admin' : '/user');
+        }
+      } else {
+        router.replace(user.role === 'admin' ? '/admin' : '/user');
+      }
     }
-  }, [isAuthenticated, user, router])
+  }, [isAuthenticated, user, router]);
   
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -35,19 +49,44 @@ export default function LoginPage() {
       return
     }
     
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      setError("Please enter a valid email address")
+      return
+    }
+    
+    // Basic password validation
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters long")
+      return
+    }
+    
     setIsLoading(true)
     
     try {
-      const success = await login(email, password)
+      console.log("Attempting login with:", { email }) // Don't log password
+      
+      // Get the return URL from the query parameters
+      const params = new URLSearchParams(window.location.search);
+      const returnUrl = params.get('returnUrl');
+      
+      // Only redirect to dashboard if there's no return URL
+      const success = await login(email, password, !returnUrl)
       
       if (success) {
-        // Login successful, the auth context will handle redirection
+        console.log("Login successful")
+        if (returnUrl && returnUrl.startsWith('/')) {
+          router.replace(returnUrl)
+        }
+        // If no returnUrl, the auth context will handle redirection
       } else {
-        setError("Login failed. Please check your credentials.")
+        console.log("Login failed")
+        setError("Invalid email or password. Please try again.")
       }
-    } catch (err) {
-      setError("An unexpected error occurred. Please try again.")
+    } catch (err: any) {
       console.error("Login error:", err)
+      setError(err?.message || "An unexpected error occurred. Please try again.")
     } finally {
       setIsLoading(false)
     }

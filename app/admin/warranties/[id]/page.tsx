@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, Suspense } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -62,13 +62,12 @@ interface Warranty {
   notes: string;
 }
 
-interface Params {
-  id: string;
+interface PageProps {
+  params: Promise<{ id: string }>;
 }
 
-export default function AdminWarrantyDetailsPage({ params }: { params: Params }) {
+function WarrantyDetails({ warrantyId }: { warrantyId: string }) {
   const router = useRouter()
-  const warrantyId = React.use(Promise.resolve(params.id))
   const { user, isAuthenticated, isLoading: authLoading } = useAuth()
   const [warranty, setWarranty] = useState<Warranty | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -133,10 +132,31 @@ export default function AdminWarrantyDetailsPage({ params }: { params: Params })
     }
   }
   
-  if (isLoading || !warranty) {
+  if (isLoading || authLoading) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <p className="text-amber-800 text-xl">Loading warranty details...</p>
+      <div className="container mx-auto p-6">
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="animate-spin h-8 w-8 border-4 border-amber-800 border-t-transparent rounded-full" />
+        </div>
+      </div>
+    )
+  }
+
+  if (!warranty) {
+    return (
+      <div className="container mx-auto p-6">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-amber-900">Warranty not found</h2>
+          <p className="mt-2 text-amber-800">The warranty you're looking for doesn't exist.</p>
+          <Button
+            variant="outline"
+            className="mt-4"
+            onClick={() => router.back()}
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Go Back
+          </Button>
+        </div>
       </div>
     )
   }
@@ -249,7 +269,7 @@ export default function AdminWarrantyDetailsPage({ params }: { params: Params })
             Delete Warranty
           </Button>
           
-          <Link href={`/admin/warranties/${warrantyId}/edit`}>
+          <Link href={`/admin/warranties/${warranty.id}/edit`}>
             <Button className="bg-amber-800 hover:bg-amber-900 text-amber-100 border-2 border-amber-900">
               <Edit className="mr-2 h-4 w-4" />
               Edit Warranty
@@ -258,5 +278,21 @@ export default function AdminWarrantyDetailsPage({ params }: { params: Params })
         </CardFooter>
       </Card>
     </div>
+  )
+}
+
+export default function AdminWarrantyDetailsPage({ params }: PageProps) {
+  const resolvedParams = React.use(params)
+  
+  return (
+    <Suspense fallback={
+      <div className="container mx-auto p-6">
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="animate-spin h-8 w-8 border-4 border-amber-800 border-t-transparent rounded-full" />
+        </div>
+      </div>
+    }>
+      <WarrantyDetails warrantyId={resolvedParams.id} />
+    </Suspense>
   )
 }

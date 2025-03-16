@@ -49,7 +49,7 @@ export default function AddProductPage() {
   useEffect(() => {
     if (!authLoading) {
       if (!isAuthenticated) {
-        router.replace('/login')
+        router.replace('/login?returnUrl=/user/products/add')
       } else if (user?.role !== 'user') {
         router.replace(user?.role === 'admin' ? '/admin' : '/login')
       }
@@ -65,7 +65,7 @@ export default function AddProductPage() {
     setFormData(prev => ({ ...prev, [name]: value }))
   }
   
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setIsSubmitting(true)
     
@@ -275,20 +275,20 @@ export default function AddProductPage() {
             
             <CardFooter className="bg-amber-200 border-t-4 border-amber-800 px-6 py-4 flex justify-between">
               <Button 
+                type="button"
                 variant="outline" 
-                className="border-amber-800 text-amber-800 hover:bg-amber-100"
-                onClick={() => router.push('/user/products')}
+                className="border-amber-800 text-amber-800 hover:bg-amber-200"
+                onClick={() => router.back()}
               >
                 Cancel
               </Button>
               
               <Button 
+                type="submit"
                 className="bg-amber-800 hover:bg-amber-900 text-amber-100 border-2 border-amber-900"
-                onClick={handleSubmit}
                 disabled={isSubmitting}
               >
-                <Save className="mr-2 h-4 w-4" />
-                {isSubmitting ? "Saving..." : "Save Product"}
+                {isSubmitting ? "Adding..." : "Add Product"}
               </Button>
             </CardFooter>
           </Card>

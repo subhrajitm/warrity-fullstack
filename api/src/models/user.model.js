@@ -71,6 +71,39 @@ userSchema.methods.toJSON = function() {
   return user;
 };
 
+// Create test users if they don't exist
+userSchema.statics.createTestUsers = async function() {
+  const testUsers = [
+    {
+      name: 'Admin User',
+      email: 'admin@example.com',
+      password: 'admin123',
+      role: 'admin'
+    },
+    {
+      name: 'Test User',
+      email: 'user@example.com',
+      password: 'user123',
+      role: 'user'
+    }
+  ];
+
+  for (const userData of testUsers) {
+    try {
+      const existingUser = await this.findOne({ email: userData.email });
+      if (!existingUser) {
+        await this.create(userData);
+        console.log(`Created test user: ${userData.email}`);
+      }
+    } catch (error) {
+      console.error(`Error creating test user ${userData.email}:`, error);
+    }
+  }
+};
+
 const User = mongoose.model('User', userSchema);
+
+// Create test users when the model is first loaded
+User.createTestUsers().catch(console.error);
 
 module.exports = User; 

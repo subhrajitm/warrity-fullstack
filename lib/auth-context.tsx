@@ -17,7 +17,7 @@ interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (email: string, password: string, shouldRedirect: boolean) => Promise<boolean>;
   logout: () => Promise<void>;
   register: (userData: any) => Promise<boolean>;
   updateProfile: (profileData: any) => Promise<boolean>;
@@ -77,27 +77,59 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     checkAuth();
   }, []);
 
-  const login = async (email: string, password: string): Promise<boolean> => {
+  const login = async (email: string, password: string, shouldRedirect: boolean = true): Promise<boolean> => {
     setIsLoading(true);
     try {
+      console.log('Attempting login with:', { email });
       const response = await authApi.login({ email, password });
       
+      console.log('Login response:', response);
+      
       if (response.error) {
-        handleApiError(response.error);
+        console.error('Login error:', response.error);
+        toast.error(response.error);
         return false;
       }
       
-      if (response.data?.token) {
-        localStorage.setItem('authToken', response.data.token);
-        setUser(response.data.user);
-        toast.success('Login successful');
-        return true;
+      if (!response.data) {
+        console.error('No data in login response');
+        toast.error('Invalid login response');
+        return false;
       }
       
-      return false;
+      const { token, user: userData } = response.data;
+      
+      if (!token || !userData) {
+        console.error('Missing token or user data in response');
+        toast.error('Invalid login response');
+        return false;
+      }
+      
+      // Save token
+      localStorage.setItem('authToken', token);
+      
+      // Transform and save user data
+      const user: User = {
+        id: userData.id || userData._id,
+        name: userData.name,
+        email: userData.email,
+        role: userData.role,
+        ...userData
+      };
+      
+      setUser(user);
+      toast.success('Login successful');
+      
+      // Only redirect if shouldRedirect is true
+      if (shouldRedirect) {
+        const redirectPath = user.role === 'admin' ? '/admin' : '/user';
+        router.push(redirectPath);
+      }
+      
+      return true;
     } catch (error) {
-      console.error('Login failed:', error);
-      toast.error('Login failed');
+      console.error('Login error:', error);
+      toast.error('Login failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
       return false;
     } finally {
       setIsLoading(false);

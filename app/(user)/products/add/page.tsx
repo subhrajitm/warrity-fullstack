@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { ChevronLeft } from "lucide-react"
@@ -12,9 +12,11 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import { useAuth } from "@/lib/auth-context"
 
 export default function AddProductPage() {
   const router = useRouter()
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [formData, setFormData] = useState({
     name: "",
@@ -52,6 +54,10 @@ export default function AddProductPage() {
     setIsSubmitting(true)
 
     try {
+      if (!isAuthenticated) {
+        router.replace('/login?returnUrl=/products/add')
+        return
+      }
       // In a real app, this would call the server action
       // await addProduct(formData)
       console.log("Product added:", formData)
@@ -62,6 +68,15 @@ export default function AddProductPage() {
       setIsSubmitting(false)
     }
   }
+
+  // Add authentication check
+  useEffect(() => {
+    if (!authLoading) {
+      if (!isAuthenticated) {
+        router.replace('/login?returnUrl=/products/add')
+      }
+    }
+  }, [router, authLoading, isAuthenticated])
 
   return (
     <div className="container py-10">

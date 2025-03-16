@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ArrowLeft, Save, X } from "lucide-react"
+import { useAuth } from "@/lib/auth-context"
 
 // Define Product interface
 interface Product {
@@ -27,6 +28,7 @@ interface Product {
 
 export default function AddProductPage() {
   const router = useRouter()
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth()
   const [isLoading, setIsLoading] = useState(true)
   const [formData, setFormData] = useState<Omit<Product, 'id'>>({
     name: "",
@@ -42,17 +44,15 @@ export default function AddProductPage() {
   
   // Check if admin is logged in
   useEffect(() => {
-    const isLoggedIn = localStorage.getItem('userLoggedIn')
-    const role = localStorage.getItem('userRole')
-    
-    if (!isLoggedIn) {
-      router.replace('/login')
-    } else if (role !== 'admin') {
-      router.replace(role === 'user' ? '/user' : '/login')
+    if (!authLoading) {
+      if (!isAuthenticated) {
+        router.replace('/login?returnUrl=/admin/products/add')
+      } else if (user?.role !== 'admin') {
+        router.replace(user?.role === 'user' ? '/user' : '/login')
+      }
+      setIsLoading(false)
     }
-    
-    setIsLoading(false)
-  }, [router])
+  }, [router, authLoading, isAuthenticated, user])
   
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target

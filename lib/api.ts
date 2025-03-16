@@ -105,6 +105,7 @@ async function uploadFile<T>(
       method: 'POST',
       headers,
       credentials: 'include',
+      mode: 'cors',
       body: formData,
     });
 
