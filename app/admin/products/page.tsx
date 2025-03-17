@@ -64,35 +64,60 @@ export default function AdminProductsPage() {
     }
   }, [isAuthenticated, user?.role, router, authLoading])
 
-  // Fetch products
-  useEffect(() => {
-    const fetchProducts = async () => {
-      if (authLoading || !isAuthenticated || user?.role !== 'admin') return
-      
-      try {
-        const response = await productApi.getAllProducts()
-        if (response.error) {
-          toast.error('Failed to fetch products: ' + response.error)
-          return
-        }
-        if (response.data?.products) {
-          const products = response.data.products.map(product => ({
-            ...product,
-            id: product._id // Map MongoDB _id to our frontend id
-          })) as Product[]
-          setProducts(products)
-          setFilteredProducts(products)
-        }
-      } catch (error) {
-        toast.error('An error occurred while fetching products')
-        console.error('Error fetching products:', error)
-      } finally {
-        setIsLoading(false)
+  // Function to fetch products
+  const fetchProducts = async () => {
+    if (authLoading || !isAuthenticated || user?.role !== 'admin') return
+    
+    try {
+      const response = await productApi.getAllProducts()
+      if (response.error) {
+        toast.error('Failed to fetch products: ' + response.error)
+        return
       }
+      if (response.data?.products) {
+        const products = response.data.products.map(product => ({
+          ...product,
+          id: product._id // Map MongoDB _id to our frontend id
+        })) as Product[]
+        setProducts(products)
+        setFilteredProducts(products)
+      }
+    } catch (error) {
+      toast.error('An error occurred while fetching products')
+      console.error('Error fetching products:', error)
+    } finally {
+      setIsLoading(false)
     }
+  }
 
+  // Focus state to track when page gains focus
+  const [hasFocus, setHasFocus] = useState(false)
+
+  // Fetch products initially
+  useEffect(() => {
     fetchProducts()
   }, [isAuthenticated, user?.role, authLoading])
+
+  // Refetch products when page gains focus
+  useEffect(() => {
+    const onFocus = () => {
+      setHasFocus(true)
+      fetchProducts()
+    }
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
+  }, [])
+
+  // Refetch products when navigating back using browser history
+  useEffect(() => {
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchProducts()
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange)
+  }, [])
   
   // Filter and sort products
   useEffect(() => {

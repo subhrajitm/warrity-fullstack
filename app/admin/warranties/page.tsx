@@ -22,65 +22,27 @@ import {
 } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 
+import { warrantyApi } from "@/lib/api"
+import { toast } from "sonner"
+
 // Define Warranty interface
 interface Warranty {
-  id: number;
-  productName: string;
-  manufacturer: string;
+  id: string;
+  productId: string;
   startDate: string;
   endDate: string;
   status: "active" | "expiring" | "expired";
-  user: string;
+  documents: {
+    id: string;
+    name: string;
+    url: string;
+    type: string;
+    uploadedAt: string;
+  }[];
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
 }
-
-// Mock warranties for demonstration
-const mockWarranties: Warranty[] = [
-  {
-    id: 1,
-    productName: "Samsung 55\" QLED TV",
-    manufacturer: "Samsung Electronics",
-    startDate: "2023-01-15",
-    endDate: "2025-01-15",
-    status: "active",
-    user: "John Doe"
-  },
-  {
-    id: 2,
-    productName: "Bosch Dishwasher",
-    manufacturer: "Bosch",
-    startDate: "2022-05-10",
-    endDate: "2025-05-10",
-    status: "active",
-    user: "Jane Smith"
-  },
-  {
-    id: 3,
-    productName: "MacBook Pro 16\"",
-    manufacturer: "Apple Inc.",
-    startDate: "2023-03-22",
-    endDate: "2024-03-22",
-    status: "expiring",
-    user: "Michael Johnson"
-  },
-  {
-    id: 4,
-    productName: "Dyson V11 Vacuum",
-    manufacturer: "Dyson Inc.",
-    startDate: "2022-08-05",
-    endDate: "2023-08-05",
-    status: "expired",
-    user: "Sarah Williams"
-  },
-  {
-    id: 5,
-    productName: "IKEA Sofa",
-    manufacturer: "IKEA",
-    startDate: "2022-11-30",
-    endDate: "2023-11-30",
-    status: "expired",
-    user: "David Brown"
-  }
-]
 
 export default function AdminWarrantiesPage() {
   const router = useRouter()
@@ -93,21 +55,66 @@ export default function AdminWarrantiesPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [isLoading, setIsLoading] = useState(true)
   
-  // Check if admin is logged in and fetch warranties
+  // Handle authentication
   useEffect(() => {
-    if (!authLoading) {
-      if (!isAuthenticated) {
-        router.replace('/login')
-      } else if (user?.role !== 'admin') {
-        router.replace(user?.role === 'user' ? '/user' : '/login')
-      } else {
-        // In a real app, you would fetch the warranties from your backend
-        setWarranties(mockWarranties)
-        setFilteredWarranties(mockWarranties)
-        setIsLoading(false)
+    if (authLoading) return
+    
+    if (!isAuthenticated) {
+      router.replace('/login')
+      return
+    }
+    if (user?.role !== 'admin') {
+      router.replace(user?.role === 'user' ? '/user' : '/login')
+      return
+    }
+  }, [isAuthenticated, user?.role, router, authLoading])
+
+  // Function to fetch warranties
+  const fetchWarranties = async () => {
+    if (authLoading || !isAuthenticated || user?.role !== 'admin') return
+    
+    try {
+      const response = await warrantyApi.getAllWarranties()
+      if (response.error) {
+        toast.error('Failed to fetch warranties: ' + response.error)
+        return
+      }
+      if (response.data?.warranties) {
+        setWarranties(response.data.warranties)
+        setFilteredWarranties(response.data.warranties)
+      }
+    } catch (error) {
+      toast.error('An error occurred while fetching warranties')
+      console.error('Error fetching warranties:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // Fetch warranties initially
+  useEffect(() => {
+    fetchWarranties()
+  }, [isAuthenticated, user?.role, authLoading])
+
+  // Refetch warranties when page gains focus
+  useEffect(() => {
+    const onFocus = () => {
+      fetchWarranties()
+    }
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
+  }, [])
+
+  // Refetch warranties when navigating back using browser history
+  useEffect(() => {
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchWarranties()
       }
     }
-  }, [router, authLoading, isAuthenticated, user])
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange)
+  }, [])
   
   // Filter and sort warranties
   useEffect(() => {
@@ -122,21 +129,20 @@ export default function AdminWarrantiesPage() {
     if (searchQuery) {
       const query = searchQuery.toLowerCase()
       result = result.filter(warranty => 
-        warranty.productName.toLowerCase().includes(query) || 
-        warranty.manufacturer.toLowerCase().includes(query) ||
-        warranty.user.toLowerCase().includes(query)
+        warranty.productId.toLowerCase().includes(query) || 
+        warranty.notes?.toLowerCase().includes(query) || false
       )
     }
     
     // Apply sorting
     result.sort((a, b) => {
-      const valueA = a[sortField]
-      const valueB = b[sortField]
+      const valueA = String(a[sortField] || '')
+      const valueB = String(b[sortField] || '')
       
       if (sortDirection === 'asc') {
-        return valueA > valueB ? 1 : -1
+        return valueA.localeCompare(valueB)
       } else {
-        return valueA < valueB ? 1 : -1
+        return valueB.localeCompare(valueA)
       }
     })
     
@@ -164,11 +170,20 @@ export default function AdminWarrantiesPage() {
       : <SortDesc className="h-4 w-4 ml-1" />
   }
   
-  const handleDeleteWarranty = (id: number) => {
+  const handleDeleteWarranty = async (id: string) => {
     if (confirm("Are you sure you want to delete this warranty?")) {
-      // In a real app, you would send a delete request to your backend
-      const updatedWarranties = warranties.filter(warranty => warranty.id !== id)
-      setWarranties(updatedWarranties)
+      try {
+        const response = await warrantyApi.deleteWarranty(id)
+        if (response.error) {
+          toast.error('Failed to delete warranty: ' + response.error)
+          return
+        }
+        toast.success('Warranty deleted successfully')
+        fetchWarranties()
+      } catch (error) {
+        toast.error('An error occurred while deleting the warranty')
+        console.error('Error deleting warranty:', error)
+      }
     }
   }
   
@@ -296,9 +311,9 @@ export default function AdminWarrantiesPage() {
               Sort by:
               <button 
                 className="ml-2 flex items-center font-medium hover:text-amber-600"
-                onClick={() => handleSortChange('productName')}
+                onClick={() => handleSortChange('productId')}
               >
-                Product {getSortIcon('productName')}
+                Product {getSortIcon('productId')}
               </button>
               <span className="mx-2">|</span>
               <button 
@@ -310,9 +325,9 @@ export default function AdminWarrantiesPage() {
               <span className="mx-2">|</span>
               <button 
                 className="flex items-center font-medium hover:text-amber-600"
-                onClick={() => handleSortChange('user')}
+                onClick={() => handleSortChange('createdAt')}
               >
-                User {getSortIcon('user')}
+                Created {getSortIcon('createdAt')}
               </button>
             </div>
           </div>
@@ -324,13 +339,13 @@ export default function AdminWarrantiesPage() {
               <thead className="bg-amber-200 border-b-2 border-amber-800">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-amber-900 uppercase tracking-wider">
-                    Product
+                    Product ID
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-amber-900 uppercase tracking-wider">
-                    Manufacturer
+                    Notes
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-amber-900 uppercase tracking-wider">
-                    User
+                    Documents
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-amber-900 uppercase tracking-wider">
                     Start Date
@@ -359,19 +374,19 @@ export default function AdminWarrantiesPage() {
                   filteredWarranties.map(warranty => (
                     <tr key={warranty.id} className="hover:bg-amber-100">
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="font-medium text-amber-900">{warranty.productName}</div>
+                        <div className="font-medium text-amber-900">{warranty.productId}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-amber-800">{warranty.manufacturer}</div>
+                        <div className="text-amber-800">{warranty.notes || 'No notes'}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-amber-800">{warranty.user}</div>
+                        <div className="text-amber-800">{warranty.documents.length} documents</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-amber-800">{warranty.startDate}</div>
+                        <div className="text-amber-800">{new Date(warranty.startDate).toLocaleDateString()}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-amber-800">{warranty.endDate}</div>
+                        <div className="text-amber-800">{new Date(warranty.endDate).toLocaleDateString()}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {getStatusBadge(warranty.status)}
