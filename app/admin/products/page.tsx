@@ -42,7 +42,7 @@ interface Product {
 
 export default function AdminProductsPage() {
   const router = useRouter()
-  const { user, isAuthenticated } = useAuth()
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth()
   const [products, setProducts] = useState<Product[]>([])
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([])
   const [searchQuery, setSearchQuery] = useState("")
@@ -50,17 +50,25 @@ export default function AdminProductsPage() {
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
   const [isLoading, setIsLoading] = useState(true)
   
-  // Check if admin is logged in and fetch products
+  // Handle authentication
   useEffect(() => {
+    if (authLoading) return
+    
     if (!isAuthenticated) {
       router.replace('/login')
       return
-    } else if (user?.role !== 'admin') {
+    }
+    if (user?.role !== 'admin') {
       router.replace(user?.role === 'user' ? '/user' : '/login')
       return
     }
-    
+  }, [isAuthenticated, user?.role, router, authLoading])
+
+  // Fetch products
+  useEffect(() => {
     const fetchProducts = async () => {
+      if (authLoading || !isAuthenticated || user?.role !== 'admin') return
+      
       try {
         const response = await productApi.getAllProducts()
         if (response.error) {
@@ -84,7 +92,7 @@ export default function AdminProductsPage() {
     }
 
     fetchProducts()
-  }, [isAuthenticated, user?.role, router])
+  }, [isAuthenticated, user?.role, authLoading])
   
   // Filter and sort products
   useEffect(() => {
@@ -157,12 +165,16 @@ export default function AdminProductsPage() {
     }
   }
   
-  if (isLoading) {
+  if (authLoading || isLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <p className="text-amber-800 text-xl">Loading products...</p>
+        <p className="text-amber-800 text-xl">Loading...</p>
       </div>
     )
+  }
+  
+  if (!isAuthenticated || user?.role !== 'admin') {
+    return null
   }
   
   return (
