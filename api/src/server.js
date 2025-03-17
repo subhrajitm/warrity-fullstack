@@ -10,8 +10,9 @@ const rateLimit = require('express-rate-limit');
 const fs = require('fs');
 const logger = require('./config/logger');
 
-// Load default environment variables first
-dotenv.config();
+// Load environment variables based on NODE_ENV first
+const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env';
+dotenv.config({ path: path.resolve(process.cwd(), '../', envFile) });
 
 // Create logs directory if it doesn't exist
 const logsDir = path.join(process.cwd(), 'logs');
@@ -25,9 +26,10 @@ if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
-// Load environment variables based on NODE_ENV
-const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env';
-dotenv.config({ path: path.resolve(process.cwd(), envFile) });
+// Load local environment variables if they exist
+if (fs.existsSync(path.resolve(process.cwd(), '../.env.local'))) {
+  dotenv.config({ path: path.resolve(process.cwd(), '../.env.local') });
+}
 
 // Import routes
 const authRoutes = require('./routes/auth.routes');

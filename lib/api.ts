@@ -16,6 +16,7 @@ interface ApiResponse<T = any> {
 }
 
 interface ProductData {
+  id?: string; // Optional for creation, required when returned from API
   name: string;
   category: string;
   model?: string;
@@ -27,6 +28,8 @@ interface ProductData {
   receiptNumber?: string;
   description?: string;
   notes?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 // API Types
