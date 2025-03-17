@@ -26,22 +26,6 @@ This API provides all the necessary endpoints for the Warrity application, inclu
 - MongoDB (local installation or MongoDB Atlas)
 - Docker and Docker Compose (for production deployment)
 
-### MongoDB Setup
-
-#### Local MongoDB
-
-1. Install MongoDB on your local machine
-2. Start the MongoDB service
-3. Create a database named `warrity`
-
-#### MongoDB Atlas
-
-1. Create a MongoDB Atlas account
-2. Set up a new cluster
-3. Create a database user
-4. Get your connection string
-5. Update the `.env` file with your connection string
-
 ### Installation
 
 1. Clone the repository
