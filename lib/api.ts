@@ -55,25 +55,10 @@ interface User {
   updatedAt: string;
 }
 
-interface Warranty {
-  id: string;
-  productId: string;
-  startDate: string;
-  endDate: string;
-  status: 'active' | 'expired' | 'expiring';
-  documents: WarrantyDocument[];
-  notes?: string;
-  createdAt: string;
-  updatedAt: string;
-}
+// Import shared types
+import type { Warranty, WarrantyInput } from '@/types/warranty';
 
-interface WarrantyDocument {
-  id: string;
-  name: string;
-  url: string;
-  type: string;
-  uploadedAt: string;
-}
+
 
 interface Event {
   id: string;
@@ -469,7 +454,7 @@ export const userApi = {
 export const warrantyApi = {
   getAllWarranties: () => apiRequest<{ warranties: Warranty[] }>('/warranties', 'GET'),
   getWarrantyById: (id: string) => apiRequest<{ warranty: Warranty }>(`/warranties/${id}`, 'GET'),
-  createWarranty: (warrantyData: Omit<Warranty, 'id' | 'createdAt' | 'updatedAt'>) => 
+  createWarranty: (warrantyData: WarrantyInput) => 
     apiRequest<{ warranty: Warranty }>('/warranties', 'POST', warrantyData),
   updateWarranty: (id: string, warrantyData: Partial<Warranty>) => 
     apiRequest<{ warranty: Warranty }>(`/warranties/${id}`, 'PUT', warrantyData),

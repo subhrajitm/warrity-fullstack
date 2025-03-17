@@ -10,23 +10,23 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { useAuth } from "@/lib/auth-context"
 import { warrantyApi } from "@/lib/api"
+import type { WarrantyInput } from '@/types/warranty'
 
-interface FormData {
-  productId: string;
-  startDate: string;
-  endDate: string;
-  notes?: string;
-}
+// Using shared types
 
 export default function AddWarrantyPage() {
   const router = useRouter()
   const { user, isAuthenticated, isLoading: authLoading } = useAuth()
   const [error, setError] = useState("")
-  const [formData, setFormData] = useState<FormData>({
-    productId: "",
-    startDate: "",
-    endDate: "",
-    notes: ""
+  const [formData, setFormData] = useState<Omit<WarrantyInput, 'documents'>>({    
+    product: "",
+    purchaseDate: "",
+    expirationDate: "",
+    warrantyProvider: "",
+    warrantyNumber: "",
+    coverageDetails: "",
+    notes: "",
+    status: "active"
   })
 
   // Handle authentication
@@ -58,7 +58,6 @@ export default function AddWarrantyPage() {
     try {
       const response = await warrantyApi.createWarranty({
         ...formData,
-        status: 'active',
         documents: []
       })
       if (response.error) {
@@ -106,11 +105,11 @@ export default function AddWarrantyPage() {
             )}
             
             <div className="space-y-2">
-              <Label htmlFor="productId" className="text-amber-900">Product ID</Label>
+              <Label htmlFor="product" className="text-amber-900">Product ID</Label>
               <Input
-                id="productId"
-                name="productId"
-                value={formData.productId}
+                id="product"
+                name="product"
+                value={formData.product}
                 onChange={handleInputChange}
                 className="border-2 border-amber-800 bg-amber-50"
                 required
@@ -118,12 +117,11 @@ export default function AddWarrantyPage() {
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="startDate" className="text-amber-900">Start Date</Label>
+              <Label htmlFor="warrantyProvider" className="text-amber-900">Warranty Provider</Label>
               <Input
-                type="date"
-                id="startDate"
-                name="startDate"
-                value={formData.startDate}
+                id="warrantyProvider"
+                name="warrantyProvider"
+                value={formData.warrantyProvider}
                 onChange={handleInputChange}
                 className="border-2 border-amber-800 bg-amber-50"
                 required
@@ -131,14 +129,52 @@ export default function AddWarrantyPage() {
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="endDate" className="text-amber-900">End Date</Label>
+              <Label htmlFor="warrantyNumber" className="text-amber-900">Warranty Number</Label>
               <Input
-                type="date"
-                id="endDate"
-                name="endDate"
-                value={formData.endDate}
+                id="warrantyNumber"
+                name="warrantyNumber"
+                value={formData.warrantyNumber}
                 onChange={handleInputChange}
                 className="border-2 border-amber-800 bg-amber-50"
+                required
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="purchaseDate" className="text-amber-900">Purchase Date</Label>
+              <Input
+                type="date"
+                id="purchaseDate"
+                name="purchaseDate"
+                value={formData.purchaseDate}
+                onChange={handleInputChange}
+                className="border-2 border-amber-800 bg-amber-50"
+                required
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="expirationDate" className="text-amber-900">Expiration Date</Label>
+              <Input
+                type="date"
+                id="expirationDate"
+                name="expirationDate"
+                value={formData.expirationDate}
+                onChange={handleInputChange}
+                className="border-2 border-amber-800 bg-amber-50"
+                required
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="coverageDetails" className="text-amber-900">Coverage Details</Label>
+              <Textarea
+                id="coverageDetails"
+                name="coverageDetails"
+                value={formData.coverageDetails}
+                onChange={handleInputChange}
+                className="border-2 border-amber-800 bg-amber-50 min-h-[100px]"
+                placeholder="Enter warranty coverage details..."
                 required
               />
             </div>

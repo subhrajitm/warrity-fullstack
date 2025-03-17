@@ -22,27 +22,11 @@ import {
 } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 
-import { warrantyApi } from "@/lib/api"
+import { adminApi, warrantyApi } from "@/lib/api"
 import { toast } from "sonner"
 
-// Define Warranty interface
-interface Warranty {
-  id: string;
-  productId: string;
-  startDate: string;
-  endDate: string;
-  status: "active" | "expiring" | "expired";
-  documents: {
-    id: string;
-    name: string;
-    url: string;
-    type: string;
-    uploadedAt: string;
-  }[];
-  notes?: string;
-  createdAt: string;
-  updatedAt: string;
-}
+// Import shared types
+import type { Warranty } from '@/types/warranty'
 
 export default function AdminWarrantiesPage() {
   const router = useRouter()
@@ -50,7 +34,7 @@ export default function AdminWarrantiesPage() {
   const [warranties, setWarranties] = useState<Warranty[]>([])
   const [filteredWarranties, setFilteredWarranties] = useState<Warranty[]>([])
   const [searchQuery, setSearchQuery] = useState("")
-  const [sortField, setSortField] = useState<keyof Warranty>("endDate")
+  const [sortField, setSortField] = useState<keyof Warranty | 'product.name' | 'product.manufacturer' | 'purchaseDate' | 'expirationDate'>("expirationDate")
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [isLoading, setIsLoading] = useState(true)
@@ -74,14 +58,16 @@ export default function AdminWarrantiesPage() {
     if (authLoading || !isAuthenticated || user?.role !== 'admin') return
     
     try {
-      const response = await warrantyApi.getAllWarranties()
+      const response = await adminApi.getAllWarranties()
       if (response.error) {
         toast.error('Failed to fetch warranties: ' + response.error)
         return
       }
       if (response.data?.warranties) {
-        setWarranties(response.data.warranties)
-        setFilteredWarranties(response.data.warranties)
+        // Admin API returns array of warranties
+        const warrantyList = response.data.warranties
+        setWarranties(warrantyList)
+        setFilteredWarranties(warrantyList)
       }
     } catch (error) {
       toast.error('An error occurred while fetching warranties')
@@ -129,15 +115,29 @@ export default function AdminWarrantiesPage() {
     if (searchQuery) {
       const query = searchQuery.toLowerCase()
       result = result.filter(warranty => 
-        warranty.productId.toLowerCase().includes(query) || 
+        (warranty.product?.name?.toLowerCase().includes(query) || false) || 
+        (warranty.product?.manufacturer?.toLowerCase().includes(query) || false) || 
+        warranty.warrantyProvider.toLowerCase().includes(query) || 
+        warranty.warrantyNumber.toLowerCase().includes(query) || 
         warranty.notes?.toLowerCase().includes(query) || false
       )
     }
     
     // Apply sorting
     result.sort((a, b) => {
-      const valueA = String(a[sortField] || '')
-      const valueB = String(b[sortField] || '')
+      let valueA: string
+      let valueB: string
+      
+      if (sortField === 'product.name') {
+        valueA = a.product?.name || ''
+        valueB = b.product?.name || ''
+      } else if (sortField === 'product.manufacturer') {
+        valueA = a.product?.manufacturer || ''
+        valueB = b.product?.manufacturer || ''
+      } else {
+        valueA = String(a[sortField as keyof Warranty] || '')
+        valueB = String(b[sortField as keyof Warranty] || '')
+      }
       
       if (sortDirection === 'asc') {
         return valueA.localeCompare(valueB)
@@ -153,7 +153,7 @@ export default function AdminWarrantiesPage() {
     setSearchQuery(e.target.value)
   }
   
-  const handleSortChange = (field: keyof Warranty) => {
+  const handleSortChange = (field: keyof Warranty | 'product.name' | 'product.manufacturer' | 'purchaseDate' | 'expirationDate') => {
     if (sortField === field) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
     } else {
@@ -162,7 +162,7 @@ export default function AdminWarrantiesPage() {
     }
   }
   
-  const getSortIcon = (field: keyof Warranty) => {
+  const getSortIcon = (field: keyof Warranty | 'product.name' | 'product.manufacturer' | 'purchaseDate' | 'expirationDate') => {
     if (sortField !== field) return null
     
     return sortDirection === 'asc' 
@@ -311,16 +311,16 @@ export default function AdminWarrantiesPage() {
               Sort by:
               <button 
                 className="ml-2 flex items-center font-medium hover:text-amber-600"
-                onClick={() => handleSortChange('productId')}
+                onClick={() => handleSortChange('product.name')}
               >
-                Product {getSortIcon('productId')}
+                Product {getSortIcon('product.name')}
               </button>
               <span className="mx-2">|</span>
               <button 
                 className="flex items-center font-medium hover:text-amber-600"
-                onClick={() => handleSortChange('endDate')}
+                onClick={() => handleSortChange('expirationDate')}
               >
-                Expiry Date {getSortIcon('endDate')}
+                Expiry Date {getSortIcon('expirationDate')}
               </button>
               <span className="mx-2">|</span>
               <button 
@@ -339,19 +339,19 @@ export default function AdminWarrantiesPage() {
               <thead className="bg-amber-200 border-b-2 border-amber-800">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-amber-900 uppercase tracking-wider">
-                    Product ID
+                    Product
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-amber-900 uppercase tracking-wider">
-                    Notes
+                    Warranty #
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-amber-900 uppercase tracking-wider">
-                    Documents
+                    Provider
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-amber-900 uppercase tracking-wider">
-                    Start Date
+                    Purchase Date
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-amber-900 uppercase tracking-wider">
-                    Expiry Date
+                    Expiration Date
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-amber-900 uppercase tracking-wider">
                     Status
@@ -363,7 +363,7 @@ export default function AdminWarrantiesPage() {
               </thead>
               <tbody className="bg-amber-50 divide-y divide-amber-200">
                 {filteredWarranties.length === 0 ? (
-                  <tr>
+                  <tr key="no-warranties">
                     <td colSpan={7} className="px-6 py-10 text-center text-amber-800">
                       <FileText className="h-12 w-12 mx-auto mb-2 text-amber-400" />
                       <p className="text-lg font-medium">No warranties found</p>
@@ -371,28 +371,38 @@ export default function AdminWarrantiesPage() {
                     </td>
                   </tr>
                 ) : (
-                  filteredWarranties.map(warranty => (
-                    <tr key={warranty.id} className="hover:bg-amber-100">
+                  filteredWarranties.map((warranty, index) => (
+                    <tr key={`${warranty.id}-${index}`} className="hover:bg-amber-100">
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="font-medium text-amber-900">{warranty.productId}</div>
+                        <div className="font-medium text-amber-900">{warranty.product?.name || 'Unknown Product'}</div>
+                        <div className="text-sm text-amber-700">{warranty.product?.manufacturer || 'Unknown Manufacturer'}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-amber-800">{warranty.notes || 'No notes'}</div>
+                        <div className="text-amber-800">{warranty.warrantyNumber}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-amber-800">{warranty.documents.length} documents</div>
+                        <div className="text-amber-800">{warranty.warrantyProvider}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-amber-800">{new Date(warranty.startDate).toLocaleDateString()}</div>
+                        <div className="text-amber-800">{new Date(warranty.purchaseDate).toLocaleDateString()}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-amber-800">{new Date(warranty.endDate).toLocaleDateString()}</div>
+                        <div className="text-amber-800">{new Date(warranty.expirationDate).toLocaleDateString()}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {getStatusBadge(warranty.status)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right">
                         <div className="flex justify-end space-x-2">
+                          <Link href={`/admin/warranties/${warranty.id}`}>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              className="border-amber-800 text-amber-800"
+                            >
+                              <FileText className="h-4 w-4" />
+                            </Button>
+                          </Link>
                           <Link href={`/admin/warranties/${warranty.id}/edit`}>
                             <Button 
                               variant="outline" 
