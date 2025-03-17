@@ -68,6 +68,10 @@ interface Props {
 export default function AdminEditProductForm({ productId }: Props) {
   const router = useRouter()
   const { user: authUser, isAuthenticated, isLoading: authLoading } = useAuth()
+  
+  const handleCancel = () => {
+    router.back()
+  }
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [product, setProduct] = useState<Product | null>(null)
@@ -358,11 +362,14 @@ export default function AdminEditProductForm({ productId }: Props) {
             </CardContent>
             
             <CardFooter className="bg-amber-200 border-t-4 border-amber-800 px-6 py-4 flex justify-between">
-              <Link href={`/admin/products/${productId}`}>
-                <Button variant="outline" className="border-2 border-amber-800 text-amber-800">
-                  Cancel
-                </Button>
-              </Link>
+              <Button 
+                type="button"
+                variant="outline" 
+                className="border-2 border-amber-800 text-amber-800"
+                onClick={() => router.back()}
+              >
+                Cancel
+              </Button>
               
               <Button 
                 type="submit"

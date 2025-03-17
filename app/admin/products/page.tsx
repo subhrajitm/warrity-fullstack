@@ -16,7 +16,8 @@ import {
   Package,
   Filter,
   SortAsc,
-  SortDesc
+  SortDesc,
+  Eye
 } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { productApi } from "@/lib/api"
@@ -270,8 +271,13 @@ export default function AdminProductsPage() {
                         </td>
                         <td className="py-3 px-4 text-right">
                           <div className="flex justify-end space-x-2">
+                            <Link href={`/admin/products/${product.id}`}>
+                              <Button variant="outline" size="sm" className="h-8 border-amber-800 text-amber-800" title="View Product">
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                            </Link>
                             <Link href={`/admin/products/${product.id}/edit`}>
-                              <Button variant="outline" size="sm" className="h-8 border-amber-800 text-amber-800">
+                              <Button variant="outline" size="sm" className="h-8 border-amber-800 text-amber-800" title="Edit Product">
                                 <Edit className="h-4 w-4" />
                               </Button>
                             </Link>
@@ -280,6 +286,7 @@ export default function AdminProductsPage() {
                               size="sm" 
                               className="h-8 border-red-800 text-red-800"
                               onClick={() => handleDeleteProduct(product.id)}
+                              title="Delete Product"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>

@@ -7,7 +7,7 @@ import AdminProductDetails from "./AdminProductDetails"
 import { productApi } from "@/lib/api"
 import { toast } from "sonner"
 import { Product } from "@/types/product"
-import { useAuth } from "@/hooks/useAuth"
+import { useAuth } from "@/lib/auth-context"
 import { Card, CardContent } from "@/components/ui/card"
 import { Package } from "lucide-react"
 
@@ -25,15 +25,10 @@ export default function AdminProductPage({ params }: PageProps) {
   const { id } = use(params)
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      router.replace('/login')
-      return
-    } else if (user?.role !== 'admin') {
-      router.replace(user?.role === 'user' ? '/user' : '/login')
-      return
-    }
-
     const fetchProduct = async () => {
+      if (!isAuthenticated) return
+      if (user?.role !== 'admin') return
+      
       try {
         const response = await productApi.getProductById(id)
         if (response.error) {
@@ -57,7 +52,18 @@ export default function AdminProductPage({ params }: PageProps) {
     }
 
     fetchProduct()
-  }, [isAuthenticated, user?.role, router, id])
+  }, [isAuthenticated, user?.role, id])
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.replace('/login')
+      return
+    }
+    if (user?.role !== 'admin') {
+      router.replace(user?.role === 'user' ? '/user' : '/login')
+      return
+    }
+  }, [isAuthenticated, user?.role, router])
 
   if (isLoading) {
     return (
