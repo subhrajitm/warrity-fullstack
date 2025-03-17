@@ -547,6 +547,37 @@ export const adminApi = {
   getStats: () => apiRequest<{ stats: DashboardStats }>('/admin/stats', 'GET'),
   getAllProducts: () => apiRequest<{ products: ProductData[] }>('/admin/products', 'GET'),
   getAllEvents: () => apiRequest<{ events: Event[] }>('/admin/events', 'GET'),
+  getUserById: async (userId) => {
+    try {
+      // Get the token from localStorage using the correct key
+      const token = localStorage.getItem('authToken');
+      
+      console.log('Token for API request:', token ? 'Token exists' : 'No token found');
+      
+      if (!token) {
+        return { error: 'Authentication token not found. Please log in again.' };
+      }
+      
+      const response = await fetch(`${API_BASE_URL}/users/${userId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        return { error: data.message || 'Failed to fetch user details' };
+      }
+      
+      return { data };
+    } catch (error) {
+      console.error('API error in getUserById:', error);
+      return { error: 'An error occurred while fetching user details' };
+    }
+  }
 };
 
 // Health API
@@ -700,4 +731,4 @@ export default {
   admin: adminApi,
   health: healthApi,
   handleApiError,
-}; 
+};

@@ -66,6 +66,13 @@ export default function AdminWarrantiesPage() {
       if (response.data?.warranties) {
         // Admin API returns array of warranties
         const warrantyList = response.data.warranties
+        
+        // Debug: Check if any warranties are missing IDs
+        const missingIds = warrantyList.filter(w => !w._id)
+        if (missingIds.length > 0) {
+          console.warn('Some warranties are missing _id:', missingIds)
+        }
+        
         setWarranties(warrantyList)
         setFilteredWarranties(warrantyList)
       }
@@ -371,8 +378,9 @@ export default function AdminWarrantiesPage() {
                     </td>
                   </tr>
                 ) : (
+                  // In the table rows where you render the warranties
                   filteredWarranties.map((warranty, index) => (
-                    <tr key={`${warranty.id}-${index}`} className="hover:bg-amber-100">
+                    <tr key={`${warranty._id}-${index}`} className="hover:bg-amber-100">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="font-medium text-amber-900">{warranty.product?.name || 'Unknown Product'}</div>
                         <div className="text-sm text-amber-700">{warranty.product?.manufacturer || 'Unknown Manufacturer'}</div>
@@ -394,20 +402,22 @@ export default function AdminWarrantiesPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right">
                         <div className="flex justify-end space-x-2">
-                          <Link href={`/admin/warranties/${warranty.id}`}>
+                          <Link href={warranty._id ? `/admin/warranties/${warranty._id}` : "#"}>
                             <Button 
                               variant="outline" 
                               size="sm"
                               className="border-amber-800 text-amber-800"
+                              disabled={!warranty._id}
                             >
                               <FileText className="h-4 w-4" />
                             </Button>
                           </Link>
-                          <Link href={`/admin/warranties/${warranty.id}/edit`}>
+                          <Link href={warranty._id ? `/admin/warranties/${warranty._id}/edit` : "#"}>
                             <Button 
                               variant="outline" 
                               size="sm"
                               className="border-amber-800 text-amber-800"
+                              disabled={!warranty._id}
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
@@ -416,7 +426,8 @@ export default function AdminWarrantiesPage() {
                             variant="outline" 
                             size="sm"
                             className="border-red-800 text-red-800"
-                            onClick={() => handleDeleteWarranty(warranty.id)}
+                            onClick={() => warranty._id ? handleDeleteWarranty(warranty._id) : null}
+                            disabled={!warranty._id}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
