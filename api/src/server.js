@@ -10,8 +10,6 @@ const rateLimit = require('express-rate-limit');
 const fs = require('fs');
 const logger = require('./config/logger');
 const swaggerConfig = require('./config/swagger');
-// Remove this duplicate declaration
-// const path = require('path');
 
 // Load environment variables based on NODE_ENV first
 const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env';
@@ -89,6 +87,16 @@ if (process.env.NODE_ENV === 'production') {
 
 // Static files
 app.use('/uploads', express.static(path.join(process.cwd(), process.env.UPLOAD_PATH || 'uploads')));
+app.use(express.static(path.join(__dirname, '../public')));
+
+// Swagger API Documentation
+app.use('/api-docs', swaggerConfig.serve, swaggerConfig.setup);
+
+// Serve Swagger JSON
+app.get('/api-docs.json', (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.send(swaggerConfig.spec);
+});
 
 // Define routes
 app.use('/api/auth', authRoutes);
@@ -179,22 +187,6 @@ connectDB().then(() => {
       process.exit(1);
     });
   });
-});
-
-// Serve static files from the public directory
-// Remove or comment out this line since path is already declared earlier
-// const path = require('path');
-
-// Use the existing path variable instead
-app.use(express.static(path.join(__dirname, '../public')));
-
-// Swagger API Documentation
-app.use('/api-docs', swaggerConfig.serve, swaggerConfig.setup);
-
-// Serve Swagger JSON
-app.get('/api-docs.json', (req, res) => {
-  res.setHeader('Content-Type', 'application/json');
-  res.send(swaggerConfig.spec);
 });
 
 module.exports = app; // For testing purposes

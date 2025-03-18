@@ -16,6 +16,7 @@ This API provides all the necessary endpoints for the Warrity application, inclu
 - Compression
 - Winston for logging
 - Express Rate Limit
+- Swagger for API documentation
 - Docker & Docker Compose (for production deployment)
 
 ## Getting Started
@@ -46,6 +47,29 @@ This API provides all the necessary endpoints for the Warrity application, inclu
    ```
    npm run dev
    ```
+
+## API Documentation
+
+The API is documented using Swagger. Once the server is running, you can access the documentation at:
+
+```
+http://localhost:5001/api-docs/
+```
+
+The documentation includes:
+- Detailed descriptions of all endpoints
+- Request and response schemas
+- Authentication requirements
+- Example requests and responses
+- Testing endpoints directly from the UI
+
+The Swagger documentation is organized into the following sections:
+- Authentication
+- Users
+- Warranties
+- Products
+- Events
+- Admin
 
 ## API Endpoints
 
@@ -259,11 +283,3 @@ The API includes several performance optimizations:
 - Proper error handling
 - Static file caching
 - PM2 clustering for multi-core utilization
-
-## API Documentation
-
-The API is documented using Swagger (OpenAPI). This provides an interactive documentation interface where you can explore and test all API endpoints.
-
-### Accessing the Documentation
-
-Once the server is running, you can access the Swagger UI at:

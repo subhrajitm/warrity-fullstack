@@ -1,5 +1,18 @@
 const swaggerJsdoc = require('swagger-jsdoc');
 const swaggerUi = require('swagger-ui-express');
+const { name, version, description, author, license } = require('../../package.json');
+
+// Get environment-specific server URL
+const getServerUrl = () => {
+  const env = process.env.NODE_ENV || 'development';
+  if (env === 'production') {
+    return process.env.API_URL || 'https://api.warrity.com';
+  } else if (env === 'staging') {
+    return process.env.API_URL || 'https://staging-api.warrity.com';
+  } else {
+    return process.env.API_URL || `http://localhost:${process.env.PORT || 5001}`;
+  }
+};
 
 // Swagger definition
 const swaggerOptions = {
@@ -7,26 +20,22 @@ const swaggerOptions = {
     openapi: '3.0.0',
     info: {
       title: 'Warrity API Documentation',
-      version: '1.0.0',
-      description: 'API documentation for the Warrity Warranty Management System',
+      version: version || '1.0.0',
+      description: description || 'API documentation for the Warrity Warranty Management System',
       contact: {
-        name: 'Warrity Support',
-        url: 'https://warrity.yourdomain.com/support',
-        email: 'support@warrity.yourdomain.com'
+        name: author || 'Warrity Support',
+        url: 'https://warrity.com/support',
+        email: 'support@warrity.com'
       },
       license: {
-        name: 'MIT',
+        name: license || 'MIT',
         url: 'https://opensource.org/licenses/MIT'
       }
     },
     servers: [
       {
-        url: 'http://localhost:5001',
-        description: 'Development server'
-      },
-      {
-        url: 'https://api.warrity.yourdomain.com',
-        description: 'Production server'
+        url: getServerUrl(),
+        description: `${process.env.NODE_ENV || 'development'} server`
       }
     ],
     components: {
@@ -44,9 +53,9 @@ const swaggerOptions = {
   },
   // Path to the API docs
   apis: [
+    './src/swagger/*.js',
     './src/routes/*.js',
-    './src/models/*.js',
-    './src/swagger/*.js'
+    './src/models/*.js'
   ]
 };
 
@@ -57,7 +66,13 @@ module.exports = {
   setup: swaggerUi.setup(swaggerSpec, {
     explorer: true,
     customCss: '.swagger-ui .topbar { display: none }',
-    customSiteTitle: 'Warrity API Documentation'
+    customSiteTitle: 'Warrity API Documentation',
+    swaggerOptions: {
+      docExpansion: 'none',
+      filter: true,
+      tagsSorter: 'alpha',
+      operationsSorter: 'alpha'
+    }
   }),
   spec: swaggerSpec
 };
