@@ -120,7 +120,8 @@ exports.createWarranty = async (req, res) => {
       warrantyProvider,
       warrantyNumber,
       coverageDetails,
-      notes
+      notes,
+      documents = []
     } = req.body;
     
     const warranty = new Warranty({
@@ -131,10 +132,21 @@ exports.createWarranty = async (req, res) => {
       warrantyProvider,
       warrantyNumber,
       coverageDetails,
-      notes
+      notes,
+      documents: documents.map(doc => ({
+        filename: doc.path.split('/').pop(),
+        originalName: doc.name,
+        path: doc.path,
+        mimetype: doc.path.split('.').pop() || 'application/octet-stream',
+        size: 0, // Size is unknown from frontend
+        uploadedAt: doc.uploadDate || new Date().toISOString()
+      }))
     });
     
     await warranty.save();
+    
+    // Populate the product information before sending the response
+    await warranty.populate('product', 'name brand category');
     
     res.status(201).json(warranty);
   } catch (error) {

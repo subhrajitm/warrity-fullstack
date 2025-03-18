@@ -38,3 +38,19 @@ export interface WarrantyInput {
   status: 'active';
   documents: WarrantyDocument[];
 }
+
+// Add ValidationError interface
+export interface ValidationError {
+  type: string;
+  value: any;
+  msg: string;
+  path: string;
+  location: string;
+}
+
+// Add WarrantyApiResponse interface
+export interface WarrantyApiResponse {
+  data?: Warranty;
+  error?: string;
+  validationErrors?: ValidationError[];
+}

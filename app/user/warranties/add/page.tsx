@@ -9,25 +9,22 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ArrowLeft, Calendar, Upload, AlertCircle } from "lucide-react"
+import { ArrowLeft, Calendar, Upload, AlertCircle, Loader2 } from "lucide-react"
 import WarrantySidebar from "../components/sidebar"
 import { useAuth } from "@/lib/auth-context"
 import { WarrantyInput, WarrantyDocument } from "@/types/warranty"
 import { warrantyApi } from "@/lib/api"
+import { productApi } from "@/lib/api"
 
-// Mock categories for demonstration
-const categories = [
-  { value: "electronics", label: "Electronics" },
-  { value: "appliances", label: "Appliances" },
-  { value: "furniture", label: "Furniture" },
-  { value: "clothing", label: "Clothing" },
-  { value: "automotive", label: "Automotive" },
-  { value: "other", label: "Other" }
-]
+// Interface for product data
+interface ProductOption {
+  id: string;
+  name: string;
+  manufacturer: string;
+}
 
 interface FormData {
-  product: string;
-  manufacturer: string;
+  productId: string;
   purchaseDate: string;
   warrantyPeriod: string;
   warrantyProvider: string;
@@ -40,8 +37,7 @@ export default function AddWarrantyPage() {
   const router = useRouter()
   const { user, isAuthenticated, isLoading: authLoading } = useAuth()
   const [formData, setFormData] = useState<FormData>({
-    product: "",
-    manufacturer: "",
+    productId: "",
     purchaseDate: "",
     warrantyPeriod: "",
     warrantyProvider: "",
@@ -49,6 +45,8 @@ export default function AddWarrantyPage() {
     coverageDetails: "",
     notes: ""
   })
+  const [products, setProducts] = useState<ProductOption[]>([])
+  const [loadingProducts, setLoadingProducts] = useState(false)
   const [receiptFile, setReceiptFile] = useState<File | null>(null)
   const [warrantyFile, setWarrantyFile] = useState<File | null>(null)
   const [error, setError] = useState("")
@@ -64,6 +62,36 @@ export default function AddWarrantyPage() {
       }
     }
   }, [router, authLoading, isAuthenticated, user])
+  
+  // Fetch products when component mounts
+  useEffect(() => {
+    const fetchProducts = async () => {
+      setLoadingProducts(true)
+      try {
+        const response = await productApi.getAllProducts()
+        if (response.error) {
+          console.error('Error fetching products:', response.error)
+          setError('Failed to load products. Please try again later.')
+        } else {
+          const productOptions = response.data?.map(product => ({
+            id: product.id || product._id || '',  // Ensure id is always a string
+            name: product.name,
+            manufacturer: product.manufacturer || 'Unknown'
+          })) || []
+          setProducts(productOptions)
+        }
+      } catch (err) {
+        console.error('Error fetching products:', err)
+        setError('Failed to load products. Please try again later.')
+      } finally {
+        setLoadingProducts(false)
+      }
+    }
+    
+    if (isAuthenticated && !authLoading) {
+      fetchProducts()
+    }
+  }, [isAuthenticated, authLoading])
   
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -90,32 +118,9 @@ export default function AddWarrantyPage() {
   }
   
   const uploadFile = async (file: File): Promise<WarrantyDocument | null> => {
-    if (!file) return null;
-    
     try {
-      // Create a FormData object to send the file
-      const formData = new FormData();
-      formData.append('file', file);
-      
       // Use the warrantyApi utility to upload the file
-      // Note: We're using a direct fetch here since the warrantyApi might not have a specific method for this
-      // In a production app, you would add a proper method to the warrantyApi utility
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        credentials: 'include',
-        body: formData
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to upload file');
-      }
-      
-      const data = await response.json();
-      return {
-        name: file.name,
-        path: data.filePath,
-        uploadDate: new Date().toISOString()
-      };
+      return await warrantyApi.uploadDocument(file);
     } catch (error) {
       console.error('Error uploading file:', error);
       return null;
@@ -127,7 +132,7 @@ export default function AddWarrantyPage() {
     setError("")
     
     // Validate form
-    if (!formData.product || !formData.manufacturer || !formData.purchaseDate || !formData.warrantyPeriod) {
+    if (!formData.productId || !formData.purchaseDate || !formData.warrantyPeriod) {
       setError("Please fill in all required fields")
       return
     }
@@ -137,8 +142,35 @@ export default function AddWarrantyPage() {
     try {
       // Calculate expiration date based on purchase date and warranty period
       const purchaseDate = new Date(formData.purchaseDate);
+      
+      // Ensure purchaseDate is valid
+      if (isNaN(purchaseDate.getTime())) {
+        setError("Invalid purchase date format");
+        setIsLoading(false);
+        return;
+      }
+      
+      // Parse warranty period as integer (in months)
+      const warrantyPeriodMonths = parseInt(formData.warrantyPeriod);
+      
+      // Validate warranty period
+      if (isNaN(warrantyPeriodMonths) || warrantyPeriodMonths <= 0) {
+        setError("Warranty period must be a positive number");
+        setIsLoading(false);
+        return;
+      }
+      
+      // Calculate expiration date by adding months to purchase date
       const expirationDate = new Date(purchaseDate);
-      expirationDate.setMonth(expirationDate.getMonth() + parseInt(formData.warrantyPeriod));
+      expirationDate.setMonth(purchaseDate.getMonth() + warrantyPeriodMonths);
+      
+      // Ensure the expiration date is in the future
+      const today = new Date();
+      if (expirationDate <= today) {
+        setError("Warranty expiration date must be in the future");
+        setIsLoading(false);
+        return;
+      }
       
       // Upload files if provided
       const documents: WarrantyDocument[] = [];
@@ -155,9 +187,9 @@ export default function AddWarrantyPage() {
       
       // Prepare warranty data
       const warrantyData: WarrantyInput = {
-        product: formData.product,
-        purchaseDate: formData.purchaseDate,
-        expirationDate: expirationDate.toISOString(),
+        product: formData.productId, // Use the product ID from the form
+        purchaseDate: purchaseDate.toISOString().split('T')[0], // Format as YYYY-MM-DD
+        expirationDate: expirationDate.toISOString().split('T')[0], // Format as YYYY-MM-DD
         warrantyProvider: formData.warrantyProvider,
         warrantyNumber: formData.warrantyNumber,
         coverageDetails: formData.coverageDetails,
@@ -171,7 +203,18 @@ export default function AddWarrantyPage() {
       
       if (response.error) {
         console.error('Error creating warranty:', response.error);
-        setError(response.error);
+        
+        // Check if the response contains validation errors
+        if (response.validationErrors && Array.isArray(response.validationErrors)) {
+          // Format validation errors for display
+          const errorMessages = response.validationErrors
+            .map((err: { path: string; msg: string }) => `${err.path}: ${err.msg}`)
+            .join(', ');
+          setError(`Validation error: ${errorMessages}`);
+        } else {
+          setError(response.error);
+        }
+        
         setIsLoading(false);
         return;
       }
@@ -221,72 +264,45 @@ export default function AddWarrantyPage() {
               )}
               
               <form onSubmit={handleSubmit} className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Product Information</CardTitle>
+                    <CardDescription>Select the product for this warranty</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="productId">Product</Label>
+                      <Select 
+                        value={formData.productId} 
+                        onValueChange={(value) => handleSelectChange('productId', value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a product" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {loadingProducts ? (
+                            <div className="flex items-center justify-center p-2">
+                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                              <span>Loading products...</span>
+                            </div>
+                          ) : products.length > 0 ? (
+                            products.map((product) => (
+                              <SelectItem key={product.id} value={product.id}>
+                                {product.name} ({product.manufacturer})
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <div className="p-2 text-center text-sm text-gray-500">
+                              No products found. Please add a product first.
+                            </div>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </CardContent>
+                </Card>
+                
                 <div className="grid gap-6 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="product" className="text-amber-900">
-                      Product Name *
-                    </Label>
-                    <Input
-                      id="product"
-                      name="product"
-                      value={formData.product}
-                      onChange={handleChange}
-                      placeholder="e.g. Samsung TV"
-                      className="border-2 border-amber-800 bg-amber-50"
-                      required
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="manufacturer" className="text-amber-900">
-                      Manufacturer/Category *
-                    </Label>
-                    <Select 
-                      value={formData.manufacturer} 
-                      onValueChange={(value) => handleSelectChange("manufacturer", value)}
-                    >
-                      <SelectTrigger className="border-2 border-amber-800 bg-amber-50">
-                        <SelectValue placeholder="Select a category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {categories.map(category => (
-                          <SelectItem key={category.value} value={category.value}>
-                            {category.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="warrantyProvider" className="text-amber-900">
-                      Provider/Manufacturer *
-                    </Label>
-                    <Input
-                      id="warrantyProvider"
-                      name="warrantyProvider"
-                      value={formData.warrantyProvider}
-                      onChange={handleChange}
-                      placeholder="e.g. Samsung Electronics"
-                      className="border-2 border-amber-800 bg-amber-50"
-                      required
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="warrantyNumber" className="text-amber-900">
-                      Warranty Number
-                    </Label>
-                    <Input
-                      id="warrantyNumber"
-                      name="warrantyNumber"
-                      value={formData.warrantyNumber}
-                      onChange={handleChange}
-                      placeholder="e.g. WR12345678"
-                      className="border-2 border-amber-800 bg-amber-50"
-                    />
-                  </div>
-                  
                   <div className="space-y-2">
                     <Label htmlFor="purchaseDate" className="text-amber-900">
                       Purchase Date *
@@ -319,6 +335,35 @@ export default function AddWarrantyPage() {
                       placeholder="e.g. 12"
                       className="border-2 border-amber-800 bg-amber-50"
                       required
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="warrantyProvider" className="text-amber-900">
+                      Provider/Manufacturer *
+                    </Label>
+                    <Input
+                      id="warrantyProvider"
+                      name="warrantyProvider"
+                      value={formData.warrantyProvider}
+                      onChange={handleChange}
+                      placeholder="e.g. Samsung Electronics"
+                      className="border-2 border-amber-800 bg-amber-50"
+                      required
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="warrantyNumber" className="text-amber-900">
+                      Warranty Number
+                    </Label>
+                    <Input
+                      id="warrantyNumber"
+                      name="warrantyNumber"
+                      value={formData.warrantyNumber}
+                      onChange={handleChange}
+                      placeholder="e.g. WR12345678"
+                      className="border-2 border-amber-800 bg-amber-50"
                     />
                   </div>
                 </div>

@@ -40,6 +40,7 @@ const productRoutes = require('./routes/product.routes');
 const eventRoutes = require('./routes/event.routes');
 const adminRoutes = require('./routes/admin.routes');
 const healthRoutes = require('./routes/health.routes');
+const uploadRoutes = require('./routes/upload.routes');
 
 // Initialize express app
 const app = express();
@@ -106,6 +107,7 @@ app.use('/api/products', productRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/health', healthRoutes);
+app.use('/api/upload', uploadRoutes);
 
 // Root route
 app.get('/', (req, res) => {
