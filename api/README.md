@@ -259,3 +259,11 @@ The API includes several performance optimizations:
 - Proper error handling
 - Static file caching
 - PM2 clustering for multi-core utilization
+
+## API Documentation
+
+The API is documented using Swagger (OpenAPI). This provides an interactive documentation interface where you can explore and test all API endpoints.
+
+### Accessing the Documentation
+
+Once the server is running, you can access the Swagger UI at:
