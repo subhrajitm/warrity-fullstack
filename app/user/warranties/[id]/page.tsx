@@ -87,8 +87,16 @@ export default function WarrantyDetailPage() {
       try {
         setIsLoading(true)
         
+        // Make sure we have a valid ID
+        const warrantyId = warranty?._id || warranty?.id || params.id;
+        if (!warrantyId) {
+          setError("Invalid warranty ID");
+          setIsLoading(false);
+          return;
+        }
+        
         // Use the warrantyApi utility which handles authentication automatically
-        const response = await warrantyApi.deleteWarranty(params.id)
+        const response = await warrantyApi.deleteWarranty(warrantyId)
         
         if (response.error) {
           console.error('Error deleting warranty:', response.error)
@@ -213,7 +221,7 @@ export default function WarrantyDetailPage() {
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-3xl font-bold text-amber-900">{warranty.product.name}</h1>
             <div className="flex space-x-2">
-              <Link href={`/user/warranties/${warranty.id}/edit`}>
+              <Link href={`/user/warranties/${warranty._id || warranty.id}/edit`}>
                 <Button className="bg-amber-800 hover:bg-amber-900 text-amber-100 border-2 border-amber-900">
                   <Edit className="mr-2 h-4 w-4" />
                   Edit

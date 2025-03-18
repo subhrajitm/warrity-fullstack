@@ -72,7 +72,7 @@ function WarrantiesContent() {
       
       if (Array.isArray(response.data)) {
         return response.data
-      } else if (response.data.warranties) {
+      } else if ('warranties' in response.data && Array.isArray(response.data.warranties)) {
         return response.data.warranties
       } else {
         console.error('Unexpected API response format:', response.data)
@@ -356,8 +356,15 @@ function WarrantiesContent() {
               </div>
             ) : (
               <div className="space-y-4">
-                {filteredWarranties.map(warranty => (
-                  <Link key={warranty.id} href={`/user/warranties/${warranty.id}`}>
+                {filteredWarranties.map(warranty => {
+                  // Debug log to see the warranty object structure
+                  console.log('Warranty object:', warranty);
+                  
+                  // Use _id if available, fall back to id
+                  const warrantyId = warranty._id || warranty.id;
+                  
+                  return (
+                  <Link key={warrantyId} href={`/user/warranties/${warrantyId}`}>
                     <div className="flex justify-between items-center p-4 border-2 border-amber-800 rounded-lg bg-amber-50 hover:bg-amber-200 transition-colors">
                       <div className="flex items-center">
                         <div className="mr-4">
@@ -381,7 +388,8 @@ function WarrantiesContent() {
                       </div>
                     </div>
                   </Link>
-                ))}
+                  );
+                })}
               </div>
             )}
           </CardContent>

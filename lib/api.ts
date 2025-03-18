@@ -463,6 +463,11 @@ export const warrantyApi = {
   },
   
   getWarrantyById: async (id: string) => {
+    // Check if id is undefined or empty
+    if (!id || id === 'undefined') {
+      return { error: 'Invalid warranty ID' };
+    }
+    
     const response = await apiRequest<Warranty | { warranty: Warranty }>(`/warranties/${id}`, 'GET');
     
     // Handle both response formats (object or object with warranty property)
