@@ -13,6 +13,7 @@ import { ArrowLeft, Calendar, Upload, AlertCircle } from "lucide-react"
 import WarrantySidebar from "../components/sidebar"
 import { useAuth } from "@/lib/auth-context"
 import { WarrantyInput, WarrantyDocument } from "@/types/warranty"
+import { warrantyApi } from "@/lib/api"
 
 // Mock categories for demonstration
 const categories = [
@@ -96,9 +97,12 @@ export default function AddWarrantyPage() {
       const formData = new FormData();
       formData.append('file', file);
       
-      // Upload the file
+      // Use the warrantyApi utility to upload the file
+      // Note: We're using a direct fetch here since the warrantyApi might not have a specific method for this
+      // In a production app, you would add a proper method to the warrantyApi utility
       const response = await fetch('/api/upload', {
         method: 'POST',
+        credentials: 'include',
         body: formData
       });
       
@@ -162,17 +166,14 @@ export default function AddWarrantyPage() {
         documents
       };
       
-      // Send data to API
-      const response = await fetch('/api/warranties', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(warrantyData)
-      });
+      // Use the warrantyApi utility to create the warranty
+      const response = await warrantyApi.createWarranty(warrantyData);
       
-      if (!response.ok) {
-        throw new Error('Failed to add warranty');
+      if (response.error) {
+        console.error('Error creating warranty:', response.error);
+        setError(response.error);
+        setIsLoading(false);
+        return;
       }
       
       // Navigate to warranties list

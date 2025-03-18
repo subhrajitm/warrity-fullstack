@@ -23,6 +23,7 @@ import {
 import WarrantySidebar from "../components/sidebar"
 import { useAuth } from "@/lib/auth-context"
 import { Warranty } from "@/types/warranty"
+import { warrantyApi } from "@/lib/api"
 
 export default function WarrantyDetailPage() {
   const router = useRouter()
@@ -36,14 +37,26 @@ export default function WarrantyDetailPage() {
   const fetchWarrantyDetails = async (id: string) => {
     try {
       setIsLoading(true)
-      const response = await fetch(`/api/warranties/${id}`)
       
-      if (!response.ok) {
-        throw new Error('Failed to fetch warranty details')
+      // Use the warrantyApi utility which handles authentication automatically
+      const response = await warrantyApi.getWarrantyById(id)
+      
+      if (response.error) {
+        console.error('Error fetching warranty details:', response.error)
+        setError(response.error)
+        return null
       }
       
-      const data = await response.json()
-      return data.warranty
+      // The response data might be the warranty object directly or nested in a property
+      const warrantyData = response.data?.warranty || response.data
+      
+      if (!warrantyData) {
+        throw new Error('Warranty not found')
+      }
+      
+      // Ensure we return a properly typed Warranty object
+      const warranty: Warranty = warrantyData as Warranty
+      return warranty
     } catch (err) {
       console.error('Error fetching warranty details:', err)
       setError('Failed to load warranty details. Please try again later.')
@@ -74,13 +87,14 @@ export default function WarrantyDetailPage() {
       try {
         setIsLoading(true)
         
-        // Send delete request to API
-        const response = await fetch(`/api/warranties/${params.id}`, {
-          method: 'DELETE'
-        })
+        // Use the warrantyApi utility which handles authentication automatically
+        const response = await warrantyApi.deleteWarranty(params.id)
         
-        if (!response.ok) {
-          throw new Error('Failed to delete warranty')
+        if (response.error) {
+          console.error('Error deleting warranty:', response.error)
+          setError(response.error)
+          setIsLoading(false)
+          return
         }
         
         // Redirect to warranties list

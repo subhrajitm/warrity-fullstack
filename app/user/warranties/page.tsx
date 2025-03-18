@@ -23,19 +23,7 @@ import {
 import WarrantySidebar from "./components/sidebar"
 import { useAuth } from "@/lib/auth-context"
 import { Warranty } from "@/types/warranty"
-
-// Define the warranty type
-interface Warranty {
-  id: number;
-  product: {
-    name: string;
-    manufacturer: string;
-  };
-  warrantyProvider: string;
-  purchaseDate: string;
-  expirationDate: string;
-  status: string;
-}
+import { warrantyApi } from "@/lib/api"
 
 // Create a component that uses useSearchParams
 function WarrantiesContent() {
@@ -64,19 +52,36 @@ function WarrantiesContent() {
   const fetchWarranties = async () => {
     try {
       setIsLoading(true)
-      // For user warranties, we should use the direct warranties endpoint
-      // The memory indicates that /admin/warranties is for admin UI only
-      const response = await fetch('/api/warranties')
+      console.log('Fetching warranties from API...')
       
-      if (!response.ok) {
-        throw new Error('Failed to fetch warranties')
+      // Use the warrantyApi utility which handles authentication automatically
+      const response = await warrantyApi.getAllWarranties()
+      
+      if (response.error) {
+        console.error('Error fetching warranties:', response.error)
+        setError(response.error)
+        return []
       }
       
-      const data = await response.json()
-      return data.warranties
+      console.log('Warranties data received:', response.data)
+      
+      // Handle different response formats
+      if (!response.data) {
+        return []
+      }
+      
+      if (Array.isArray(response.data)) {
+        return response.data
+      } else if (response.data.warranties) {
+        return response.data.warranties
+      } else {
+        console.error('Unexpected API response format:', response.data)
+        setError('Invalid API response format')
+        return []
+      }
     } catch (err) {
       console.error('Error fetching warranties:', err)
-      setError('Failed to load warranties. Please try again later.')
+      setError(err instanceof Error ? err.message : 'Failed to load warranties. Please try again later.')
       return []
     } finally {
       setIsLoading(false)
