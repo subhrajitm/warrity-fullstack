@@ -12,97 +12,40 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { ArrowLeft, Calendar as CalendarIcon, Shield, Wrench, AlertTriangle, Info, Plus, Trash2 } from "lucide-react"
+import { ArrowLeft, Calendar as CalendarIcon, Shield, Wrench, AlertTriangle, Info, Plus, Trash2, Loader2 } from "lucide-react"
 import WarrantySidebar from "../warranties/components/sidebar"
 import { useAuth } from "@/lib/auth-context"
 
 // Define the event type
 interface CalendarEvent {
-  _id: number;
+  _id: string;
   title: string;
-  date: string;
-  type: string;
-  product_id: number;
-  productName: string;
-  description?: string;
-  time?: string;
-  reminder?: boolean;
+  description: string;
+  eventType: string;
+  startDate: string;
+  endDate: string;
+  allDay: boolean;
+  location?: string;
+  color?: string;
+  relatedProduct?: string;
+  relatedWarranty?: string;
+  notifications?: {
+    enabled: boolean;
+    reminderTime: number;
+  };
+  createdAt?: string;
+  updatedAt?: string;
 }
 
-// Mock products for the dropdown
-const mockProducts = [
-  { _id: 1, name: "Samsung 55\" QLED TV" },
-  { _id: 2, name: "Bosch Dishwasher" },
-  { _id: 3, name: "MacBook Pro 16\"" },
-  { _id: 4, name: "Dyson V11 Vacuum" },
-  { _id: 5, name: "Sony WH-1000XM4 Headphones" },
-  { _id: 6, name: "iPhone 13 Pro" },
-  { _id: 7, name: "LG Refrigerator" },
-];
-
-// Mock calendar events
-const mockEvents: CalendarEvent[] = [
-  {
-    _id: 1,
-    title: "Samsung TV Warranty Expiration",
-    date: "2025-05-15",
-    type: "warranty",
-    product_id: 1,
-    productName: "Samsung 55\" QLED TV",
-    description: "Extended warranty expires on this date. Consider renewal options.",
-    time: "09:00"
-  },
-  {
-    _id: 2,
-    title: "Bosch Dishwasher Warranty Expiration",
-    date: "2024-11-03",
-    type: "warranty",
-    product_id: 2,
-    productName: "Bosch Dishwasher",
-    description: "Standard manufacturer warranty expires.",
-    time: "00:00"
-  },
-  {
-    _id: 3,
-    title: "MacBook Pro Warranty Expiration",
-    date: "2025-01-20",
-    type: "warranty",
-    product_id: 3,
-    productName: "MacBook Pro 16\"",
-    description: "AppleCare+ coverage ends. Cons_ider extending protection.",
-    time: "00:00"
-  },
-  {
-    _id: 4,
-    title: "Dyson V11 Filter Cleaning",
-    date: "2023-12-15",
-    type: "maintenance",
-    product_id: 4,
-    productName: "Dyson V11 Vacuum",
-    description: "Regular maintenance: Clean the filter for optimal performance.",
-    time: "10:00"
-  },
-  {
-    _id: 5,
-    title: "Sony Headphones Warranty Expiration",
-    date: "2024-03-05",
-    type: "warranty",
-    product_id: 5,
-    productName: "Sony WH-1000XM4 Headphones",
-    description: "Manufacturer warranty expires.",
-    time: "00:00"
-  },
-  {
-    _id: 6,
-    title: "MacBook Pro Software Update",
-    date: "2023-12-10",
-    type: "maintenance",
-    product_id: 3,
-    productName: "MacBook Pro 16\"",
-    description: "Scheduled software update and system cleanup.",
-    time: "14:00"
-  }
-];
+// Define the product type
+interface Product {
+  _id: string;
+  name: string;
+  description?: string;
+  category?: string;
+  manufacturer?: string;
+  model?: string;
+}
 
 export default function CalendarPage() {
   const router = useRouter()
@@ -114,59 +57,189 @@ export default function CalendarPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [newEvent, setNewEvent] = useState<Omit<CalendarEvent, '_id'>>({
     title: "",
-    date: new Date().toISOString().split('T')[0],
-    type: "warranty",
-    product_id: 0,
-    productName: "",
     description: "",
-    time: "09:00",
-    reminder: true
+    eventType: "warranty",
+    startDate: new Date().toISOString().split('T')[0],
+    endDate: new Date().toISOString().split('T')[0],
+    allDay: true,
+    color: "#3498db",
+    notifications: {
+      enabled: true,
+      reminderTime: 24
+    }
   })
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null)
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false)
   
   // Handle product selection
-  const [products, setProducts] = useState<Array<{_id: number, name: string}>>([])
+  const [products, setProducts] = useState<Product[]>([])
   const [isProductsLoading, setIsProductsLoading] = useState(true)
   
   // Check if user is logged in and fetch events
   useEffect(() => {
     if (!authLoading) {
       if (!isAuthenticated) {
-        router.replace('/login')
-      } else if (user && user.role !== 'user') {
-        router.replace(user.role === 'admin' ? '/admin' : '/login')
+        router.push('/login')
       } else {
-        // In a real app, you would fetch the events from your backend
-        setEvents(mockEvents)
+        fetchEvents()
       }
-      setIsLoading(false)
     }
-  }, [router, authLoading, isAuthenticated, user])
+  }, [authLoading, isAuthenticated, router])
+  
+  // Fetch events from API
+  const fetchEvents = async () => {
+    try {
+      setIsLoading(true);
+      
+      // Get auth token from localStorage
+      const token = localStorage.getItem('authToken');
+      
+      if (!token) {
+        console.error('No authentication token found');
+        setIsLoading(false);
+        return;
+      }
+      
+      console.log('Fetching events with token:', token.substring(0, 10) + '...');
+      
+      const response = await fetch('/api/events', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      console.log('Fetch events response status:', response.status, response.statusText);
+      
+      if (!response.ok) {
+        console.error('Error response:', {
+          status: response.status,
+          statusText: response.statusText
+        });
+        
+        try {
+          const errorText = await response.text();
+          console.error('Error response text:', errorText);
+          
+          if (response.status === 401) {
+            alert('Your session has expired. Please log in again.');
+            // Redirect to login page
+            router.push('/login');
+          }
+        } catch (e) {
+          console.error('Error parsing error response:', e);
+        }
+        
+        setIsLoading(false);
+        return;
+      }
+      
+      const data = await response.json();
+      console.log('Fetched events:', data);
+      
+      // Handle different response formats
+      let eventsData = [];
+      
+      if (Array.isArray(data)) {
+        eventsData = data;
+      } else if (data.events && Array.isArray(data.events)) {
+        eventsData = data.events;
+      } else {
+        console.error('Unexpected data format:', data);
+      }
+      
+      // Process and normalize event data
+      const normalizedEvents = eventsData.map((event: any) => ({
+        ...event,
+        // Ensure dates are properly formatted
+        startDate: new Date(event.startDate).toISOString(),
+        endDate: new Date(event.endDate).toISOString(),
+        // Ensure color has a default value
+        color: event.color || '#3498db'
+      }));
+      
+      console.log('Normalized events:', normalizedEvents);
+      setEvents(normalizedEvents);
+    } catch (err) {
+      console.error('Error fetching events:', err);
+      alert(`Failed to fetch events: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
   
   // Update the useEffect that fetches products
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        setIsProductsLoading(true)
-        const response = await fetch('/api/products')
+        setIsProductsLoading(true);
         
-        if (!response.ok) {
-          console.error('Error fetching products:', response.statusText)
-          return
+        // Get auth token from localStorage
+        const token = localStorage.getItem('authToken');
+        
+        if (!token) {
+          console.error('No authentication token found');
+          setIsProductsLoading(false);
+          return;
         }
         
-        const data = await response.json()
-        console.log('Fetched products:', data)
+        console.log('Fetching products with token:', token.substring(0, 10) + '...');
         
-        // Assuming the API returns an array of products with _id and name properties
-        setProducts(Array.isArray(data) ? data : data.products || [])
+        const response = await fetch('/api/products', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        console.log('Fetch products response status:', response.status, response.statusText);
+        
+        if (!response.ok) {
+          console.error('Error response:', {
+            status: response.status,
+            statusText: response.statusText
+          });
+          
+          try {
+            const errorText = await response.text();
+            console.error('Error response text:', errorText);
+          } catch (e) {
+            console.error('Error parsing error response:', e);
+          }
+          
+          setIsProductsLoading(false);
+          return;
+        }
+        
+        const data = await response.json();
+        console.log('Fetched products:', data);
+        
+        // Handle different response formats
+        let productsData = [];
+        
+        if (Array.isArray(data)) {
+          productsData = data;
+        } else if (data.products && Array.isArray(data.products)) {
+          productsData = data.products;
+        } else {
+          console.error('Unexpected data format:', data);
+        }
+        
+        // Process and normalize product data
+        const normalizedProducts = productsData.map((product: any) => ({
+          ...product,
+          // Ensure all required fields have values
+          name: product.name || 'Unnamed Product',
+          description: product.description || '',
+          category: product.category || 'Uncategorized'
+        }));
+        
+        console.log('Normalized products:', normalizedProducts);
+        setProducts(normalizedProducts);
       } catch (err) {
-        console.error('Error fetching products:', err)
+        console.error('Error fetching products:', err);
       } finally {
-        setIsProductsLoading(false)
+        setIsProductsLoading(false);
       }
-    }
+    };
   
     if (isAuthenticated && !authLoading) {
       fetchProducts()
@@ -175,18 +248,18 @@ export default function CalendarPage() {
   
   // Filter events based on selected date and filter type
   const filteredEvents = events.filter(event => {
-    const eventDate = new Date(event.date)
+    const eventStartDate = new Date(event.startDate)
     const isSameDay = 
-      eventDate.getDate() === selectedDate.getDate() &&
-      eventDate.getMonth() === selectedDate.getMonth() &&
-      eventDate.getFullYear() === selectedDate.getFullYear()
+      eventStartDate.getDate() === selectedDate.getDate() &&
+      eventStartDate.getMonth() === selectedDate.getMonth() &&
+      eventStartDate.getFullYear() === selectedDate.getFullYear()
     
-    return isSameDay && (filterType === "all" || event.type === filterType)
+    return isSameDay && (filterType === "all" || event.eventType === filterType)
   })
   
   // Get dates with events for highlighting in calendar
   const getDatesWithEvents = () => {
-    return events.map(event => new Date(event.date))
+    return events.map(event => new Date(event.startDate))
   }
   
   // Get event type badge
@@ -204,6 +277,13 @@ export default function CalendarPage() {
           <Badge className="bg-blue-500 text-white">
             <Wrench className="mr-1 h-3 w-3" />
             Maintenance
+          </Badge>
+        )
+      case "reminder":
+        return (
+          <Badge className="bg-red-500 text-white">
+            <AlertTriangle className="mr-1 h-3 w-3" />
+            Reminder
           </Badge>
         )
       default:
@@ -243,78 +323,319 @@ export default function CalendarPage() {
     if (!productIdString) {
       setNewEvent(prev => ({
         ...prev,
-        product_id: 0,
-        productName: ""
+        relatedProduct: undefined
       }));
       return;
     }
     
-    // Try to find the product by comparing as string first
-    let product = products.find(p => String(p._id) === productIdString);
-    
-    // If not found, try parsing as number
-    if (!product) {
-      const productId = parseInt(productIdString);
-      product = products.find(p => p._id === productId);
-    }
-    
-    console.log('Found product:', product);
-    
-    if (product) {
-      setNewEvent(prev => ({
-        ...prev,
-        product_id: typeof product._id === 'string' ? parseInt(product._id) : product._id,
-        productName: product.name
-      }));
-    }
+    setNewEvent(prev => ({
+      ...prev,
+      relatedProduct: productIdString
+    }));
   };
   
   // Handle event creation
-  const handleCreateEvent = () => {
+  const handleCreateEvent = async () => {
     // Validate form
-    if (!newEvent.title || !newEvent.date || !newEvent.product_id) {
-      alert("Please fill in all required fields")
-      return
+    if (!newEvent.title || !newEvent.startDate || !newEvent.endDate) {
+      alert("Please fill in all required fields");
+      return;
     }
     
-    // Create new event
-    const newEventWithId: CalendarEvent = {
-      ...newEvent,
-      _id: events.length + 1
+    try {
+      // Get auth token from localStorage
+      const token = localStorage.getItem('authToken');
+      
+      if (!token) {
+        console.error('No authentication token found');
+        return;
+      }
+      
+      // Log the event data we're sending
+      console.log('Sending event data:', newEvent);
+      
+      // Format dates properly
+      const formattedEvent = {
+        ...newEvent,
+        // Ensure dates are in ISO format
+        startDate: new Date(newEvent.startDate).toISOString(),
+        endDate: new Date(newEvent.endDate).toISOString(),
+        // Only include relatedProduct if it's defined
+        ...(newEvent.relatedProduct ? { relatedProduct: newEvent.relatedProduct } : {})
+      };
+      
+      console.log('Formatted event data:', formattedEvent);
+      
+      const response = await fetch('/api/events', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(formattedEvent)
+      });
+      
+      console.log('Create event response status:', response.status, response.statusText);
+      
+      if (!response.ok) {
+        // Log the full response for debugging
+        console.error('Error response:', {
+          status: response.status,
+          statusText: response.statusText,
+          headers: Object.fromEntries([...response.headers.entries()])
+        });
+        
+        // Clone the response to read the body
+        const clonedResponse = response.clone();
+        
+        try {
+          // Try to get the response as text first
+          const responseText = await clonedResponse.text();
+          console.error('Response text:', responseText);
+          
+          // Try to parse as JSON if possible
+          if (responseText) {
+            try {
+              const errorData = JSON.parse(responseText);
+              console.error('Parsed error data:', errorData);
+              
+              // Show a more specific error message if available
+              const errorMessage = errorData.message || errorData.error || 'Failed to create event';
+              alert(`Error: ${errorMessage}`);
+            } catch (parseError) {
+              console.error('Error parsing response as JSON:', parseError);
+              alert(`Error: ${responseText || 'Failed to create event'}`);
+            }
+          } else {
+            alert(`Error: ${response.statusText || 'Failed to create event'}`);
+          }
+        } catch (textError) {
+          console.error('Error reading response text:', textError);
+          alert(`Error: ${response.statusText || 'Failed to create event'}`);
+        }
+        
+        return;
+      }
+      
+      try {
+        const data = await response.json();
+        console.log('Event created:', data);
+        
+        // Add the new event to the state with the correct structure
+        const createdEvent = data.event || data;
+        console.log('Created event object:', createdEvent);
+        
+        if (createdEvent && createdEvent._id) {
+          setEvents(prev => [...prev, createdEvent]);
+          
+          // Reset form and close dialog
+          setNewEvent({
+            title: "",
+            description: "",
+            eventType: "warranty",
+            startDate: new Date().toISOString().split('T')[0],
+            endDate: new Date().toISOString().split('T')[0],
+            allDay: true,
+            color: "#3498db",
+            notifications: {
+              enabled: true,
+              reminderTime: 24
+            }
+          });
+          setIsDialogOpen(false);
+          
+          // Select the date of the new event
+          setSelectedDate(new Date(createdEvent.startDate));
+          
+          // Show success message
+          alert('Event created successfully!');
+        } else {
+          console.error('Invalid event data returned:', data);
+          alert('Event was created but the response format was unexpected.');
+        }
+      } catch (error) {
+        console.error('Error creating event:', error);
+        alert(`Failed to create event: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Error creating event:', error);
+      alert(`Failed to create event: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
-    
-    // Add to events list
-    setEvents(prev => [...prev, newEventWithId])
-    
-    // Reset form and close dialog
-    setNewEvent({
-      title: "",
-      date: new Date().toISOString().split('T')[0],
-      type: "warranty",
-      product_id: 0,
-      productName: "",
-      description: "",
-      time: "09:00",
-      reminder: true
-    })
-    setIsDialogOpen(false)
-    
-    // Select the date of the new event
-    setSelectedDate(new Date(newEvent.date))
   }
   
   // Handle event deletion
-  const handleDeleteEvent = (_id: number) => {
+  const handleDeleteEvent = async (id: string) => {
     if (confirm("Are you sure you want to delete this event?")) {
-      setEvents(prev => prev.filter(event => event._id !== _id))
-      setIsViewDialogOpen(false)
+      try {
+        // Get auth token from localStorage
+        const token = localStorage.getItem('authToken');
+        
+        if (!token) {
+          console.error('No authentication token found');
+          return;
+        }
+        
+        console.log('Deleting event with ID:', id);
+        
+        const response = await fetch(`/api/events/${id}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        console.log('Delete event response status:', response.status, response.statusText);
+        
+        if (!response.ok) {
+          // Log the full response for debugging
+          console.error('Error response:', {
+            status: response.status,
+            statusText: response.statusText,
+            headers: Object.fromEntries([...response.headers.entries()])
+          });
+          
+          // Clone the response to read the body
+          const clonedResponse = response.clone();
+          
+          try {
+            // Try to get the response as text first
+            const responseText = await clonedResponse.text();
+            console.error('Response text:', responseText);
+            
+            // Try to parse as JSON if possible
+            if (responseText) {
+              try {
+                const errorData = JSON.parse(responseText);
+                console.error('Parsed error data:', errorData);
+                
+                // Show a more specific error message if available
+                const errorMessage = errorData.message || errorData.error || 'Failed to delete event';
+                alert(`Error: ${errorMessage}`);
+              } catch (parseError) {
+                console.error('Error parsing response as JSON:', parseError);
+                alert(`Error: ${responseText || 'Failed to delete event'}`);
+              }
+            } else {
+              alert(`Error: ${response.statusText || 'Failed to delete event'}`);
+            }
+          } catch (textError) {
+            console.error('Error reading response text:', textError);
+            alert(`Error: ${response.statusText || 'Failed to delete event'}`);
+          }
+          
+          return;
+        }
+        
+        // Remove the deleted event from state
+        setEvents(prev => prev.filter(event => event._id !== id));
+        
+        // Close the view dialog if it's open
+        if (isViewDialogOpen && selectedEvent && selectedEvent._id === id) {
+          setIsViewDialogOpen(false);
+          setSelectedEvent(null);
+        }
+        
+        // Show success message
+        alert('Event deleted successfully!');
+      } catch (error) {
+        console.error('Error deleting event:', error);
+        alert(`Failed to delete event: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
     }
   }
   
   // View event details
-  const handleViewEvent = (event: CalendarEvent) => {
-    setSelectedEvent(event)
-    setIsViewDialogOpen(true)
+  const handleViewEvent = async (event: CalendarEvent) => {
+    try {
+      // Get auth token from localStorage
+      const token = localStorage.getItem('authToken');
+      
+      if (!token) {
+        console.error('No authentication token found');
+        return;
+      }
+      
+      console.log('Viewing event with ID:', event._id);
+      
+      const response = await fetch(`/api/events/${event._id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      console.log('View event response status:', response.status, response.statusText);
+      
+      if (!response.ok) {
+        // Log the full response for debugging
+        console.error('Error response:', {
+          status: response.status,
+          statusText: response.statusText,
+          headers: Object.fromEntries([...response.headers.entries()])
+        });
+        
+        // Clone the response to read the body
+        const clonedResponse = response.clone();
+        
+        try {
+          // Try to get the response as text first
+          const responseText = await clonedResponse.text();
+          console.error('Response text:', responseText);
+          
+          // Try to parse as JSON if possible
+          if (responseText) {
+            try {
+              const errorData = JSON.parse(responseText);
+              console.error('Parsed error data:', errorData);
+              
+              // Show a more specific error message if available
+              const errorMessage = errorData.message || errorData.error || 'Failed to load event details';
+              alert(`Error: ${errorMessage}`);
+            } catch (parseError) {
+              console.error('Error parsing response as JSON:', parseError);
+              alert(`Error: ${responseText || 'Failed to load event details'}`);
+            }
+          } else {
+            alert(`Error: ${response.statusText || 'Failed to load event details'}`);
+          }
+        } catch (textError) {
+          console.error('Error reading response text:', textError);
+          alert(`Error: ${response.statusText || 'Failed to load event details'}`);
+        }
+        
+        // Use the event from the list as a fallback
+        setSelectedEvent(event);
+        setIsViewDialogOpen(true);
+        return;
+      }
+      
+      try {
+        const data = await response.json();
+        console.log('Event details:', data);
+        
+        // Handle different response formats
+        const eventDetails = data.event || data;
+        
+        if (eventDetails && eventDetails._id) {
+          setSelectedEvent(eventDetails);
+          setIsViewDialogOpen(true);
+        } else {
+          console.error('Invalid event data returned:', data);
+          // Use the event from the list as a fallback
+          setSelectedEvent(event);
+          setIsViewDialogOpen(true);
+        }
+      } catch (error) {
+        console.error('Error parsing event details:', error);
+        // Use the event from the list as a fallback
+        setSelectedEvent(event);
+        setIsViewDialogOpen(true);
+      }
+    } catch (error) {
+      console.error('Error viewing event:', error);
+      // Use the event from the list as a fallback
+      setSelectedEvent(event);
+      setIsViewDialogOpen(true);
+    }
   }
   
   if (isLoading) {
@@ -357,8 +678,16 @@ export default function CalendarPage() {
                   <SelectItem value="all">All Events</SelectItem>
                   <SelectItem value="warranty">Warranty Events</SelectItem>
                   <SelectItem value="maintenance">Maintenance Events</SelectItem>
+                  <SelectItem value="reminder">Reminder Events</SelectItem>
                 </SelectContent>
               </Select>
+              
+              {isLoading && (
+                <div className="flex items-center text-blue-600">
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  <span>Loading events...</span>
+                </div>
+              )}
               
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild>
@@ -389,23 +718,23 @@ export default function CalendarPage() {
                     
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="date" className="text-amber-900">Date</Label>
+                        <Label htmlFor="startDate" className="text-amber-900">Start Date</Label>
                         <Input 
-                          id="date" 
+                          id="startDate" 
                           type="date" 
-                          value={newEvent.date} 
-                          onChange={(e) => handleNewEventChange('date', e.target.value)}
+                          value={newEvent.startDate} 
+                          onChange={(e) => handleNewEventChange('startDate', e.target.value)}
                           className="border-2 border-amber-800 bg-amber-50"
                         />
                       </div>
                       
                       <div className="space-y-2">
-                        <Label htmlFor="time" className="text-amber-900">Time (optional)</Label>
+                        <Label htmlFor="endDate" className="text-amber-900">End Date</Label>
                         <Input 
-                          id="time" 
-                          type="time" 
-                          value={newEvent.time} 
-                          onChange={(e) => handleNewEventChange('time', e.target.value)}
+                          id="endDate" 
+                          type="date" 
+                          value={newEvent.endDate} 
+                          onChange={(e) => handleNewEventChange('endDate', e.target.value)}
                           className="border-2 border-amber-800 bg-amber-50"
                         />
                       </div>
@@ -414,8 +743,8 @@ export default function CalendarPage() {
                     <div className="space-y-2">
                       <Label htmlFor="type" className="text-amber-900">Event Type</Label>
                       <Select 
-                        value={newEvent.type} 
-                        onValueChange={(value) => handleNewEventChange('type', value)}
+                        value={newEvent.eventType} 
+                        onValueChange={(value) => handleNewEventChange('eventType', value)}
                       >
                         <SelectTrigger id="type" className="border-2 border-amber-800 bg-amber-50">
                           <SelectValue placeholder="Select event type" />
@@ -423,6 +752,7 @@ export default function CalendarPage() {
                         <SelectContent>
                           <SelectItem value="warranty">Warranty</SelectItem>
                           <SelectItem value="maintenance">Maintenance</SelectItem>
+                          <SelectItem value="reminder">Reminder</SelectItem>
                           <SelectItem value="other">Other</SelectItem>
                         </SelectContent>
                       </Select>
@@ -431,20 +761,18 @@ export default function CalendarPage() {
                     <div className="space-y-2">
                       <Label htmlFor="product" className="text-amber-900">Related Product</Label>
                       <Select 
-                        value={newEvent.product_id ? newEvent.product_id.toString() : ""} 
+                        value={newEvent.relatedProduct || ""} 
                         onValueChange={handleProductSelect}
                       >
                         <SelectTrigger id="product" className="border-2 border-amber-800 bg-amber-50">
-                          <SelectValue placeholder="Select a product">
-                            {newEvent.productName || "Select a product"}
-                          </SelectValue>
+                          <SelectValue placeholder="Select a product" />
                         </SelectTrigger>
                         <SelectContent>
                           {isProductsLoading ? (
                             <SelectItem value="" disabled>Loading products...</SelectItem>
                           ) : products.length > 0 ? (
                             products.map(product => (
-                              <SelectItem key={product._id} value={product._id.toString()}>
+                              <SelectItem key={product._id} value={product._id}>
                                 {product.name}
                               </SelectItem>
                             ))
@@ -546,11 +874,10 @@ export default function CalendarPage() {
                             <div>
                               <h3 className="font-bold text-amber-900">{event.title}</h3>
                               <p className="text-amber-700 text-sm mt-1">
-                                {event.productName}
-                                {event.time && event.time !== "00:00" && ` • ${event.time}`}
+                                {event.allDay ? 'All day' : new Date(event.startDate).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                               </p>
                             </div>
-                            {getEventTypeBadge(event.type)}
+                            {getEventTypeBadge(event.eventType)}
                           </div>
                           {event.description && (
                             <p className="text-amber-700 mt-2 text-sm line-clamp-2">{event.description}</p>
@@ -585,19 +912,23 @@ export default function CalendarPage() {
               <DialogHeader>
                 <div className="flex justify-between items-center">
                   <DialogTitle className="text-2xl font-bold text-amber-900">{selectedEvent.title}</DialogTitle>
-                  {getEventTypeBadge(selectedEvent.type)}
+                  {getEventTypeBadge(selectedEvent.eventType)}
                 </div>
                 <DialogDescription className="text-amber-700">
-                  {formatDate(selectedEvent.date)}
-                  {selectedEvent.time && selectedEvent.time !== "00:00" && ` at ${selectedEvent.time}`}
+                  {formatDate(selectedEvent.startDate)}
+                  {!selectedEvent.allDay && ` at ${new Date(selectedEvent.startDate).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`}
                 </DialogDescription>
               </DialogHeader>
               
               <div className="space-y-4 py-4">
-                <div>
-                  <h4 className="font-semibold text-amber-900">Product</h4>
-                  <p className="text-amber-700">{selectedEvent.productName}</p>
-                </div>
+                {selectedEvent.relatedProduct && (
+                  <div>
+                    <h4 className="font-semibold text-amber-900">Related Product</h4>
+                    <p className="text-amber-700">
+                      {products.find(p => p._id === selectedEvent.relatedProduct)?.name || 'Unknown product'}
+                    </p>
+                  </div>
+                )}
                 
                 {selectedEvent.description && (
                   <div>

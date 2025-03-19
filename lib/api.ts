@@ -715,7 +715,7 @@ export const adminApi = {
 };
 
 // Error handling utility
-function handleApiError(error: any): ApiResponse<any> {
+export function handleApiError(error: any): ApiResponse<any> {
   let errorMessage = 'An error occurred';
   
   // Handle network errors
