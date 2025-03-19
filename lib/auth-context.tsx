@@ -27,7 +27,7 @@ interface ProfileUpdateData {
     emailNotifications?: boolean;
     reminderDays?: number;
     theme?: string;
-    notifications?: string;
+    notifications?: boolean;
     language?: string;
   };
 }
@@ -322,14 +322,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const updatedUser = response.data;
       if (updatedUser) {
         // Update local user state with the new data
-        setUser(prevUser => ({
-          ...prevUser!,
-          ...updatedUser,
-          preferences: {
-            ...prevUser!.preferences,
-            ...updatedUser.preferences
-          }
-        }));
+        setUser(prevUser => {
+          if (!prevUser) return updatedUser;
+          
+          // Create a new user object with all the updated fields
+          const newUser = {
+            ...prevUser,
+            name: updatedUser.name || prevUser.name,
+            phone: updatedUser.phone || prevUser.phone,
+            bio: updatedUser.bio || prevUser.bio,
+            socialLinks: updatedUser.socialLinks || prevUser.socialLinks,
+            preferences: {
+              ...prevUser.preferences,
+              ...updatedUser.preferences
+            }
+          };
+
+          // Force a re-render by creating a new object
+          return { ...newUser };
+        });
+
+        // Force a refresh of the user data
+        await refreshUser();
+        
+        toast.success("Profile updated successfully");
         return true;
       }
 
