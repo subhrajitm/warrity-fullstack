@@ -155,7 +155,6 @@ const PasswordStrengthIndicator = ({ password }: { password: string }) => {
 export default function UserSettingsPage() {
   const router = useRouter()
   const { user: authUser, isAuthenticated, isLoading: authLoading, updateProfile } = useAuth()
-  const [user, setUser] = useState<MockUser | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isPasswordSaving, setIsPasswordSaving] = useState(false)
   const [isPreferencesSaving, setIsPreferencesSaving] = useState(false)
@@ -195,16 +194,16 @@ export default function UserSettingsPage() {
         router.replace('/login')
       } else if (authUser && authUser.role !== 'user') {
         router.replace(authUser.role === 'admin' ? '/admin' : '/login')
-      } else {
-        setUser(mockUser)
+      } else if (authUser) {
+        // Use actual user data instead of mock data
         profileForm.reset({
-          name: mockUser.name,
-          email: mockUser.email,
-          phone: mockUser.phone
+          name: authUser.name || "",
+          email: authUser.email || "",
+          phone: authUser.phone || ""
         })
         notificationsForm.reset({
-          emailNotifications: mockUser.preferences?.emailNotifications || true,
-          reminderDays: mockUser.preferences?.reminderDays || 30
+          emailNotifications: authUser.preferences?.emailNotifications ?? true,
+          reminderDays: authUser.preferences?.reminderDays ?? 30
         })
       }
     }
@@ -277,14 +276,14 @@ export default function UserSettingsPage() {
         setError("Failed to update notification preferences. Please try again.")
       }
     } catch (err) {
-      console.error("Notification preferences update error:", err)
+      console.error("Preferences update error:", err)
       setError("An unexpected error occurred. Please try again.")
     } finally {
       setIsPreferencesSaving(false)
     }
   }
   
-  if (!user) {
+  if (!authUser) {
     return (
       <div className="flex min-h-screen bg-amber-50">
         <WarrantySidebar />
