@@ -55,3 +55,16 @@ export interface WarrantyApiResponse {
   error?: string;
   validationErrors?: ValidationError[];
 }
+
+// Add DashboardStats interface
+export interface DashboardStats {
+  total: number;
+  active: number;
+  expiring: number;
+  expired: number;
+  warrantyByCategory: {
+    category: string;
+    count: number;
+  }[];
+  recentWarranties: Warranty[];
+}

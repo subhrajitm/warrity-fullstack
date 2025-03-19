@@ -76,10 +76,10 @@ interface Event {
 }
 
 interface DashboardStats {
-  totalWarranties: number;
-  activeWarranties: number;
-  expiringWarranties: number;
-  expiredWarranties: number;
+  total: number;
+  active: number;
+  expiring: number;
+  expired: number;
   warrantyByCategory: {
     category: string;
     count: number;
@@ -538,7 +538,7 @@ export const warrantyApi = {
     apiRequest(`/warranties/${warrantyId}/documents/${documentId}`, 'DELETE'),
   
   getWarrantyStats: () => 
-    apiRequest<{ stats: DashboardStats }>('/warranties/stats/overview', 'GET'),
+    apiRequest<DashboardStats>('/warranties/stats/overview', 'GET'),
   
   uploadDocument: async (file: File): Promise<WarrantyDocument | null> => {
     try {
