@@ -42,6 +42,28 @@ const emptyWarranty = {
   updatedAt: ""
 }
 
+// Utility function to format ISO date strings to yyyy-MM-dd format for date inputs
+const formatDateForInput = (isoDateString: string | undefined): string => {
+  if (!isoDateString) return '';
+  const date = new Date(isoDateString);
+  return date.toISOString().split('T')[0]; // Returns YYYY-MM-DD
+}
+
+// Utility function to safely get nested property values
+const safelyGetNestedValue = (obj: any, path: string, defaultValue: string = ''): string => {
+  if (!obj) return defaultValue;
+  
+  const keys = path.split('.');
+  let current = obj;
+  
+  for (const key of keys) {
+    if (current === undefined || current === null) return defaultValue;
+    current = current[key];
+  }
+  
+  return current !== undefined && current !== null ? String(current) : defaultValue;
+}
+
 interface Props {
   warrantyId: string;
 }
@@ -104,10 +126,39 @@ export default function UserEditWarrantyForm({ warrantyId }: Props) {
   
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }))
+    
+    // Special handling for date inputs
+    if (e.target.type === 'date') {
+      // Convert YYYY-MM-DD to ISO format for storage
+      const isoDate = value ? new Date(value).toISOString() : '';
+      setFormData(prev => ({
+        ...prev,
+        [name]: isoDate
+      }))
+    } else if (name.includes('.')) {
+      // Handle nested properties like product.name
+      const [parent, child] = name.split('.')
+      
+      if (parent === 'product') {
+        setFormData(prev => {
+          // Ensure prev.product exists and has the required properties
+          const currentProduct = prev.product || { _id: "", name: "", manufacturer: "" };
+          
+          return {
+            ...prev,
+            product: {
+              ...currentProduct,
+              [child]: value
+            }
+          };
+        });
+      }
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }))
+    }
   }
   
   const handleSelectChange = (name: string, value: string) => {
@@ -168,7 +219,7 @@ export default function UserEditWarrantyForm({ warrantyId }: Props) {
                     <Input
                       id="product"
                       name="product.name"
-                      value={formData.product?.name}
+                      value={safelyGetNestedValue(formData, 'product.name')}
                       onChange={handleInputChange}
                       className="border-2 border-amber-800 bg-amber-50"
                       required
@@ -181,7 +232,7 @@ export default function UserEditWarrantyForm({ warrantyId }: Props) {
                     <Input
                       id="manufacturer"
                       name="product.manufacturer"
-                      value={formData.product?.manufacturer}
+                      value={safelyGetNestedValue(formData, 'product.manufacturer')}
                       onChange={handleInputChange}
                       className="border-2 border-amber-800 bg-amber-50"
                       required
@@ -194,7 +245,7 @@ export default function UserEditWarrantyForm({ warrantyId }: Props) {
                     <Input
                       id="warrantyProvider"
                       name="warrantyProvider"
-                      value={formData.warrantyProvider}
+                      value={safelyGetNestedValue(formData, 'warrantyProvider')}
                       onChange={handleInputChange}
                       className="border-2 border-amber-800 bg-amber-50"
                       required
@@ -208,7 +259,7 @@ export default function UserEditWarrantyForm({ warrantyId }: Props) {
                       id="purchaseDate"
                       name="purchaseDate"
                       type="date"
-                      value={formData.purchaseDate}
+                      value={formatDateForInput(formData.purchaseDate)}
                       onChange={handleInputChange}
                       className="border-2 border-amber-800 bg-amber-50"
                       required
@@ -222,7 +273,7 @@ export default function UserEditWarrantyForm({ warrantyId }: Props) {
                       id="expirationDate"
                       name="expirationDate"
                       type="date"
-                      value={formData.expirationDate}
+                      value={formatDateForInput(formData.expirationDate)}
                       onChange={handleInputChange}
                       className="border-2 border-amber-800 bg-amber-50"
                       required
@@ -237,7 +288,7 @@ export default function UserEditWarrantyForm({ warrantyId }: Props) {
                     <Input
                       id="warrantyNumber"
                       name="warrantyNumber"
-                      value={formData.warrantyNumber}
+                      value={safelyGetNestedValue(formData, 'warrantyNumber')}
                       onChange={handleInputChange}
                       className="border-2 border-amber-800 bg-amber-50"
                       required
@@ -250,7 +301,7 @@ export default function UserEditWarrantyForm({ warrantyId }: Props) {
                     <Textarea
                       id="coverageDetails"
                       name="coverageDetails"
-                      value={formData.coverageDetails}
+                      value={safelyGetNestedValue(formData, 'coverageDetails')}
                       onChange={handleInputChange}
                       className="border-2 border-amber-800 bg-amber-50 min-h-[80px]"
                       disabled={isSubmitting}
@@ -262,7 +313,7 @@ export default function UserEditWarrantyForm({ warrantyId }: Props) {
                     <Textarea
                       id="notes"
                       name="notes"
-                      value={formData.notes}
+                      value={safelyGetNestedValue(formData, 'notes')}
                       onChange={handleInputChange}
                       className="border-2 border-amber-800 bg-amber-50 min-h-[80px]"
                       disabled={isSubmitting}
