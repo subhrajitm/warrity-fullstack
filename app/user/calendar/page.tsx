@@ -15,6 +15,12 @@ import { Textarea } from "@/components/ui/textarea"
 import { ArrowLeft, Calendar as CalendarIcon, Shield, Wrench, AlertTriangle, Info, Plus, Trash2, Loader2 } from "lucide-react"
 import WarrantySidebar from "../warranties/components/sidebar"
 import { useAuth } from "@/lib/auth-context"
+import { 
+  ApiCache, 
+  createApiRequest, 
+  apiEndpoints,
+  handleApiError 
+} from "@/lib/api-utils"
 
 // Define the event type
 interface CalendarEvent {
@@ -23,11 +29,9 @@ interface CalendarEvent {
   description: string;
   eventType: string;
   startDate: string;
-  endDate: string;
   allDay: boolean;
   location?: string;
   color?: string;
-  relatedProduct?: string;
   relatedWarranty?: string;
   notifications?: {
     enabled: boolean;
@@ -47,6 +51,15 @@ interface Product {
   model?: string;
 }
 
+// Define the API response type
+interface ApiResponse<T> {
+  data?: T;
+  events?: T;
+  products?: T;
+  error?: string;
+  message?: string;
+}
+
 export default function CalendarPage() {
   const router = useRouter()
   const { user, isAuthenticated, isLoading: authLoading } = useAuth()
@@ -58,9 +71,8 @@ export default function CalendarPage() {
   const [newEvent, setNewEvent] = useState<Omit<CalendarEvent, '_id'>>({
     title: "",
     description: "",
-    eventType: "warranty",
+    eventType: "expiration",
     startDate: new Date().toISOString().split('T')[0],
-    endDate: new Date().toISOString().split('T')[0],
     allDay: true,
     color: "#3498db",
     notifications: {
@@ -74,6 +86,10 @@ export default function CalendarPage() {
   // Handle product selection
   const [products, setProducts] = useState<Product[]>([])
   const [isProductsLoading, setIsProductsLoading] = useState(true)
+  
+  const [isCreating, setIsCreating] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
   
   // Check if user is logged in and fetch events
   useEffect(() => {
@@ -90,78 +106,62 @@ export default function CalendarPage() {
   const fetchEvents = async () => {
     try {
       setIsLoading(true);
+      console.log('Fetching events from:', apiEndpoints.events.list);
       
-      // Get auth token from localStorage
-      const token = localStorage.getItem('authToken');
+      const data = await ApiCache.fetchWithCache<ApiResponse<CalendarEvent[]>>(
+        apiEndpoints.events.list,
+        createApiRequest(apiEndpoints.events.list)
+      );
       
-      if (!token) {
-        console.error('No authentication token found');
-        setIsLoading(false);
+      console.log('Raw API response:', JSON.stringify(data, null, 2));
+      
+      if (data.error) {
+        console.error('Error in API response:', data.error);
         return;
       }
-      
-      console.log('Fetching events with token:', token.substring(0, 10) + '...');
-      
-      const response = await fetch('/api/events', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      console.log('Fetch events response status:', response.status, response.statusText);
-      
-      if (!response.ok) {
-        console.error('Error response:', {
-          status: response.status,
-          statusText: response.statusText
-        });
-        
-        try {
-          const errorText = await response.text();
-          console.error('Error response text:', errorText);
-          
-          if (response.status === 401) {
-            alert('Your session has expired. Please log in again.');
-            // Redirect to login page
-            router.push('/login');
-          }
-        } catch (e) {
-          console.error('Error parsing error response:', e);
-        }
-        
-        setIsLoading(false);
-        return;
-      }
-      
-      const data = await response.json();
-      console.log('Fetched events:', data);
-      
+
       // Handle different response formats
-      let eventsData = [];
+      let eventsData: CalendarEvent[] = [];
       
-      if (Array.isArray(data)) {
-        eventsData = data;
-      } else if (data.events && Array.isArray(data.events)) {
+      if (Array.isArray(data.data)) {
+        console.log('Found events in data.data:', data.data.length);
+        eventsData = data.data;
+      } else if (Array.isArray(data.events)) {
+        console.log('Found events in data.events:', data.events.length);
         eventsData = data.events;
       } else {
         console.error('Unexpected data format:', data);
+        console.error('data.data type:', typeof data.data);
+        console.error('data.events type:', typeof data.events);
       }
-      
+
       // Process and normalize event data
-      const normalizedEvents = eventsData.map((event: any) => ({
-        ...event,
-        // Ensure dates are properly formatted
-        startDate: new Date(event.startDate).toISOString(),
-        endDate: new Date(event.endDate).toISOString(),
-        // Ensure color has a default value
-        color: event.color || '#3498db'
-      }));
+      const normalizedEvents = eventsData.map((event: CalendarEvent) => {
+        console.log('Processing event:', event);
+        return {
+          ...event,
+          startDate: new Date(event.startDate).toISOString(),
+          color: event.color || '#3498db'
+        };
+      });
       
-      console.log('Normalized events:', normalizedEvents);
+      console.log('Setting normalized events:', normalizedEvents.length);
       setEvents(normalizedEvents);
     } catch (err) {
       console.error('Error fetching events:', err);
-      alert(`Failed to fetch events: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      if (err instanceof Error) {
+        console.error('Error details:', {
+          message: err.message,
+          stack: err.stack
+        });
+        if (err.message === 'Unauthorized') {
+          router.push('/login');
+        } else {
+          alert(`Failed to fetch events: ${err.message}`);
+        }
+      } else {
+        alert('Failed to fetch events: Unknown error');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -173,66 +173,35 @@ export default function CalendarPage() {
       try {
         setIsProductsLoading(true);
         
-        // Get auth token from localStorage
-        const token = localStorage.getItem('authToken');
+        const data = await ApiCache.fetchWithCache<ApiResponse<Product[]>>(
+          apiEndpoints.products.list,
+          createApiRequest(apiEndpoints.products.list)
+        );
         
-        if (!token) {
-          console.error('No authentication token found');
-          setIsProductsLoading(false);
+        if (data.error) {
+          console.error('Error fetching products:', data.error);
           return;
         }
-        
-        console.log('Fetching products with token:', token.substring(0, 10) + '...');
-        
-        const response = await fetch('/api/products', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        
-        console.log('Fetch products response status:', response.status, response.statusText);
-        
-        if (!response.ok) {
-          console.error('Error response:', {
-            status: response.status,
-            statusText: response.statusText
-          });
-          
-          try {
-            const errorText = await response.text();
-            console.error('Error response text:', errorText);
-          } catch (e) {
-            console.error('Error parsing error response:', e);
-          }
-          
-          setIsProductsLoading(false);
-          return;
-        }
-        
-        const data = await response.json();
-        console.log('Fetched products:', data);
-        
+
         // Handle different response formats
-        let productsData = [];
+        let productsData: Product[] = [];
         
-        if (Array.isArray(data)) {
-          productsData = data;
-        } else if (data.products && Array.isArray(data.products)) {
+        if (Array.isArray(data.data)) {
+          productsData = data.data;
+        } else if (Array.isArray(data.products)) {
           productsData = data.products;
         } else {
           console.error('Unexpected data format:', data);
         }
-        
+
         // Process and normalize product data
-        const normalizedProducts = productsData.map((product: any) => ({
+        const normalizedProducts = productsData.map((product: Product) => ({
           ...product,
-          // Ensure all required fields have values
           name: product.name || 'Unnamed Product',
           description: product.description || '',
           category: product.category || 'Uncategorized'
         }));
         
-        console.log('Normalized products:', normalizedProducts);
         setProducts(normalizedProducts);
       } catch (err) {
         console.error('Error fetching products:', err);
@@ -242,20 +211,35 @@ export default function CalendarPage() {
     };
   
     if (isAuthenticated && !authLoading) {
-      fetchProducts()
+      fetchProducts();
     }
-  }, [isAuthenticated, authLoading])
+  }, [isAuthenticated, authLoading]);
   
   // Filter events based on selected date and filter type
   const filteredEvents = events.filter(event => {
-    const eventStartDate = new Date(event.startDate)
+    const eventDate = new Date(event.startDate)
     const isSameDay = 
-      eventStartDate.getDate() === selectedDate.getDate() &&
-      eventStartDate.getMonth() === selectedDate.getMonth() &&
-      eventStartDate.getFullYear() === selectedDate.getFullYear()
+      eventDate.getDate() === selectedDate.getDate() &&
+      eventDate.getMonth() === selectedDate.getMonth() &&
+      eventDate.getFullYear() === selectedDate.getFullYear()
     
-    return isSameDay && (filterType === "all" || event.eventType === filterType)
+    const matchesFilter = filterType === "all" || event.eventType === filterType;
+    
+    console.log('Filtering event:', {
+      eventTitle: event.title,
+      eventDate: eventDate.toISOString(),
+      selectedDate: selectedDate.toISOString(),
+      eventType: event.eventType,
+      filterType,
+      isSameDay,
+      matchesFilter,
+      willShow: isSameDay && matchesFilter
+    });
+    
+    return isSameDay && matchesFilter;
   })
+  
+  console.log('Filtered events for selected date:', filteredEvents);
   
   // Get dates with events for highlighting in calendar
   const getDatesWithEvents = () => {
@@ -265,11 +249,11 @@ export default function CalendarPage() {
   // Get event type badge
   const getEventTypeBadge = (type: string) => {
     switch (type) {
-      case "warranty":
+      case "expiration":
         return (
           <Badge className="bg-amber-500 text-white">
             <Shield className="mr-1 h-3 w-3" />
-            Warranty
+            Warranty Expiration
           </Badge>
         )
       case "maintenance":
@@ -336,194 +320,115 @@ export default function CalendarPage() {
   
   // Handle event creation
   const handleCreateEvent = async () => {
-    // Validate form
-    if (!newEvent.title || !newEvent.startDate || !newEvent.endDate) {
+    if (!newEvent.title || !newEvent.startDate) {
       alert("Please fill in all required fields");
       return;
     }
     
     try {
-      // Get auth token from localStorage
-      const token = localStorage.getItem('authToken');
+      setIsCreating(true);
       
-      if (!token) {
-        console.error('No authentication token found');
-        return;
-      }
-      
-      // Log the event data we're sending
-      console.log('Sending event data:', newEvent);
-      
-      // Format dates properly
-      const formattedEvent = {
+      // Create optimistic event
+      const optimisticEvent: CalendarEvent = {
         ...newEvent,
-        // Ensure dates are in ISO format
-        startDate: new Date(newEvent.startDate).toISOString(),
-        endDate: new Date(newEvent.endDate).toISOString(),
-        // Only include relatedProduct if it's defined
-        ...(newEvent.relatedProduct ? { relatedProduct: newEvent.relatedProduct } : {})
+        _id: 'temp-' + Date.now(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       };
       
-      console.log('Formatted event data:', formattedEvent);
+      // Add optimistic event to state
+      setEvents(prev => [...prev, optimisticEvent]);
       
-      const response = await fetch('/api/events', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(formattedEvent)
-      });
+      // Format event data to match API requirements
+      const formattedEvent = {
+        title: newEvent.title,
+        description: newEvent.description || '',
+        date: new Date(newEvent.startDate).toISOString(), // Ensure proper ISO8601 format
+        type: newEvent.eventType === 'warranty' ? 'expiration' : 
+              newEvent.eventType === 'maintenance' ? 'maintenance' : 
+              newEvent.eventType === 'reminder' ? 'reminder' : 'reminder', // Ensure valid type
+        warranty: newEvent.relatedWarranty || undefined,
+        allDay: newEvent.allDay || false,
+        color: newEvent.color || '#3498db',
+        notifications: newEvent.notifications || {
+          enabled: true,
+          reminderTime: 24
+        }
+      };
       
-      console.log('Create event response status:', response.status, response.statusText);
+      console.log('Sending event data:', formattedEvent); // Debug log
+      
+      const response = await fetch(
+        apiEndpoints.events.list,
+        createApiRequest(apiEndpoints.events.list, 'POST', formattedEvent)
+      );
       
       if (!response.ok) {
-        // Log the full response for debugging
-        console.error('Error response:', {
-          status: response.status,
-          statusText: response.statusText,
-          headers: Object.fromEntries([...response.headers.entries()])
-        });
-        
-        // Clone the response to read the body
-        const clonedResponse = response.clone();
-        
-        try {
-          // Try to get the response as text first
-          const responseText = await clonedResponse.text();
-          console.error('Response text:', responseText);
-          
-          // Try to parse as JSON if possible
-          if (responseText) {
-            try {
-              const errorData = JSON.parse(responseText);
-              console.error('Parsed error data:', errorData);
-              
-              // Show a more specific error message if available
-              const errorMessage = errorData.message || errorData.error || 'Failed to create event';
-              alert(`Error: ${errorMessage}`);
-            } catch (parseError) {
-              console.error('Error parsing response as JSON:', parseError);
-              alert(`Error: ${responseText || 'Failed to create event'}`);
-            }
-          } else {
-            alert(`Error: ${response.statusText || 'Failed to create event'}`);
-          }
-        } catch (textError) {
-          console.error('Error reading response text:', textError);
-          alert(`Error: ${response.statusText || 'Failed to create event'}`);
-        }
-        
-        return;
+        // Remove optimistic event on failure
+        setEvents(prev => prev.filter(e => e._id !== optimisticEvent._id));
+        const errorMessage = await handleApiError(response);
+        throw new Error(errorMessage);
       }
       
-      try {
-        const data = await response.json();
-        console.log('Event created:', data);
+      const data = await response.json();
+      console.log('Create event response:', data); // Debug log
+      
+      // Handle different response formats
+      const createdEvent = data.event || data;
+      
+      if (createdEvent && createdEvent._id) {
+        // Replace optimistic event with real event
+        setEvents(prev => prev.map(e => 
+          e._id === optimisticEvent._id ? createdEvent : e
+        ));
         
-        // Add the new event to the state with the correct structure
-        const createdEvent = data.event || data;
-        console.log('Created event object:', createdEvent);
+        // Reset form and close dialog
+        setNewEvent({
+          title: "",
+          description: "",
+          eventType: "expiration",
+          startDate: new Date().toISOString().split('T')[0],
+          allDay: true,
+          color: "#3498db",
+          notifications: {
+            enabled: true,
+            reminderTime: 24
+          }
+        });
+        setIsDialogOpen(false);
         
-        if (createdEvent && createdEvent._id) {
-          setEvents(prev => [...prev, createdEvent]);
-          
-          // Reset form and close dialog
-          setNewEvent({
-            title: "",
-            description: "",
-            eventType: "warranty",
-            startDate: new Date().toISOString().split('T')[0],
-            endDate: new Date().toISOString().split('T')[0],
-            allDay: true,
-            color: "#3498db",
-            notifications: {
-              enabled: true,
-              reminderTime: 24
-            }
-          });
-          setIsDialogOpen(false);
-          
-          // Select the date of the new event
-          setSelectedDate(new Date(createdEvent.startDate));
-          
-          // Show success message
-          alert('Event created successfully!');
-        } else {
-          console.error('Invalid event data returned:', data);
-          alert('Event was created but the response format was unexpected.');
-        }
-      } catch (error) {
-        console.error('Error creating event:', error);
-        alert(`Failed to create event: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        // Select the date of the new event
+        setSelectedDate(new Date(createdEvent.startDate));
+        
+        // Clear cache for events
+        ApiCache.removeFromCache(apiEndpoints.events.list);
+        
+        alert('Event created successfully!');
+      } else {
+        throw new Error('Invalid event data returned');
       }
     } catch (error) {
       console.error('Error creating event:', error);
       alert(`Failed to create event: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsCreating(false);
     }
-  }
+  };
   
   // Handle event deletion
   const handleDeleteEvent = async (id: string) => {
     if (confirm("Are you sure you want to delete this event?")) {
       try {
-        // Get auth token from localStorage
-        const token = localStorage.getItem('authToken');
+        setIsDeleting(true);
         
-        if (!token) {
-          console.error('No authentication token found');
-          return;
-        }
-        
-        console.log('Deleting event with ID:', id);
-        
-        const response = await fetch(`/api/events/${id}`, {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        
-        console.log('Delete event response status:', response.status, response.statusText);
+        const response = await fetch(
+          apiEndpoints.events.detail(id),
+          createApiRequest(apiEndpoints.events.detail(id), 'DELETE')
+        );
         
         if (!response.ok) {
-          // Log the full response for debugging
-          console.error('Error response:', {
-            status: response.status,
-            statusText: response.statusText,
-            headers: Object.fromEntries([...response.headers.entries()])
-          });
-          
-          // Clone the response to read the body
-          const clonedResponse = response.clone();
-          
-          try {
-            // Try to get the response as text first
-            const responseText = await clonedResponse.text();
-            console.error('Response text:', responseText);
-            
-            // Try to parse as JSON if possible
-            if (responseText) {
-              try {
-                const errorData = JSON.parse(responseText);
-                console.error('Parsed error data:', errorData);
-                
-                // Show a more specific error message if available
-                const errorMessage = errorData.message || errorData.error || 'Failed to delete event';
-                alert(`Error: ${errorMessage}`);
-              } catch (parseError) {
-                console.error('Error parsing response as JSON:', parseError);
-                alert(`Error: ${responseText || 'Failed to delete event'}`);
-              }
-            } else {
-              alert(`Error: ${response.statusText || 'Failed to delete event'}`);
-            }
-          } catch (textError) {
-            console.error('Error reading response text:', textError);
-            alert(`Error: ${response.statusText || 'Failed to delete event'}`);
-          }
-          
-          return;
+          const errorMessage = await handleApiError(response);
+          throw new Error(errorMessage);
         }
         
         // Remove the deleted event from state
@@ -535,97 +440,34 @@ export default function CalendarPage() {
           setSelectedEvent(null);
         }
         
-        // Show success message
+        // Clear cache for events
+        ApiCache.removeFromCache(apiEndpoints.events.list);
+        
         alert('Event deleted successfully!');
       } catch (error) {
         console.error('Error deleting event:', error);
         alert(`Failed to delete event: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      } finally {
+        setIsDeleting(false);
       }
     }
-  }
+  };
   
   // View event details
   const handleViewEvent = async (event: CalendarEvent) => {
     try {
-      // Get auth token from localStorage
-      const token = localStorage.getItem('authToken');
+      const data = await ApiCache.fetchWithCache<ApiResponse<CalendarEvent>>(
+        apiEndpoints.events.detail(event._id),
+        createApiRequest(apiEndpoints.events.detail(event._id))
+      );
       
-      if (!token) {
-        console.error('No authentication token found');
-        return;
-      }
+      // Handle different response formats
+      const eventDetails = data.data || data;
       
-      console.log('Viewing event with ID:', event._id);
-      
-      const response = await fetch(`/api/events/${event._id}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      console.log('View event response status:', response.status, response.statusText);
-      
-      if (!response.ok) {
-        // Log the full response for debugging
-        console.error('Error response:', {
-          status: response.status,
-          statusText: response.statusText,
-          headers: Object.fromEntries([...response.headers.entries()])
-        });
-        
-        // Clone the response to read the body
-        const clonedResponse = response.clone();
-        
-        try {
-          // Try to get the response as text first
-          const responseText = await clonedResponse.text();
-          console.error('Response text:', responseText);
-          
-          // Try to parse as JSON if possible
-          if (responseText) {
-            try {
-              const errorData = JSON.parse(responseText);
-              console.error('Parsed error data:', errorData);
-              
-              // Show a more specific error message if available
-              const errorMessage = errorData.message || errorData.error || 'Failed to load event details';
-              alert(`Error: ${errorMessage}`);
-            } catch (parseError) {
-              console.error('Error parsing response as JSON:', parseError);
-              alert(`Error: ${responseText || 'Failed to load event details'}`);
-            }
-          } else {
-            alert(`Error: ${response.statusText || 'Failed to load event details'}`);
-          }
-        } catch (textError) {
-          console.error('Error reading response text:', textError);
-          alert(`Error: ${response.statusText || 'Failed to load event details'}`);
-        }
-        
-        // Use the event from the list as a fallback
-        setSelectedEvent(event);
+      if (eventDetails && '_id' in eventDetails) {
+        setSelectedEvent(eventDetails as CalendarEvent);
         setIsViewDialogOpen(true);
-        return;
-      }
-      
-      try {
-        const data = await response.json();
-        console.log('Event details:', data);
-        
-        // Handle different response formats
-        const eventDetails = data.event || data;
-        
-        if (eventDetails && eventDetails._id) {
-          setSelectedEvent(eventDetails);
-          setIsViewDialogOpen(true);
-        } else {
-          console.error('Invalid event data returned:', data);
-          // Use the event from the list as a fallback
-          setSelectedEvent(event);
-          setIsViewDialogOpen(true);
-        }
-      } catch (error) {
-        console.error('Error parsing event details:', error);
+      } else {
         // Use the event from the list as a fallback
         setSelectedEvent(event);
         setIsViewDialogOpen(true);
@@ -636,7 +478,13 @@ export default function CalendarPage() {
       setSelectedEvent(event);
       setIsViewDialogOpen(true);
     }
-  }
+  };
+  
+  // Add logging to useEffect for events
+  useEffect(() => {
+    console.log('Events state updated:', events.length);
+    console.log('Filtered events:', filteredEvents.length);
+  }, [events, selectedDate, filterType]);
   
   if (isLoading) {
     return (
@@ -676,9 +524,9 @@ export default function CalendarPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Events</SelectItem>
-                  <SelectItem value="warranty">Warranty Events</SelectItem>
-                  <SelectItem value="maintenance">Maintenance Events</SelectItem>
-                  <SelectItem value="reminder">Reminder Events</SelectItem>
+                  <SelectItem value="expiration">Warranty Expiration</SelectItem>
+                  <SelectItem value="maintenance">Maintenance</SelectItem>
+                  <SelectItem value="reminder">Reminder</SelectItem>
                 </SelectContent>
               </Select>
               
@@ -716,28 +564,15 @@ export default function CalendarPage() {
                       />
                     </div>
                     
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="startDate" className="text-amber-900">Start Date</Label>
-                        <Input 
-                          id="startDate" 
-                          type="date" 
-                          value={newEvent.startDate} 
-                          onChange={(e) => handleNewEventChange('startDate', e.target.value)}
-                          className="border-2 border-amber-800 bg-amber-50"
-                        />
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="endDate" className="text-amber-900">End Date</Label>
-                        <Input 
-                          id="endDate" 
-                          type="date" 
-                          value={newEvent.endDate} 
-                          onChange={(e) => handleNewEventChange('endDate', e.target.value)}
-                          className="border-2 border-amber-800 bg-amber-50"
-                        />
-                      </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="startDate" className="text-amber-900">Event Date</Label>
+                      <Input 
+                        id="startDate" 
+                        type="date" 
+                        value={newEvent.startDate} 
+                        onChange={(e) => handleNewEventChange('startDate', e.target.value)}
+                        className="border-2 border-amber-800 bg-amber-50"
+                      />
                     </div>
                     
                     <div className="space-y-2">
@@ -750,41 +585,31 @@ export default function CalendarPage() {
                           <SelectValue placeholder="Select event type" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="warranty">Warranty</SelectItem>
+                          <SelectItem value="expiration">Warranty Expiration</SelectItem>
                           <SelectItem value="maintenance">Maintenance</SelectItem>
                           <SelectItem value="reminder">Reminder</SelectItem>
-                          <SelectItem value="other">Other</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                     
                     <div className="space-y-2">
-                      <Label htmlFor="product" className="text-amber-900">Related Product</Label>
+                      <Label htmlFor="warranty" className="text-amber-900">Related Warranty (Optional)</Label>
                       <Select 
-                        value={newEvent.relatedProduct || ""} 
-                        onValueChange={handleProductSelect}
+                        value={newEvent.relatedWarranty || "none"} 
+                        onValueChange={(value) => handleNewEventChange('relatedWarranty', value === "none" ? undefined : value)}
                       >
-                        <SelectTrigger id="product" className="border-2 border-amber-800 bg-amber-50">
-                          <SelectValue placeholder="Select a product" />
+                        <SelectTrigger id="warranty" className="border-2 border-amber-800 bg-amber-50">
+                          <SelectValue placeholder="Select a warranty" />
                         </SelectTrigger>
                         <SelectContent>
-                          {isProductsLoading ? (
-                            <SelectItem value="" disabled>Loading products...</SelectItem>
-                          ) : products.length > 0 ? (
-                            products.map(product => (
-                              <SelectItem key={product._id} value={product._id}>
-                                {product.name}
-                              </SelectItem>
-                            ))
-                          ) : (
-                            <SelectItem value="" disabled>No products found</SelectItem>
-                          )}
+                          <SelectItem value="none">No warranty</SelectItem>
+                          {/* We'll need to fetch warranties and populate this */}
                         </SelectContent>
                       </Select>
                     </div>
                     
                     <div className="space-y-2">
-                      <Label htmlFor="description" className="text-amber-900">Description (optional)</Label>
+                      <Label htmlFor="description" className="text-amber-900">Description (Optional)</Label>
                       <Textarea 
                         id="description" 
                         value={newEvent.description} 
@@ -792,6 +617,17 @@ export default function CalendarPage() {
                         className="border-2 border-amber-800 bg-amber-50 min-h-[80px]"
                         placeholder="Add any additional details about this event..."
                       />
+                    </div>
+                    
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id="allDay"
+                        checked={newEvent.allDay}
+                        onChange={(e) => handleNewEventChange('allDay', e.target.checked)}
+                        className="h-4 w-4 rounded border-amber-800 text-amber-800 focus:ring-amber-800"
+                      />
+                      <Label htmlFor="allDay" className="text-amber-900">All-day event</Label>
                     </div>
                   </div>
                   
@@ -921,11 +757,11 @@ export default function CalendarPage() {
               </DialogHeader>
               
               <div className="space-y-4 py-4">
-                {selectedEvent.relatedProduct && (
+                {selectedEvent.relatedWarranty && (
                   <div>
-                    <h4 className="font-semibold text-amber-900">Related Product</h4>
+                    <h4 className="font-semibold text-amber-900">Related Warranty</h4>
                     <p className="text-amber-700">
-                      {products.find(p => p._id === selectedEvent.relatedProduct)?.name || 'Unknown product'}
+                      {selectedEvent.relatedWarranty}
                     </p>
                   </div>
                 )}
