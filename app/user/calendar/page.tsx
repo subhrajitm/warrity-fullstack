@@ -91,16 +91,86 @@ export default function CalendarPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   
+  // Fetch products from API
+  const fetchProducts = async () => {
+    try {
+      setIsProductsLoading(true);
+      
+      const data = await ApiCache.fetchWithCache<ApiResponse<Product[]>>(
+        apiEndpoints.products.list,
+        createApiRequest(apiEndpoints.products.list)
+      );
+      
+      if (data.error) {
+        console.error('Error fetching products:', data.error);
+        return;
+      }
+
+      // Handle different response formats
+      let productsData: Product[] = [];
+      
+      if (Array.isArray(data.data)) {
+        productsData = data.data;
+      } else if (Array.isArray(data.products)) {
+        productsData = data.products;
+      } else {
+        console.error('Unexpected data format:', data);
+      }
+
+      // Process and normalize product data
+      const normalizedProducts = productsData.map((product: Product) => ({
+        ...product,
+        name: product.name || 'Unnamed Product',
+        description: product.description || '',
+        category: product.category || 'Uncategorized'
+      }));
+      
+      setProducts(normalizedProducts);
+    } catch (err) {
+      console.error('Error fetching products:', err);
+    } finally {
+      setIsProductsLoading(false);
+    }
+  };
+  
   // Check if user is logged in and fetch events
   useEffect(() => {
+    console.log('Auth state changed:', { authLoading, isAuthenticated });
+    
     if (!authLoading) {
       if (!isAuthenticated) {
-        router.push('/login')
+        console.log('User not authenticated, redirecting to login');
+        router.push('/login');
       } else {
-        fetchEvents()
+        console.log('User authenticated, initializing data');
+        initializeData();
       }
     }
-  }, [authLoading, isAuthenticated, router])
+  }, [authLoading, isAuthenticated, router]);
+  
+  // Add a function to initialize data
+  const initializeData = async () => {
+    console.log('Initializing calendar data');
+    try {
+      await Promise.all([
+        fetchEvents(),
+        fetchProducts()
+      ]);
+      
+      // After fetching events, set the selected date to today
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      setSelectedDate(today);
+      
+      console.log('Calendar data initialized:', {
+        selectedDate: today.toISOString(),
+        filterType,
+        totalEvents: events.length
+      });
+    } catch (error) {
+      console.error('Error initializing calendar data:', error);
+    }
+  };
   
   // Fetch events from API
   const fetchEvents = async () => {
@@ -123,30 +193,55 @@ export default function CalendarPage() {
       // Handle different response formats
       let eventsData: CalendarEvent[] = [];
       
-      if (Array.isArray(data.data)) {
-        console.log('Found events in data.data:', data.data.length);
-        eventsData = data.data;
-      } else if (Array.isArray(data.events)) {
+      if (Array.isArray(data.events)) {
         console.log('Found events in data.events:', data.events.length);
         eventsData = data.events;
+      } else if (Array.isArray(data.data)) {
+        console.log('Found events in data.data:', data.data.length);
+        eventsData = data.data;
       } else {
         console.error('Unexpected data format:', data);
-        console.error('data.data type:', typeof data.data);
         console.error('data.events type:', typeof data.events);
+        console.error('data.data type:', typeof data.data);
       }
 
       // Process and normalize event data
       const normalizedEvents = eventsData.map((event: CalendarEvent) => {
         console.log('Processing event:', event);
+        const eventDate = new Date(event.startDate);
+        // Keep the original time if it's not an all-day event
+        if (!event.allDay) {
+          eventDate.setHours(0, 0, 0, 0);
+        }
+        
         return {
           ...event,
-          startDate: new Date(event.startDate).toISOString(),
+          startDate: eventDate.toISOString(),
           color: event.color || '#3498db'
         };
       });
       
       console.log('Setting normalized events:', normalizedEvents.length);
       setEvents(normalizedEvents);
+      
+      // Set the selected date to today if no date is selected
+      if (!selectedDate) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        setSelectedDate(today);
+      }
+      
+      // Log the current state after setting events
+      console.log('Current state after setting events:', {
+        selectedDate: selectedDate.toISOString(),
+        filterType,
+        totalEvents: normalizedEvents.length,
+        events: normalizedEvents.map(e => ({
+          title: e.title,
+          date: e.startDate,
+          type: e.eventType
+        }))
+      });
     } catch (err) {
       console.error('Error fetching events:', err);
       if (err instanceof Error) {
@@ -167,68 +262,23 @@ export default function CalendarPage() {
     }
   };
   
-  // Update the useEffect that fetches products
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        setIsProductsLoading(true);
-        
-        const data = await ApiCache.fetchWithCache<ApiResponse<Product[]>>(
-          apiEndpoints.products.list,
-          createApiRequest(apiEndpoints.products.list)
-        );
-        
-        if (data.error) {
-          console.error('Error fetching products:', data.error);
-          return;
-        }
-
-        // Handle different response formats
-        let productsData: Product[] = [];
-        
-        if (Array.isArray(data.data)) {
-          productsData = data.data;
-        } else if (Array.isArray(data.products)) {
-          productsData = data.products;
-        } else {
-          console.error('Unexpected data format:', data);
-        }
-
-        // Process and normalize product data
-        const normalizedProducts = productsData.map((product: Product) => ({
-          ...product,
-          name: product.name || 'Unnamed Product',
-          description: product.description || '',
-          category: product.category || 'Uncategorized'
-        }));
-        
-        setProducts(normalizedProducts);
-      } catch (err) {
-        console.error('Error fetching products:', err);
-      } finally {
-        setIsProductsLoading(false);
-      }
-    };
-  
-    if (isAuthenticated && !authLoading) {
-      fetchProducts();
-    }
-  }, [isAuthenticated, authLoading]);
-  
   // Filter events based on selected date and filter type
   const filteredEvents = events.filter(event => {
-    const eventDate = new Date(event.startDate)
-    const isSameDay = 
-      eventDate.getDate() === selectedDate.getDate() &&
-      eventDate.getMonth() === selectedDate.getMonth() &&
-      eventDate.getFullYear() === selectedDate.getFullYear()
+    // Convert dates to local timezone for comparison
+    const eventDate = new Date(event.startDate);
+    const selectedDateObj = new Date(selectedDate);
     
+    // Format dates to YYYY-MM-DD for comparison
+    const eventDateStr = eventDate.toISOString().split('T')[0];
+    const selectedDateStr = selectedDateObj.toISOString().split('T')[0];
+    
+    const isSameDay = eventDateStr === selectedDateStr;
     const matchesFilter = filterType === "all" || event.eventType === filterType;
     
     console.log('Filtering event:', {
       eventTitle: event.title,
-      eventDate: eventDate.toISOString(),
-      selectedDate: selectedDate.toISOString(),
+      eventDate: eventDateStr,
+      selectedDate: selectedDateStr,
       eventType: event.eventType,
       filterType,
       isSameDay,
@@ -237,14 +287,45 @@ export default function CalendarPage() {
     });
     
     return isSameDay && matchesFilter;
-  })
+  });
   
-  console.log('Filtered events for selected date:', filteredEvents);
+  // Add logging for initial state
+  useEffect(() => {
+    console.log('Initial state:', {
+      selectedDate: selectedDate.toISOString(),
+      filterType,
+      totalEvents: events.length,
+      events: events.map(e => ({
+        title: e.title,
+        date: e.startDate,
+        type: e.eventType
+      }))
+    });
+  }, []);
+  
+  // Add logging for state changes
+  useEffect(() => {
+    console.log('State updated:', {
+      selectedDate: selectedDate.toISOString(),
+      filterType,
+      totalEvents: events.length,
+      filteredEvents: filteredEvents.length,
+      events: events.map(e => ({
+        title: e.title,
+        date: e.startDate,
+        type: e.eventType
+      }))
+    });
+  }, [events, selectedDate, filterType]);
   
   // Get dates with events for highlighting in calendar
   const getDatesWithEvents = () => {
-    return events.map(event => new Date(event.startDate))
-  }
+    return events.map(event => {
+      const date = new Date(event.startDate);
+      date.setHours(0, 0, 0, 0);
+      return date;
+    });
+  };
   
   // Get event type badge
   const getEventTypeBadge = (type: string) => {
@@ -480,11 +561,13 @@ export default function CalendarPage() {
     }
   };
   
-  // Add logging to useEffect for events
-  useEffect(() => {
-    console.log('Events state updated:', events.length);
-    console.log('Filtered events:', filteredEvents.length);
-  }, [events, selectedDate, filterType]);
+  // Update the Calendar component to handle date selection
+  const handleDateSelect = (date: Date | undefined) => {
+    if (date) {
+      console.log('Date selected:', date.toISOString());
+      setSelectedDate(date);
+    }
+  };
   
   if (isLoading) {
     return (
@@ -664,7 +747,7 @@ export default function CalendarPage() {
                   <Calendar
                     mode="single"
                     selected={selectedDate}
-                    onSelect={(date) => date && setSelectedDate(date)}
+                    onSelect={handleDateSelect}
                     className="border-2 border-amber-300 rounded-md p-3"
                     modifiers={{
                       hasEvent: getDatesWithEvents()
