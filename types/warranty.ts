@@ -29,14 +29,14 @@ export interface Warranty {
 }
 
 export interface WarrantyInput {
-  product: string; // Product ID
+  product: string | Product; // Allow both string (ID) and Product object
   purchaseDate: string;
   expirationDate: string;
   warrantyProvider: string;
   warrantyNumber: string;
   coverageDetails: string;
   notes?: string;
-  status: 'active';
+  status: 'active' | 'expiring' | 'expired';
   documents: WarrantyDocument[];
 }
 
