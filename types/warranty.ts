@@ -11,10 +11,16 @@ export interface Product {
   manufacturer: string;
 }
 
+export interface User {
+  _id: string;
+  name: string;
+  email: string;
+}
+
 export interface Warranty {
   id: string;
   _id?: string; // Add MongoDB _id field
-  user: string;
+  user: User;
   product: Product;
   purchaseDate: string;
   expirationDate: string;

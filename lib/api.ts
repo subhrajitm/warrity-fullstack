@@ -97,6 +97,29 @@ interface UserActivity {
   details?: Record<string, any>;
 }
 
+interface Settings {
+  notificationSettings: {
+    emailNotifications: boolean;
+    pushNotifications: boolean;
+    warrantyExpiryAlerts: boolean;
+    systemAlerts: boolean;
+  };
+  emailSettings: {
+    smtpHost: string;
+    smtpPort: string;
+    smtpUser: string;
+    smtpPassword: string;
+    fromEmail: string;
+    fromName: string;
+  };
+  systemSettings: {
+    maintenanceMode: boolean;
+    allowRegistration: boolean;
+    maxLoginAttempts: number;
+    sessionTimeout: number;
+  };
+}
+
 // API base URL
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
 const UPLOAD_BASE_URL = process.env.NEXT_PUBLIC_UPLOAD_URL || 'http://localhost:5001/uploads';
@@ -279,6 +302,7 @@ export async function apiRequest<T = any>(
     retries?: number;
     cache?: boolean;
     forceFresh?: boolean;
+    params?: Record<string, any>;
   } = {}
 ): Promise<ApiResponse<T>> {
   const { 
@@ -286,11 +310,12 @@ export async function apiRequest<T = any>(
     timeout = DEFAULT_TIMEOUT,
     retries = MAX_RETRIES,
     cache = method === 'GET',  // Only cache GET requests by default
-    forceFresh = false
+    forceFresh = false,
+    params
   } = options;
 
   // Generate a cache key for GET requests
-  const cacheKey = method === 'GET' ? `${method}:${endpoint}` : null;
+  const cacheKey = method === 'GET' ? `${method}:${endpoint}${params ? `?${new URLSearchParams(params).toString()}` : ''}` : null;
   
   // Check cache for GET requests if not forcing fresh data
   if (cacheKey && cache && !forceFresh) {
@@ -327,7 +352,7 @@ export async function apiRequest<T = any>(
 
   try {
     // Make the request
-    const url = `${API_BASE_URL}${endpoint}`;
+    const url = `${API_BASE_URL}${endpoint}${params ? `?${new URLSearchParams(params).toString()}` : ''}`;
     const response = await fetchWithRetry(url, requestOptions, retries);
     const result = await processResponse<T>(response);
     
@@ -712,6 +737,68 @@ export const adminApi = {
       '/admin/health', 
       'GET'
     ),
+  getSettings: () => 
+    apiRequest<Settings>('/admin/settings', 'GET'),
+  updateSettings: (settings: Settings) => 
+    apiRequest<Settings>('/admin/settings', 'PUT', settings),
+  getWarrantyAnalytics: () => 
+    apiRequest<{
+      totalWarranties: number;
+      activeWarranties: number;
+      expiringWarranties: number;
+      expiredWarranties: number;
+      warrantyByStatus: Array<{
+        status: string;
+        count: number;
+      }>;
+      warrantyByMonth: Array<{
+        month: string;
+        count: number;
+      }>;
+    }>('/admin/analytics/warranties', 'GET'),
+  getProductAnalytics: () => 
+    apiRequest<{
+      totalProducts: number;
+      productsByCategory: Array<{
+        category: string;
+        count: number;
+      }>;
+      topProducts: Array<{
+        name: string;
+        warrantyCount: number;
+      }>;
+    }>('/admin/analytics/products', 'GET'),
+  getAdminLogs: (params?: {
+    adminId?: string;
+    resourceType?: string;
+    action?: string;
+    startDate?: string;
+    endDate?: string;
+    page?: number;
+    limit?: number;
+  }) => 
+    apiRequest<{
+      logs: Array<{
+        id: string;
+        adminId: {
+          name: string;
+          email: string;
+        };
+        action: string;
+        resourceType: string;
+        resourceId: string;
+        details: any;
+        ipAddress: string;
+        userAgent: string;
+        timestamp: string;
+      }>;
+      pagination: {
+        total: number;
+        page: number;
+        limit: number;
+        totalPages: number;
+      };
+    }>('/admin/logs', 'GET', undefined, undefined, { params }),
 };
 
 // Error handling utility
