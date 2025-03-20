@@ -344,7 +344,7 @@ export default function AdminLogsPage() {
                 placeholder="Search by admin ID"
                 value={filters.adminId}
                 onChange={(e) => handleFilterChange("adminId", e.target.value)}
-                className="border-2 border-amber-800 bg-amber-50"
+                className="border-2 border-amber-800 bg-amber-50 w-full"
               />
             </div>
             <div className="space-y-2">
@@ -353,7 +353,7 @@ export default function AdminLogsPage() {
                 value={filters.resourceType}
                 onValueChange={(value) => handleFilterChange("resourceType", value)}
               >
-                <SelectTrigger className="border-2 border-amber-800 bg-amber-50">
+                <SelectTrigger className="border-2 border-amber-800 bg-amber-50 w-full">
                   <SelectValue placeholder="Select resource type" />
                 </SelectTrigger>
                 <SelectContent>
@@ -372,7 +372,7 @@ export default function AdminLogsPage() {
                 value={filters.action}
                 onValueChange={(value) => handleFilterChange("action", value)}
               >
-                <SelectTrigger className="border-2 border-amber-800 bg-amber-50">
+                <SelectTrigger className="border-2 border-amber-800 bg-amber-50 w-full">
                   <SelectValue placeholder="Select action" />
                 </SelectTrigger>
                 <SelectContent>
@@ -389,18 +389,18 @@ export default function AdminLogsPage() {
             </div>
             <div className="space-y-2">
               <Label className="text-amber-900 font-medium">Date Range</Label>
-              <div className="flex gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 <Input
                   type="date"
                   value={filters.startDate}
                   onChange={(e) => handleFilterChange("startDate", e.target.value)}
-                  className="border-2 border-amber-800 bg-amber-50"
+                  className="border-2 border-amber-800 bg-amber-50 cursor-pointer hover:bg-amber-100 relative z-10 [&::-webkit-calendar-picker-indicator]:opacity-100 [&::-webkit-calendar-picker-indicator]:cursor-pointer w-full"
                 />
                 <Input
                   type="date"
                   value={filters.endDate}
                   onChange={(e) => handleFilterChange("endDate", e.target.value)}
-                  className="border-2 border-amber-800 bg-amber-50"
+                  className="border-2 border-amber-800 bg-amber-50 cursor-pointer hover:bg-amber-100 relative z-10 [&::-webkit-calendar-picker-indicator]:opacity-100 [&::-webkit-calendar-picker-indicator]:cursor-pointer w-full"
                 />
               </div>
             </div>
