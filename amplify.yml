@@ -20,6 +20,15 @@ frontend:
   cache:
     paths:
       - node_modules/**/*
+  customHeaders:
+    - pattern: '**/*'
+      headers:
+        - key: 'Access-Control-Allow-Origin'
+          value: '*'
+        - key: 'Access-Control-Allow-Methods'
+          value: 'GET,HEAD,PUT,PATCH,POST,DELETE'
+        - key: 'Access-Control-Allow-Headers'
+          value: 'Content-Type, Authorization'
 api:
   phases:
     preBuild:
@@ -40,4 +49,15 @@ api:
       - '**/*'
   cache:
     paths:
-      - api/node_modules/**/* 
+      - api/node_modules/**/*
+  customHeaders:
+    - pattern: '**/*'
+      headers:
+        - key: 'Access-Control-Allow-Origin'
+          value: 'https://stable-21-03-25.dkewumso9wy5d.amplifyapp.com'
+        - key: 'Access-Control-Allow-Methods'
+          value: 'GET,HEAD,PUT,PATCH,POST,DELETE'
+        - key: 'Access-Control-Allow-Headers'
+          value: 'Content-Type, Authorization'
+        - key: 'Access-Control-Allow-Credentials'
+          value: 'true' 
