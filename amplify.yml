@@ -14,4 +14,25 @@ frontend:
       - '**/*'
   cache:
     paths:
-      - node_modules/**/* 
+      - node_modules/**/*
+api:
+  phases:
+    preBuild:
+      commands:
+        - cd api
+        - npm install
+        - cp .env.example .env
+    build:
+      commands:
+        - npm ci --production
+        - npm run postbuild
+    start:
+      commands:
+        - npm run start:pm2
+  artifacts:
+    baseDirectory: api
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - api/node_modules/**/* 
