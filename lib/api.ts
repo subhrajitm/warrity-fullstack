@@ -121,8 +121,16 @@ interface Settings {
 }
 
 // API base URL
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
-const UPLOAD_BASE_URL = process.env.NEXT_PUBLIC_UPLOAD_URL || 'http://localhost:5001/uploads';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+const UPLOAD_BASE_URL = process.env.NEXT_PUBLIC_UPLOAD_URL;
+
+if (!API_BASE_URL) {
+  throw new Error('NEXT_PUBLIC_API_URL environment variable is not set');
+}
+
+if (!UPLOAD_BASE_URL) {
+  throw new Error('NEXT_PUBLIC_UPLOAD_URL environment variable is not set');
+}
 
 // Add request timeout and retry configuration
 const DEFAULT_TIMEOUT = 8000;
