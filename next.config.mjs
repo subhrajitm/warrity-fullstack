@@ -17,10 +17,9 @@ const nextConfig = {
     unoptimized: true,
     remotePatterns: [
       {
-        protocol: 'http',
-        hostname: 'localhost',
-        port: '5001',
-        pathname: '/uploads/**',
+        protocol: 'https',
+        hostname: 'uploads.warrity.com',
+        pathname: '/**',
       },
     ],
   },

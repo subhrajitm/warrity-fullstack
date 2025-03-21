@@ -122,15 +122,13 @@ interface Settings {
 
 // API base URL
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
-const UPLOAD_BASE_URL = process.env.NEXT_PUBLIC_UPLOAD_URL;
 
 if (!API_BASE_URL) {
   throw new Error('NEXT_PUBLIC_API_URL environment variable is not set');
 }
 
-if (!UPLOAD_BASE_URL) {
-  throw new Error('NEXT_PUBLIC_UPLOAD_URL environment variable is not set');
-}
+// Remove any trailing slash from the API base URL
+const cleanApiBaseUrl = API_BASE_URL.replace(/\/$/, '');
 
 // Add request timeout and retry configuration
 const DEFAULT_TIMEOUT = 8000;
@@ -360,7 +358,8 @@ export async function apiRequest<T = any>(
 
   try {
     // Make the request
-    const url = `${API_BASE_URL}${endpoint}${params ? `?${new URLSearchParams(params).toString()}` : ''}`;
+    const url = `${cleanApiBaseUrl}${endpoint}${params ? `?${new URLSearchParams(params).toString()}` : ''}`;
+    console.log('Making API request to:', url); // Add logging
     const response = await fetchWithRetry(url, requestOptions, retries);
     const result = await processResponse<T>(response);
     
@@ -371,6 +370,7 @@ export async function apiRequest<T = any>(
     
     return result;
   } catch (error) {
+    console.error('API request error:', error); // Add error logging
     return handleApiError(error);
   }
 }
