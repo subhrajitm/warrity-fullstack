@@ -3,10 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "predev": "node scripts/check-deps.js",
     "dev": "next dev",
+    "prebuild": "node scripts/check-deps.js",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "check-deps": "node scripts/check-deps.js",
+    "validate-imports": "node scripts/validate-imports.js"
   },
   "dependencies": {
     "@emotion/is-prop-valid": "latest",

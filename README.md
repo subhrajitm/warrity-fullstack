@@ -41,6 +41,24 @@ This is the backend API for Warrity, a comprehensive warranty management applica
 - Warranty oversight
 - System configuration
 
+## Dependency Management
+
+Warrity includes a robust dependency management system to prevent "module not found" errors and ensure all required packages are properly installed:
+
+### Automatic Dependency Checking
+
+- **Pre-dev/Pre-build Checks**: Automatically checks for missing dependencies before running development or build commands
+- **Custom Error Page**: A helpful error page that displays detailed information about missing packages
+- **Import Validation Tool**: A utility to scan the codebase for imports and validate them against package.json
+- **Pre-commit Hook**: Prevents commits when missing dependencies are detected
+
+### Usage
+
+- **Checking Dependencies**: `npm run check-deps`
+- **Validating Imports**: `npm run validate-imports`
+
+These tools help maintain a consistent development environment and reduce build failures due to missing packages.
+
 ## Technology Stack
 
 - **Runtime**: Node.js
