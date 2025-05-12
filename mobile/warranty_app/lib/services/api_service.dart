@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/warranty.dart';
@@ -8,22 +9,28 @@ import '../models/dashboard_stats.dart';
 
 class ApiService {
   // Update this to your actual API server address
-  static const String baseUrl = 'http://10.0.2.2:3000/api'; // For Android Emulator
-  // static const String baseUrl = 'http://127.0.0.1:3000/api'; // For iOS Simulator
+  // static const String baseUrl = 'http://10.0.2.2:5000/api'; // For Android Emulator
+  static const String baseUrl = 'http://127.0.0.1:5001/api'; // For iOS Simulator
   final SharedPreferences _prefs;
   String? _token;
 
   ApiService(this._prefs) {
     _token = _prefs.getString('token');
+    print('ApiService initialized with token: ${_token != null ? 'Present' : 'Not present'}');
+    print('Using API base URL: $baseUrl');
   }
 
   String? get token => _token;
   bool get isAuthenticated => _token != null;
 
-  Map<String, String> get _headers => {
-    'Content-Type': 'application/json',
-    if (_token != null) 'Authorization': 'Bearer $_token',
-  };
+  Map<String, String> get _headers {
+    final headers = {
+      'Content-Type': 'application/json',
+      if (_token != null) 'Authorization': 'Bearer $_token',
+    };
+    print('Request headers: $headers');
+    return headers;
+  }
 
   // Auth API calls
   Future<void> login(String email, String password) async {
@@ -31,10 +38,80 @@ class ApiService {
       print('Attempting to login with email: $email');
       print('API URL: $baseUrl/auth/login');
       
+      // Test if the server is reachable
+      try {
+        final testResponse = await http.get(Uri.parse(baseUrl));
+        print('Server test response status: ${testResponse.statusCode}');
+      } catch (e) {
+        print('Server test failed: $e');
+        throw Exception('Cannot connect to server. Please check if the server is running at $baseUrl');
+      }
+      
       final response = await http.post(
         Uri.parse('$baseUrl/auth/login'),
         headers: _headers,
         body: jsonEncode({
+          'email': email,
+          'password': password,
+        }),
+      ).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          throw Exception('Connection timed out. Please check your internet connection and try again.');
+        },
+      );
+
+      print('Response status: ${response.statusCode}');
+      print('Response headers: ${response.headers}');
+      print('Response body: ${response.body}');
+
+      if (response.body.isEmpty) {
+        throw Exception('Empty response received from server. Please check if the API endpoint is correct.');
+      }
+
+      if (response.statusCode == 200) {
+        try {
+          final data = jsonDecode(response.body);
+          print('Parsed response data: $data');
+          _token = data['token'];
+          await _prefs.setString('token', _token!);
+          print('Token saved successfully');
+        } catch (e) {
+          print('Error parsing response: $e');
+          throw Exception('Invalid response format from server. Expected JSON with token.');
+        }
+      } else if (response.statusCode == 401) {
+        throw Exception('Invalid email or password');
+      } else if (response.statusCode == 404) {
+        throw Exception('API endpoint not found. Please check the server configuration.');
+      } else {
+        try {
+          final errorData = jsonDecode(response.body);
+          throw Exception(errorData['message'] ?? 'Login failed with status ${response.statusCode}');
+        } catch (e) {
+          print('Error parsing error response: $e');
+          throw Exception('Login failed with status ${response.statusCode}. Please try again later.');
+        }
+      }
+    } on SocketException catch (e) {
+      print('Network error: $e');
+      throw Exception('Cannot connect to server. Please check your internet connection and if the server is running.');
+    } catch (e) {
+      print('Login error: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> register(String name, String email, String password) async {
+    try {
+      print('Attempting to register with email: $email');
+      print('API URL: $baseUrl/auth/register');
+      
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/register'),
+        headers: _headers,
+        body: jsonEncode({
+          'name': name,
           'email': email,
           'password': password,
         }),
@@ -44,15 +121,13 @@ class ApiService {
       print('Response headers: ${response.headers}');
       print('Response body: ${response.body}');
 
-      if (response.body.isEmpty) {
-        throw Exception('Empty response received from server');
-      }
-
-      if (response.statusCode == 200) {
+      if (response.statusCode == 201) {
         try {
           final data = jsonDecode(response.body);
+          print('Parsed response data: $data');
           _token = data['token'];
           await _prefs.setString('token', _token!);
+          print('Token saved successfully');
         } catch (e) {
           print('Error parsing response: $e');
           throw Exception('Invalid response format from server');
@@ -60,49 +135,47 @@ class ApiService {
       } else {
         try {
           final errorData = jsonDecode(response.body);
-          throw Exception(errorData['message'] ?? 'Login failed with status ${response.statusCode}');
+          throw Exception(errorData['message'] ?? 'Registration failed with status ${response.statusCode}');
         } catch (e) {
           print('Error parsing error response: $e');
-          throw Exception('Login failed with status ${response.statusCode}');
+          throw Exception('Registration failed with status ${response.statusCode}');
         }
       }
     } catch (e) {
-      print('Login error: $e');
+      print('Registration error: $e');
       rethrow;
     }
   }
 
-  Future<void> register(String name, String email, String password) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/auth/register'),
-      headers: _headers,
-      body: jsonEncode({
-        'name': name,
-        'email': email,
-        'password': password,
-      }),
-    );
-
-    if (response.statusCode == 201) {
-      final data = jsonDecode(response.body);
-      _token = data['token'];
-      await _prefs.setString('token', _token!);
-    } else {
-      throw Exception(jsonDecode(response.body)['message'] ?? 'Registration failed');
-    }
-  }
-
   Future<User> getCurrentUser() async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/auth/me'),
-      headers: _headers,
-    );
+    try {
+      print('Fetching current user');
+      print('API URL: $baseUrl/auth/me');
+      
+      final response = await http.get(
+        Uri.parse('$baseUrl/auth/me'),
+        headers: _headers,
+      );
 
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      return User.fromJson(data);
-    } else {
-      throw Exception('Failed to get user profile');
+      print('Response status: ${response.statusCode}');
+      print('Response headers: ${response.headers}');
+      print('Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        try {
+          final data = json.decode(response.body);
+          print('Parsed user data: $data');
+          return User.fromJson(data);
+        } catch (e) {
+          print('Error parsing user data: $e');
+          throw Exception('Failed to parse user profile');
+        }
+      } else {
+        throw Exception('Failed to get user profile with status ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Get current user error: $e');
+      rethrow;
     }
   }
 
@@ -166,7 +239,7 @@ class ApiService {
 
   Future<DashboardStats> getDashboardStats() async {
     final response = await http.get(
-      Uri.parse('$baseUrl/warranties/stats'),
+      Uri.parse('$baseUrl/warranties/stats/overview'),
       headers: _headers,
     );
 
@@ -179,7 +252,7 @@ class ApiService {
 
   Future<List<Warranty>> getRecentWarranties() async {
     final response = await http.get(
-      Uri.parse('$baseUrl/warranties/recent'),
+      Uri.parse('$baseUrl/warranties'),
       headers: _headers,
     );
 
