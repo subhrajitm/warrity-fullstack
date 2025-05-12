@@ -1,4 +1,6 @@
 // API Response Types
+import { API_BASE_URL, DEBUG_API } from './api-config';
+
 export interface ApiResponse<T> {
   data?: T;
   events?: T;
@@ -9,23 +11,37 @@ export interface ApiResponse<T> {
 
 // API Configuration
 export const apiConfig = {
-  baseUrl: '/api',
+  baseUrl: process.env.NEXT_PUBLIC_API_URL || API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
-  }
+  },
+  debug: DEBUG_API
 };
 
 // Error handling utility
 export const handleApiError = async (response: Response): Promise<string> => {
   const clonedResponse = response.clone();
   try {
+    const contentType = response.headers.get('content-type');
     const responseText = await clonedResponse.text();
+    
+    // Handle HTML responses which often indicate routing/server errors
+    if (contentType && contentType.includes('text/html')) {
+      if (responseText.includes('404')) {
+        return 'API endpoint not found. Please check that the API server is running.';
+      }
+      return 'Received HTML response instead of JSON. API server may be misconfigured.';
+    }
+    
     if (responseText) {
       try {
         const errorData = JSON.parse(responseText);
         return errorData.message || errorData.error || 'Operation failed';
       } catch {
-        return responseText;
+        // If we can't parse as JSON, return the text (truncated if too large)
+        return responseText.length > 150 
+          ? `${responseText.substring(0, 150)}...` 
+          : responseText;
       }
     }
     return response.statusText || 'Operation failed';
@@ -40,9 +56,21 @@ export const fetchWithRetry = async (
   options: RequestInit, 
   retries = 3
 ): Promise<Response> => {
+  if (apiConfig.debug) {
+    console.log(`API Request: ${options.method || 'GET'} ${url}`);
+    if (options.body) {
+      console.log('Request body:', options.body);
+    }
+  }
+
   for (let i = 0; i < retries; i++) {
     try {
       const response = await fetch(url, options);
+      
+      if (apiConfig.debug) {
+        console.log(`API Response status: ${response.status} ${response.statusText}`);
+      }
+      
       if (response.ok) return response;
       
       // Handle 401 unauthorized
@@ -54,9 +82,17 @@ export const fetchWithRetry = async (
       const errorMessage = await handleApiError(response);
       throw new Error(errorMessage);
     } catch (error) {
+      if (apiConfig.debug) {
+        console.error('API Request failed:', error);
+      }
+      
       if (i === retries - 1) throw error;
       // Exponential backoff
-      await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, i)));
+      const backoffTime = 1000 * Math.pow(2, i);
+      if (apiConfig.debug) {
+        console.log(`Retrying in ${backoffTime}ms... (Attempt ${i + 1}/${retries})`);
+      }
+      await new Promise(resolve => setTimeout(resolve, backoffTime));
     }
   }
   throw new Error('Max retries reached');
@@ -123,10 +159,10 @@ export const createApiRequest = (
 // API endpoints
 export const apiEndpoints = {
   events: {
-    list: '/api/events',
-    detail: (id: string) => `/api/events/${id}`,
+    list: `${apiConfig.baseUrl}/events`,
+    detail: (id: string) => `${apiConfig.baseUrl}/events/${id}`,
   },
   products: {
-    list: '/api/products',
+    list: `${apiConfig.baseUrl}/products`,
   },
 }; 
