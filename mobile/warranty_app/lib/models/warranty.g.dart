@@ -7,13 +7,13 @@ part of 'warranty.dart';
 // **************************************************************************
 
 Warranty _$WarrantyFromJson(Map<String, dynamic> json) => Warranty(
-      id: json['id'] as String,
-      productName: json['productName'] as String,
-      productBrand: json['productBrand'] as String,
-      productModel: json['productModel'] as String,
-      serialNumber: json['serialNumber'] as String,
+      id: json['_id'] as String,
+      productName: json['productName'] as String? ?? 'Unknown Product',
+      productBrand: json['productBrand'] as String? ?? 'Unknown Brand',
+      productModel: json['productModel'] as String?,
+      serialNumber: json['serialNumber'] as String?,
       purchaseDate: DateTime.parse(json['purchaseDate'] as String),
-      expiryDate: DateTime.parse(json['expiryDate'] as String),
+      expiryDate: DateTime.parse(json['expirationDate'] as String),
       purchaseProof: json['purchaseProof'] as String?,
       warrantyDocument: json['warrantyDocument'] as String?,
       notes: json['notes'] as String?,
@@ -22,13 +22,13 @@ Warranty _$WarrantyFromJson(Map<String, dynamic> json) => Warranty(
     );
 
 Map<String, dynamic> _$WarrantyToJson(Warranty instance) => <String, dynamic>{
-      'id': instance.id,
+      '_id': instance.id,
       'productName': instance.productName,
       'productBrand': instance.productBrand,
       'productModel': instance.productModel,
       'serialNumber': instance.serialNumber,
       'purchaseDate': instance.purchaseDate.toIso8601String(),
-      'expiryDate': instance.expiryDate.toIso8601String(),
+      'expirationDate': instance.expiryDate.toIso8601String(),
       'purchaseProof': instance.purchaseProof,
       'warrantyDocument': instance.warrantyDocument,
       'notes': instance.notes,

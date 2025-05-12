@@ -4,9 +4,16 @@ part 'dashboard_stats.g.dart';
 
 @JsonSerializable()
 class DashboardStats {
+  @JsonKey(name: 'total')
   final int totalWarranties;
+  
+  @JsonKey(name: 'expiring')
   final int expiringSoon;
+  
+  @JsonKey(name: 'active')
   final int activeWarranties;
+  
+  @JsonKey(name: 'expired')
   final int expiredWarranties;
 
   DashboardStats({

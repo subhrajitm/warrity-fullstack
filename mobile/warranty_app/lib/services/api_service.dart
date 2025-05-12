@@ -210,16 +210,26 @@ class ApiService {
 
   // Warranty API calls
   Future<List<Warranty>> getAllWarranties() async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/warranties'),
-      headers: _headers,
-    );
+    try {
+      print('Fetching all warranties...');
+      final response = await http.get(
+        Uri.parse('$baseUrl/warranties'),
+        headers: _headers,
+      );
 
-    if (response.statusCode == 200) {
-      final List<dynamic> data = jsonDecode(response.body);
-      return data.map((json) => Warranty.fromJson(json)).toList();
-    } else {
-      throw Exception(jsonDecode(response.body)['message'] ?? 'Failed to get warranties');
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        print('Parsed data: $data');
+        return data.map((json) => Warranty.fromJson(json)).toList();
+      } else {
+        throw Exception(jsonDecode(response.body)['message'] ?? 'Failed to get warranties');
+      }
+    } catch (e) {
+      print('Error in getAllWarranties: $e');
+      rethrow;
     }
   }
 
