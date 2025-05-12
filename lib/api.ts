@@ -120,6 +120,19 @@ interface Settings {
   };
 }
 
+interface ProfileUpdateData {
+  name?: string;
+  phone?: string;
+  bio?: string;
+  profilePicture?: File;
+  socialLinks?: {
+    twitter?: string;
+    linkedin?: string;
+    github?: string;
+    instagram?: string;
+  };
+}
+
 // API base URL
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -455,12 +468,51 @@ export const authApi = {
   changePassword: (passwordData: { currentPassword: string; newPassword: string }) => 
     apiRequest('/auth/change-password', 'POST', passwordData),
   refreshToken: () => apiRequest<{ token: string }>('/auth/refresh', 'POST'),
+  requestPasswordReset: (email: string) => 
+    apiRequest('/auth/request-password-reset', 'POST', { email }),
+  resetPassword: (data: { token: string; newPassword: string }) => 
+    apiRequest('/auth/reset-password', 'POST', data),
+  verifyResetToken: (token: string) => 
+    apiRequest<{ valid: boolean }>('/auth/verify-reset-token', 'POST', { token }),
 };
 
 // User API
 export const userApi = {
   getProfile: () => apiRequest<User>('/users/profile', 'GET'),
-  updateProfile: (profileData: Partial<User>) => apiRequest<User>('/users/profile', 'PUT', profileData),
+  updateProfile: async (data: ProfileUpdateData): Promise<boolean> => {
+    try {
+      const formData = new FormData();
+      
+      // Append basic profile information
+      if (data.name) formData.append('name', data.name);
+      if (data.phone) formData.append('phone', data.phone);
+      if (data.bio) formData.append('bio', data.bio);
+      
+      // Append profile picture if provided
+      if (data.profilePicture) {
+        formData.append('profilePicture', data.profilePicture);
+      }
+      
+      // Append social links
+      if (data.socialLinks) {
+        formData.append('socialLinks', JSON.stringify(data.socialLinks));
+      }
+
+      const response = await fetchWithRetry('/users/profile', {
+        method: 'PUT',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update profile');
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      throw error;
+    }
+  },
   changePassword: (passwordData: { currentPassword: string, newPassword: string }) => 
     apiRequest('/users/change-password', 'POST', passwordData),
   uploadProfilePicture: (file: File) => 

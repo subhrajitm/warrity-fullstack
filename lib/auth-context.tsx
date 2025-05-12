@@ -5,12 +5,30 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { authApi, userApi, handleApiError } from './api';
 
+interface UserPreferences {
+  emailNotifications: boolean;
+  reminderDays: number;
+  theme?: string;
+  notifications?: boolean;
+  language?: string;
+}
+
 interface User {
   id: string;
-  name: string;
   email: string;
+  name: string;
   role: string;
-  [key: string]: any;
+  isVerified: boolean;
+  phone?: string;
+  bio?: string;
+  profilePicture?: string;
+  socialLinks?: {
+    twitter?: string;
+    linkedin?: string;
+    github?: string;
+    instagram?: string;
+  };
+  preferences?: UserPreferences;
 }
 
 interface ProfileUpdateData {
@@ -113,7 +131,7 @@ function validateProfileData(data: ProfileUpdateData): { isValid: boolean; error
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   // Check if user is already logged in
@@ -122,7 +140,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const token = localStorage.getItem('authToken');
         if (!token) {
-          setIsLoading(false);
+          setLoading(false);
           return;
         }
 
@@ -134,7 +152,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             // Refresh failed, clear token
             localStorage.removeItem('authToken');
             setUser(null);
-            setIsLoading(false);
+            setLoading(false);
             return;
           }
           
@@ -155,7 +173,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch (error) {
         console.error('Auth check failed:', error);
       } finally {
-        setIsLoading(false);
+        setLoading(false);
       }
     };
 
@@ -163,7 +181,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string, shouldRedirect: boolean = true): Promise<boolean> => {
-    setIsLoading(true);
+    setLoading(true);
     try {
       console.log('Attempting login with:', { email });
       const response = await authApi.login({ email, password });
@@ -209,12 +227,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       toast.error('Login failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
       return false;
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
   const logout = async (): Promise<void> => {
-    setIsLoading(true);
+    setLoading(true);
     try {
       // Clear local state
       localStorage.removeItem('authToken');
@@ -229,12 +247,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error('Logout failed:', error);
       toast.error('Logout failed');
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
   const register = async (userData: any): Promise<boolean> => {
-    setIsLoading(true);
+    setLoading(true);
     try {
       const response = await authApi.register(userData);
       
@@ -256,105 +274,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       toast.error('Registration failed');
       return false;
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  const updateProfile = async (profileData: ProfileUpdateData): Promise<boolean> => {
+  const updateProfile = async (data: {
+    name?: string;
+    phone?: string;
+    bio?: string;
+    profilePicture?: File;
+    socialLinks?: {
+      twitter?: string;
+      linkedin?: string;
+      github?: string;
+      instagram?: string;
+    };
+  }) => {
     try {
-      // Validate profile data
-      if (!validateProfileData(profileData)) {
-        toast.error("Invalid profile data");
-        return false;
-      }
-
-      // Transform preferences data to match API requirements
-      const transformedData = {
-        ...profileData,
-        preferences: {
-          emailNotifications: profileData.preferences?.emailNotifications ?? true,
-          reminderDays: profileData.preferences?.reminderDays ?? 30,
-          notifications: Boolean(profileData.preferences?.notifications) || undefined
+      const success = await userApi.updateProfile(data);
+      if (success) {
+        // Refresh user data after successful update
+        const response = await userApi.getProfile();
+        if (response.data) {
+          setUser(response.data as User);
         }
-      };
-
-      // Transform social links to ensure they are valid URLs or undefined
-      if (transformedData.socialLinks) {
-        const transformedSocialLinks: Record<string, string | undefined> = {};
-        
-        for (const [platform, value] of Object.entries(transformedData.socialLinks)) {
-          if (!value) {
-            // If the value is empty, set it to undefined
-            transformedSocialLinks[platform] = undefined;
-          } else if (!value.startsWith('http')) {
-            // If it's not a full URL, construct one based on the platform
-            const baseUrls: Record<string, string> = {
-              twitter: 'https://twitter.com/',
-              linkedin: 'https://linkedin.com/in/',
-              github: 'https://github.com/',
-              instagram: 'https://instagram.com/'
-            };
-            transformedSocialLinks[platform] = `${baseUrls[platform]}${value}`;
-          } else {
-            // If it's already a full URL, use it as is
-            transformedSocialLinks[platform] = value;
-          }
-        }
-        
-        transformedData.socialLinks = transformedSocialLinks;
       }
-
-      console.log('Sending profile update:', transformedData);
-      const response = await userApi.updateProfile(transformedData);
-      console.log('Profile update response:', response);
-
-      if (response.error) {
-        // Handle validation errors
-        if (response.error.includes('validation failed')) {
-          const errorMessages = response.error.split(', ');
-          toast.error(errorMessages.join('\n'));
-          return false;
-        }
-        toast.error(response.error);
-        return false;
-      }
-
-      const updatedUser = response.data;
-      if (updatedUser) {
-        // Update local user state with the new data
-        setUser(prevUser => {
-          if (!prevUser) return updatedUser;
-          
-          // Create a new user object with all the updated fields
-          const newUser = {
-            ...prevUser,
-            name: updatedUser.name || prevUser.name,
-            phone: updatedUser.phone || prevUser.phone,
-            bio: updatedUser.bio || prevUser.bio,
-            socialLinks: updatedUser.socialLinks || prevUser.socialLinks,
-            preferences: {
-              ...prevUser.preferences,
-              ...updatedUser.preferences
-            }
-          };
-
-          // Force a re-render by creating a new object
-          return { ...newUser };
-        });
-
-        // Force a refresh of the user data
-        await refreshUser();
-        
-        toast.success("Profile updated successfully");
-        return true;
-      }
-
-      toast.error("Failed to update profile");
-      return false;
+      return success;
     } catch (error) {
-      console.error("Profile update error:", error);
-      toast.error("An unexpected error occurred");
-      return false;
+      console.error('Error updating profile:', error);
+      throw error;
     }
   };
 
@@ -373,7 +321,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     <AuthContext.Provider
       value={{
         user,
-        isLoading,
+        isLoading: loading,
         isAuthenticated: !!user,
         login,
         logout,
