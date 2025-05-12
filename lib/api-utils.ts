@@ -9,9 +9,12 @@ export interface ApiResponse<T> {
 
 // API Configuration
 export const apiConfig = {
-  baseUrl: '/api',
+  baseUrl: process.env.NEXT_PUBLIC_API_URL || '/api',
   headers: {
     'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    'Access-Control-Allow-Origin': 'http://localhost:3000',
+    'Access-Control-Allow-Credentials': 'true'
   }
 };
 
@@ -108,14 +111,24 @@ export const createApiRequest = (
   method: string = 'GET',
   body?: any
 ): RequestInit => {
-  const token = localStorage.getItem('authToken');
+  // Get token from localStorage, or use a mock token if none exists
+  let token = 'mock-auth-token-for-testing';
+  
+  if (typeof window !== 'undefined' && window.localStorage) {
+    const storedToken = localStorage.getItem('authToken');
+    if (storedToken) {
+      token = storedToken;
+    }
+  }
   
   return {
     method,
     headers: {
       ...apiConfig.headers,
-      'Authorization': token ? `Bearer ${token}` : '',
+      'Authorization': `Bearer ${token}`,
     },
+    credentials: 'include',
+    mode: 'cors',
     ...(body && { body: JSON.stringify(body) }),
   };
 };
@@ -123,10 +136,24 @@ export const createApiRequest = (
 // API endpoints
 export const apiEndpoints = {
   events: {
-    list: '/api/events',
-    detail: (id: string) => `/api/events/${id}`,
+    list: `${apiConfig.baseUrl}/events`,
+    detail: (id: string) => `${apiConfig.baseUrl}/events/${id}`,
+    create: `${apiConfig.baseUrl}/events`,
+    update: (id: string) => `${apiConfig.baseUrl}/events/${id}`,
+    delete: (id: string) => `${apiConfig.baseUrl}/events/${id}`,
   },
   products: {
-    list: '/api/products',
+    list: `${apiConfig.baseUrl}/products`,
+    detail: (id: string) => `${apiConfig.baseUrl}/products/${id}`,
+  },
+  auth: {
+    login: `${apiConfig.baseUrl}/auth/login`,
+    register: `${apiConfig.baseUrl}/auth/register`,
+    logout: `${apiConfig.baseUrl}/auth/logout`,
+    refresh: `${apiConfig.baseUrl}/auth/refresh`,
+  },
+  user: {
+    profile: `${apiConfig.baseUrl}/users/profile`,
+    settings: `${apiConfig.baseUrl}/users/settings`,
   },
 }; 

@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { authApi, userApi, handleApiError } from './api';
+import { apiEndpoints } from './api-utils';
 
 interface UserPreferences {
   emailNotifications: boolean;
@@ -59,9 +59,13 @@ interface AuthContextType {
   register: (userData: any) => Promise<boolean>;
   updateProfile: (profileData: ProfileUpdateData) => Promise<boolean>;
   refreshUser: () => Promise<void>;
+  getToken: () => string | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+// Get the token name from the environment
+const TOKEN_NAME = process.env.NEXT_PUBLIC_AUTH_TOKEN_NAME || 'authToken';
 
 // Validation utilities
 function validateProfileData(data: ProfileUpdateData): { isValid: boolean; error?: string } {
@@ -132,46 +136,26 @@ function validateProfileData(data: ProfileUpdateData): { isValid: boolean; error
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const router = useRouter();
 
   // Check if user is already logged in
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const token = localStorage.getItem('authToken');
+        const token = localStorage.getItem(TOKEN_NAME);
         if (!token) {
           setLoading(false);
+          setIsAuthenticated(false);
           return;
         }
 
-        const response = await authApi.getCurrentUser();
-        if (response.error) {
-          // Token might be expired, try to refresh
-          const refreshResponse = await authApi.refreshToken();
-          if (refreshResponse.error) {
-            // Refresh failed, clear token
-            localStorage.removeItem('authToken');
-            setUser(null);
-            setLoading(false);
-            return;
-          }
-          
-          // Save new token and try again
-          if (refreshResponse.data?.token) {
-            localStorage.setItem('authToken', refreshResponse.data.token);
-            const retryResponse = await authApi.getCurrentUser();
-            if (retryResponse.error) {
-              localStorage.removeItem('authToken');
-              setUser(null);
-            } else if (retryResponse.data?.user) {
-              setUser(retryResponse.data.user);
-            }
-          }
-        } else if (response.data?.user) {
-          setUser(response.data.user);
-        }
+        // Fetch the current user directly
+        await fetchCurrentUser();
       } catch (error) {
         console.error('Auth check failed:', error);
+        setUser(null);
+        setIsAuthenticated(false);
       } finally {
         setLoading(false);
       }
@@ -180,90 +164,106 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     checkAuth();
   }, []);
 
-  const login = async (email: string, password: string, shouldRedirect: boolean = true): Promise<boolean> => {
+  const login = async (email: string, password: string, shouldRedirect = false) => {
     setLoading(true);
     try {
-      console.log('Attempting login with:', { email });
-      const response = await authApi.login({ email, password });
+      console.log('Attempting login with email:', email);
       
-      console.log('Login response:', response);
+      // Make API request to login using our Next.js API proxy
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      console.log('Login response status:', response.status);
       
-      if (response.error) {
-        console.error('Login error:', response.error);
-        toast.error(response.error);
+      // Get the response text first
+      const responseText = await response.text();
+      console.log('Response text:', responseText);
+      
+      // Try to parse as JSON
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (e) {
+        console.error('Failed to parse response as JSON:', e);
+        toast.error('Server returned an invalid response');
         return false;
       }
       
-      if (!response.data) {
-        console.error('No data in login response');
-        toast.error('Invalid login response');
+      if (!response.ok) {
+        toast.error(data.message || 'Login failed');
         return false;
       }
       
-      const { token, user: userData } = response.data;
-      
-      if (!token || !userData) {
-        console.error('Missing token or user data in response');
-        toast.error('Invalid login response');
+      // Save token to localStorage
+      if (data.token) {
+        localStorage.setItem(TOKEN_NAME, data.token);
+        console.log('Token saved to localStorage');
+        
+        // Fetch user profile using the token
+        await fetchCurrentUser();
+        
+        if (shouldRedirect) {
+          router.push('/user');
+        }
+        
+        return true;
+      } else {
+        console.error('No token received in login response');
+        toast.error('Authentication failed: No token received');
         return false;
       }
-      
-      // Save token
-      localStorage.setItem('authToken', token);
-      
-      // Set user data
-      setUser(userData);
-      toast.success('Login successful');
-      
-      // Only redirect if shouldRedirect is true
-      if (shouldRedirect) {
-        const redirectPath = userData.role === 'admin' ? '/admin' : '/user';
-        router.push(redirectPath);
-      }
-      
-      return true;
     } catch (error) {
       console.error('Login error:', error);
-      toast.error('Login failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
+      toast.error('An error occurred during login. Please try again.');
       return false;
     } finally {
       setLoading(false);
     }
   };
 
-  const logout = async (): Promise<void> => {
-    setLoading(true);
+  const logout = async () => {
     try {
-      // Clear local state
-      localStorage.removeItem('authToken');
+      // Clear local storage
+      localStorage.removeItem(TOKEN_NAME);
+      
+      // Clear user state
       setUser(null);
+      setIsAuthenticated(false);
       
-      // Show success message
-      toast.success('Logged out successfully');
-      
-      // Redirect to login
-      router.push('/login');
+      // Redirect to login page
+      router.push('/auth/login');
     } catch (error) {
-      console.error('Logout failed:', error);
-      toast.error('Logout failed');
-    } finally {
-      setLoading(false);
+      console.error('Logout error:', error);
     }
   };
 
   const register = async (userData: any): Promise<boolean> => {
     setLoading(true);
     try {
-      const response = await authApi.register(userData);
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(userData),
+      });
       
-      if (response.error) {
-        handleApiError(response.error);
+      if (!response.ok) {
+        const errorData = await response.json();
+        toast.error(errorData.message || 'Registration failed');
         return false;
       }
       
-      if (response.data?.token) {
-        localStorage.setItem('authToken', response.data.token);
-        setUser(response.data.user);
+      const data = await response.json();
+      
+      if (data.token) {
+        localStorage.setItem(TOKEN_NAME, data.token);
+        await fetchCurrentUser();
         toast.success('Registration successful');
         return true;
       }
@@ -278,42 +278,108 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const updateProfile = async (data: {
-    name?: string;
-    phone?: string;
-    bio?: string;
-    profilePicture?: File;
-    socialLinks?: {
-      twitter?: string;
-      linkedin?: string;
-      github?: string;
-      instagram?: string;
-    };
-  }) => {
+  const updateProfile = async (data: ProfileUpdateData): Promise<boolean> => {
     try {
-      const success = await userApi.updateProfile(data);
-      if (success) {
-        // Refresh user data after successful update
-        const response = await userApi.getProfile();
-        if (response.data) {
-          setUser(response.data as User);
-        }
+      const token = localStorage.getItem(TOKEN_NAME);
+      if (!token) return false;
+      
+      const response = await fetch('/api/users/profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(data)
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        toast.error(errorData.message || 'Failed to update profile');
+        return false;
       }
-      return success;
+      
+      // Refresh user data after successful update
+      await fetchCurrentUser();
+      return true;
     } catch (error) {
       console.error('Error updating profile:', error);
-      throw error;
+      toast.error('Error updating profile');
+      return false;
     }
   };
 
   const refreshUser = async (): Promise<void> => {
+    await fetchCurrentUser();
+  };
+
+  const getToken = () => {
+    if (typeof window === 'undefined') {
+      return null;
+    }
+    return localStorage.getItem(TOKEN_NAME);
+  };
+
+  const fetchCurrentUser = async () => {
     try {
-      const response = await authApi.getCurrentUser();
-      if (response.data?.user) {
-        setUser(response.data.user);
+      const token = localStorage.getItem(TOKEN_NAME);
+      
+      if (!token) {
+        setUser(null);
+        setIsAuthenticated(false);
+        return;
+      }
+      
+      console.log('Fetching user profile with token');
+      const response = await fetch('/api/auth/me', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!response.ok) {
+        console.error('Failed to fetch user profile, status:', response.status);
+        setUser(null);
+        setIsAuthenticated(false);
+        return;
+      }
+      
+      const data = await response.json();
+      console.log('User profile data:', data);
+      
+      // Backend API returns different formats for user data
+      // It could be in data.user, data itself, or data.data
+      const userData = data.user || data.data || data;
+      
+      if (userData && userData._id) {
+        // Format the user data to match our frontend model
+        const formattedUser = {
+          id: userData._id,
+          email: userData.email,
+          name: userData.name || 'User',
+          role: userData.role || 'user',
+          isVerified: userData.isVerified || false,
+          phone: userData.phone,
+          bio: userData.bio,
+          profilePicture: userData.profilePicture,
+          socialLinks: userData.socialLinks,
+          preferences: userData.preferences || {
+            emailNotifications: true,
+            reminderDays: 7
+          }
+        };
+        
+        setUser(formattedUser);
+        setIsAuthenticated(true);
+        console.log('User authenticated:', formattedUser.name);
+      } else {
+        console.error('Invalid user data format received');
+        setUser(null);
+        setIsAuthenticated(false);
       }
     } catch (error) {
-      console.error('User refresh failed:', error);
+      console.error('User fetch failed:', error);
+      setUser(null);
+      setIsAuthenticated(false);
     }
   };
 
@@ -322,12 +388,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{
         user,
         isLoading: loading,
-        isAuthenticated: !!user,
+        isAuthenticated,
         login,
         logout,
         register,
         updateProfile,
         refreshUser,
+        getToken,
       }}
     >
       {children}
