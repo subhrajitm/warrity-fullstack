@@ -19,7 +19,7 @@ const getUserProfile = async (req, res) => {
 // Update user profile
 const updateProfile = async (req, res) => {
   try {
-    const { name, bio, socialLinks } = req.body;
+    const { name, phone, bio, socialLinks } = req.body;
     
     // Find user
     const user = await User.findById(req.user._id);
@@ -29,6 +29,7 @@ const updateProfile = async (req, res) => {
     
     // Update fields
     if (name) user.name = name;
+    if (phone !== undefined) user.phone = phone;
     if (bio !== undefined) user.bio = bio;
     
     // Update social links if provided

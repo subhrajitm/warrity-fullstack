@@ -150,10 +150,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // Token might be expired, try to refresh
           const refreshResponse = await authApi.refreshToken();
           if (refreshResponse.error) {
-            // Refresh failed, clear token
+            // Refresh failed, clear token and redirect to login
             localStorage.removeItem('authToken');
             setUser(null);
             setLoading(false);
+            router.push('/login');
             return;
           }
           
@@ -164,22 +165,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             if (retryResponse.error) {
               localStorage.removeItem('authToken');
               setUser(null);
+              setLoading(false);
+              router.push('/login');
             } else if (retryResponse.data?.user) {
               setUser(retryResponse.data.user);
+              setLoading(false);
             }
           }
         } else if (response.data?.user) {
           setUser(response.data.user);
+          setLoading(false);
         }
       } catch (error) {
         console.error('Auth check failed:', error);
-      } finally {
+        localStorage.removeItem('authToken');
+        setUser(null);
         setLoading(false);
+        router.push('/login');
       }
     };
 
     checkAuth();
-  }, []);
+  }, [router]);
 
   const login = async (email: string, password: string, shouldRedirect: boolean = true): Promise<boolean> => {
     setLoading(true);
@@ -295,18 +302,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const updateProfile = async (data: ProfileUpdateData): Promise<boolean> => {
     try {
+      // Validate the data
+      const validation = validateProfileData(data);
+      if (!validation.isValid) {
+        toast.error(validation.error);
+        return false;
+      }
+
       const success = await userApi.updateProfile(data);
       if (success) {
-        // Refresh user data after successful update
-        const response = await userApi.getProfile();
-        if (response.data) {
-          setUser(response.data as User);
-        }
+        // Update the user state directly with the new data
+        setUser(prevUser => {
+          if (!prevUser) return null;
+          return {
+            ...prevUser,
+            ...data,
+            // Convert File to string URL if needed
+            profilePicture: typeof data.profilePicture === 'string' ? data.profilePicture : prevUser.profilePicture,
+            // Ensure we don't overwrite the entire socialLinks object
+            socialLinks: {
+              ...prevUser.socialLinks,
+              ...data.socialLinks,
+            },
+            // Ensure we don't overwrite the entire preferences object and maintain required fields
+            preferences: {
+              emailNotifications: data.preferences?.emailNotifications ?? prevUser.preferences?.emailNotifications ?? true,
+              reminderDays: data.preferences?.reminderDays ?? prevUser.preferences?.reminderDays ?? 7,
+              notifications: data.preferences?.notifications ?? prevUser.preferences?.notifications ?? true,
+              theme: data.preferences?.theme ?? prevUser.preferences?.theme ?? 'light',
+              language: data.preferences?.language ?? prevUser.preferences?.language ?? 'en',
+            },
+          };
+        });
+        toast.success('Profile updated successfully');
+        return true;
       }
-      return success;
+      toast.error('Failed to update profile');
+      return false;
     } catch (error) {
       console.error('Error updating profile:', error);
-      throw error;
+      toast.error(error instanceof Error ? error.message : 'Failed to update profile');
+      return false;
     }
   };
 

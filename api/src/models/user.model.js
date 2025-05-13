@@ -24,6 +24,11 @@ const userSchema = new mongoose.Schema({
     enum: ['user', 'admin'],
     default: 'user'
   },
+  phone: {
+    type: String,
+    trim: true,
+    match: [/^\+?[\d\s-()]{8,}$/, 'Invalid phone number format']
+  },
   profilePicture: {
     type: String,
     default: null

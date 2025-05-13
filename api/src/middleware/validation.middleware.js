@@ -13,6 +13,7 @@ const userValidationRules = {
   ],
   updateProfile: [
     body('name').optional().notEmpty().withMessage('Name cannot be empty'),
+    body('phone').optional().matches(/^\+?[\d\s-()]{8,}$/).withMessage('Invalid phone number format'),
     body('bio').optional(),
     body('socialLinks.twitter').optional().isURL().withMessage('Twitter must be a valid URL'),
     body('socialLinks.linkedin').optional().isURL().withMessage('LinkedIn must be a valid URL'),

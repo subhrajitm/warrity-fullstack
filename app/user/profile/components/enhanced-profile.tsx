@@ -46,7 +46,7 @@ const formSchema = z.object({
 })
 
 export default function EnhancedProfile() {
-  const { user, updateProfile } = useAuth()
+  const { user, updateProfile, refreshUser } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
   const [profilePicture, setProfilePicture] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
@@ -57,11 +57,11 @@ export default function EnhancedProfile() {
       name: user?.name || "",
       phone: user?.phone || "",
       bio: user?.bio || "",
-      socialLinks: user?.socialLinks || {
-        twitter: "",
-        linkedin: "",
-        github: "",
-        instagram: "",
+      socialLinks: {
+        twitter: user?.socialLinks?.twitter || "",
+        linkedin: user?.socialLinks?.linkedin || "",
+        github: user?.socialLinks?.github || "",
+        instagram: user?.socialLinks?.instagram || "",
       },
       preferences: user?.preferences || {
         emailNotifications: true,
@@ -103,12 +103,24 @@ export default function EnhancedProfile() {
   }
 
   const onSubmit = async (data: z.infer<typeof formSchema>) => {
-    setIsLoading(true)
+    setIsLoading(true);
     try {
+      // Validate the data
+      const validationResult = formSchema.safeParse(data);
+      if (!validationResult.success) {
+        const errors = validationResult.error.errors;
+        toast.error(errors[0].message);
+        return;
+      }
+
       let profilePictureUrl = user?.profilePicture;
 
       // Handle profile picture upload separately if changed
       if (profilePicture) {
+        if (profilePicture.size > 5 * 1024 * 1024) {
+          toast.error("Profile picture must be less than 5MB");
+          return;
+        }
         const uploadResponse = await userApi.uploadProfilePicture(profilePicture);
         if (uploadResponse.error) {
           throw new Error(uploadResponse.error);
@@ -116,15 +128,30 @@ export default function EnhancedProfile() {
         profilePictureUrl = uploadResponse.data?.url;
       }
 
-      const success = await updateProfile({
+      // Prepare the update data
+      const updateData = {
         ...data,
         profilePicture: profilePictureUrl,
-      });
+      };
+
+      // Update the profile
+      const success = await updateProfile(updateData);
 
       if (success) {
+        // Reset the form with the new values
+        form.reset(data);
+        
+        // Clear the profile picture state
+        setProfilePicture(null);
+        setPreviewUrl(null);
+        
+        // Show success message
         toast.success("Profile updated successfully");
+      } else {
+        throw new Error("Failed to update profile");
       }
     } catch (error) {
+      console.error('Profile update error:', error);
       toast.error(error instanceof Error ? error.message : "Failed to update profile");
     } finally {
       setIsLoading(false);

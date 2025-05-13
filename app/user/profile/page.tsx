@@ -11,16 +11,24 @@ export default function ProfilePage() {
   const router = useRouter()
 
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      router.push("/auth/login")
+    if (!isLoading) {
+      if (!isAuthenticated) {
+        router.replace("/login?returnUrl=/user/profile")
+      } else if (user?.role !== 'user') {
+        router.replace(user?.role === 'admin' ? '/admin' : '/login')
+      }
     }
-  }, [isLoading, isAuthenticated, router])
+  }, [isLoading, isAuthenticated, user, router])
 
   if (isLoading) {
-    return <div>Loading...</div>
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-amber-800 text-xl">Loading...</div>
+      </div>
+    )
   }
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated || !user || user.role !== 'user') {
     return null
   }
 

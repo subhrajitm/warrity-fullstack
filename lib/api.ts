@@ -494,7 +494,13 @@ export const userApi = {
       // Append other profile data
       Object.entries(data).forEach(([key, value]) => {
         if (value !== undefined && key !== 'profilePicture') {
-          formData.append(key, JSON.stringify(value));
+          if (typeof value === 'object') {
+            // Handle nested objects (socialLinks, preferences)
+            formData.append(key, JSON.stringify(value));
+          } else {
+            // Handle primitive values (name, phone, bio)
+            formData.append(key, value.toString());
+          }
         }
       });
 
@@ -503,7 +509,13 @@ export const userApi = {
       });
 
       if (response.error) {
+        console.error('Profile update error:', response.error);
         throw new Error(response.error);
+      }
+
+      if (!response.data) {
+        console.error('No data in profile update response');
+        throw new Error('Invalid response from server');
       }
 
       return true;

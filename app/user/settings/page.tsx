@@ -44,6 +44,14 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 
+type PreferencesFormValues = {
+  emailNotifications: boolean;
+  reminderDays: number;
+  notifications: boolean;
+  theme: "light" | "dark" | "system";
+  language: "en" | "es" | "fr" | "de" | "ja";
+}
+
 // Form validation schemas
 const passwordFormSchema = z.object({
   currentPassword: z.string()
@@ -62,14 +70,11 @@ const passwordFormSchema = z.object({
 })
 
 const preferencesFormSchema = z.object({
-  emailNotifications: z.boolean().default(true),
-  reminderDays: z.number()
-    .min(1, "Reminder days must be at least 1")
-    .max(365, "Reminder days must not exceed 365")
-    .default(30),
-  theme: z.enum(["light", "dark", "system"]).default("system"),
-  language: z.enum(["en", "es", "fr", "de", "ja"]).default("en"),
-  notifications: z.boolean().default(true),
+  emailNotifications: z.boolean(),
+  reminderDays: z.number().min(1).max(30),
+  notifications: z.boolean(),
+  theme: z.enum(["light", "dark", "system"]),
+  language: z.enum(["en", "es", "fr", "de", "ja"])
 })
 
 // Add password strength indicator component
@@ -140,14 +145,14 @@ export default function UserSettingsPage() {
     }
   })
 
-  const preferencesForm = useForm<z.infer<typeof preferencesFormSchema>>({
+  const preferencesForm = useForm<PreferencesFormValues>({
     resolver: zodResolver(preferencesFormSchema),
     defaultValues: {
-      emailNotifications: true,
-      reminderDays: 30,
-      theme: "system",
-      language: "en",
-      notifications: true
+      emailNotifications: authUser?.preferences?.emailNotifications ?? true,
+      reminderDays: authUser?.preferences?.reminderDays ?? 7,
+      notifications: authUser?.preferences?.notifications ?? true,
+      theme: (authUser?.preferences?.theme as "light" | "dark" | "system") ?? "system",
+      language: (authUser?.preferences?.language as "en" | "es" | "fr" | "de" | "ja") ?? "en"
     }
   })
 
@@ -294,16 +299,19 @@ export default function UserSettingsPage() {
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel className="text-amber-900">Theme</FormLabel>
-                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <Select 
+                                onValueChange={(value: "light" | "dark" | "system") => field.onChange(value)} 
+                                defaultValue={field.value}
+                              >
                                 <FormControl>
-                                  <SelectTrigger className="border-2 border-amber-800 bg-amber-50">
+                                  <SelectTrigger className="border-2 border-amber-800 bg-amber-50 text-amber-900">
                                     <SelectValue placeholder="Select theme" />
                                   </SelectTrigger>
                                 </FormControl>
-                                <SelectContent>
-                                  <SelectItem value="light">Light</SelectItem>
-                                  <SelectItem value="dark">Dark</SelectItem>
-                                  <SelectItem value="system">System</SelectItem>
+                                <SelectContent className="bg-amber-50 border-2 border-amber-800">
+                                  <SelectItem value="light" className="text-amber-900">Light</SelectItem>
+                                  <SelectItem value="dark" className="text-amber-900">Dark</SelectItem>
+                                  <SelectItem value="system" className="text-amber-900">System</SelectItem>
                                 </SelectContent>
                               </Select>
                               <FormDescription className="text-amber-700">
@@ -320,18 +328,21 @@ export default function UserSettingsPage() {
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel className="text-amber-900">Language</FormLabel>
-                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <Select 
+                                onValueChange={(value: "en" | "es" | "fr" | "de" | "ja") => field.onChange(value)} 
+                                defaultValue={field.value}
+                              >
                                 <FormControl>
-                                  <SelectTrigger className="border-2 border-amber-800 bg-amber-50">
+                                  <SelectTrigger className="border-2 border-amber-800 bg-amber-50 text-amber-900">
                                     <SelectValue placeholder="Select language" />
                                   </SelectTrigger>
                                 </FormControl>
-                                <SelectContent>
-                                  <SelectItem value="en">English</SelectItem>
-                                  <SelectItem value="es">Spanish</SelectItem>
-                                  <SelectItem value="fr">French</SelectItem>
-                                  <SelectItem value="de">German</SelectItem>
-                                  <SelectItem value="ja">Japanese</SelectItem>
+                                <SelectContent className="bg-amber-50 border-2 border-amber-800">
+                                  <SelectItem value="en" className="text-amber-900">English</SelectItem>
+                                  <SelectItem value="es" className="text-amber-900">Spanish</SelectItem>
+                                  <SelectItem value="fr" className="text-amber-900">French</SelectItem>
+                                  <SelectItem value="de" className="text-amber-900">German</SelectItem>
+                                  <SelectItem value="ja" className="text-amber-900">Japanese</SelectItem>
                                 </SelectContent>
                               </Select>
                               <FormDescription className="text-amber-700">
