@@ -78,3 +78,26 @@ body {
   background: rgba(120, 53, 15, 0.7);
 }
 
+/* Admin theme overrides */
+.admin-theme {
+  --background: 45 100% 97%;
+  --foreground: 24 65% 32%;
+  --card: 45 100% 97%;
+  --card-foreground: 24 65% 32%;
+  --popover: 45 100% 97%;
+  --popover-foreground: 24 65% 32%;
+  --primary: 24 65% 32%;
+  --primary-foreground: 45 100% 97%;
+  --secondary: 45 100% 97%;
+  --secondary-foreground: 24 65% 32%;
+  --muted: 45 100% 97%;
+  --muted-foreground: 24 65% 32%;
+  --accent: 45 100% 97%;
+  --accent-foreground: 24 65% 32%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 45 100% 97%;
+  --border: 24 65% 32%;
+  --input: 45 100% 97%;
+  --ring: 24 65% 32%;
+}
+

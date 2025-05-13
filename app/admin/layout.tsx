@@ -13,7 +13,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   return (
-    <div className="min-h-screen bg-amber-50 flex relative">
+    <div className="min-h-screen bg-amber-50 flex relative admin-theme">
       {/* Sidebar with transition - now fixed on all screen sizes */}
       <div 
         className={`h-screen transition-all duration-300 ease-in-out fixed top-0 left-0 ${
@@ -24,48 +24,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </div>
       
       {/* Toggle button for small screens - fixed position */}
-      <Button 
-        variant="outline" 
-        size="icon" 
-        onClick={toggleSidebar} 
-        className={`fixed top-4 ${sidebarVisible ? 'left-64' : 'left-4'} z-40 border-2 border-amber-800 bg-amber-50 text-amber-800 hover:bg-amber-100 transition-all duration-300 md:hidden shadow-md`}
+      <button
+        onClick={toggleSidebar}
+        className="fixed top-4 left-4 z-40 p-2 rounded-md bg-amber-800 text-amber-100 hover:bg-amber-900 transition-colors md:hidden"
       >
-        {sidebarVisible ? <X size={18} /> : <Menu size={18} />}
-      </Button>
+        {sidebarVisible ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+      </button>
       
-      {/* Main content - adjusted margin to account for fixed sidebar */}
-      <div className={`flex-1 p-6 ${sidebarVisible ? 'md:ml-64' : 'ml-0'} transition-all duration-300 w-full`}>
-        {/* Toggle button for larger screens - inline */}
-        <div className="mb-6 hidden md:block">
-          <Button 
-            variant="outline" 
-            onClick={toggleSidebar} 
-            className="border-2 border-amber-800 text-amber-800 hover:bg-amber-100 flex items-center gap-2"
-          >
-            {sidebarVisible ? (
-              <>
-                <PanelLeftClose size={18} />
-                <span>Hide Sidebar</span>
-              </>
-            ) : (
-              <>
-                <PanelLeftOpen size={18} />
-                <span>Show Sidebar</span>
-              </>
-            )}
-          </Button>
-        </div>
-        
-        {children}
+      {/* Main content */}
+      <div className={`flex-1 transition-all duration-300 ease-in-out ${sidebarVisible ? 'md:ml-64' : ''}`}>
+        <main className="p-6">
+          {children}
+        </main>
       </div>
-      
-      {/* Overlay for mobile when sidebar is open */}
-      {sidebarVisible && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-50 z-20 md:hidden"
-          onClick={toggleSidebar}
-        />
-      )}
     </div>
   )
 } 
