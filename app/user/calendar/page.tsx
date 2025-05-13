@@ -631,12 +631,12 @@ export default function CalendarPage() {
                         classNames={{
                           months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
                           month: "space-y-4",
-                          caption: "flex justify-center pt-1 relative items-center text-amber-900 font-bold text-lg mb-4",
-                          caption_label: "text-amber-900 font-bold text-lg",
-                          nav: "space-x-1 flex items-center",
-                          nav_button: "hover:bg-amber-50 focus:bg-amber-50 rounded-full h-8 w-8 border-2 border-amber-800",
-                          nav_button_previous: "hover:bg-amber-50 focus:bg-amber-50 rounded-full h-8 w-8 border-2 border-amber-800",
-                          nav_button_next: "hover:bg-amber-50 focus:bg-amber-50 rounded-full h-8 w-8 border-2 border-amber-800",
+                          caption: "flex justify-between items-center text-amber-900 font-bold text-lg mb-4 px-2",
+                          caption_label: "text-amber-900 font-bold text-lg bg-amber-100 px-4 py-2 rounded-lg border-2 border-amber-800 shadow-[2px_2px_0px_0px_rgba(120,53,15,0.5)]",
+                          nav: "space-x-3 flex items-center",
+                          nav_button: "hover:bg-amber-50 focus:bg-amber-50 rounded-full h-8 w-8 border-2 border-amber-800 bg-amber-100 shadow-[2px_2px_0px_0px_rgba(120,53,15,0.5)] hover:shadow-[3px_3px_0px_0px_rgba(120,53,15,0.5)] transition-all duration-200",
+                          nav_button_previous: "hover:bg-amber-50 focus:bg-amber-50 rounded-full h-8 w-8 border-2 border-amber-800 bg-amber-100 shadow-[2px_2px_0px_0px_rgba(120,53,15,0.5)] hover:shadow-[3px_3px_0px_0px_rgba(120,53,15,0.5)] transition-all duration-200",
+                          nav_button_next: "hover:bg-amber-50 focus:bg-amber-50 rounded-full h-8 w-8 border-2 border-amber-800 bg-amber-100 shadow-[2px_2px_0px_0px_rgba(120,53,15,0.5)] hover:shadow-[3px_3px_0px_0px_rgba(120,53,15,0.5)] transition-all duration-200",
                           table: "w-full border-collapse space-y-1",
                           head_row: "flex justify-between",
                           head_cell: "text-amber-900 font-bold uppercase text-sm p-2",
@@ -649,9 +649,9 @@ export default function CalendarPage() {
                           day_disabled: "text-amber-400 opacity-50",
                           day_range_middle: "aria-selected:bg-amber-100 aria-selected:text-amber-900",
                           day_hidden: "invisible",
-                          dropdown: "bg-white border-2 border-amber-800 font-medium",
-                          dropdown_year: "bg-white border-2 border-amber-800 font-medium",
-                          dropdown_month: "bg-white border-2 border-amber-800 font-medium",
+                          dropdown: "bg-white border-2 border-amber-800 font-medium shadow-[2px_2px_0px_0px_rgba(120,53,15,0.5)]",
+                          dropdown_year: "bg-white border-2 border-amber-800 font-medium shadow-[2px_2px_0px_0px_rgba(120,53,15,0.5)]",
+                          dropdown_month: "bg-white border-2 border-amber-800 font-medium shadow-[2px_2px_0px_0px_rgba(120,53,15,0.5)]",
                           vhidden: "hidden"
                         }}
                       />
