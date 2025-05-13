@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -62,12 +62,41 @@ interface ApiResponse<T> {
   message?: string;
 }
 
-// Map frontend event types to backend
-const eventTypeMap = {
-  expiration: 'warranty' as EventType,
-  maintenance: 'maintenance' as EventType,
-  reminder: 'reminder' as EventType
-}
+// Constants for event types
+const EVENT_TYPES = {
+  WARRANTY: 'warranty',
+  MAINTENANCE: 'maintenance',
+  REMINDER: 'reminder',
+  OTHER: 'other'
+} as const;
+
+const EVENT_TYPE_MAP = {
+  expiration: EVENT_TYPES.WARRANTY,
+  maintenance: EVENT_TYPES.MAINTENANCE,
+  reminder: EVENT_TYPES.REMINDER
+} as const;
+
+const REVERSE_EVENT_TYPE_MAP = Object.entries(EVENT_TYPE_MAP).reduce((acc, [key, value]) => {
+  acc[value] = key;
+  return acc;
+}, {} as Record<EventType, string>);
+
+// Helper functions for date handling
+const normalizeDate = (date: Date): Date => {
+  const normalized = new Date(date);
+  normalized.setHours(0, 0, 0, 0);
+  return normalized;
+};
+
+const isSameDay = (date1: Date, date2: Date): boolean => {
+  const d1 = normalizeDate(date1);
+  const d2 = normalizeDate(date2);
+  return d1.getTime() === d2.getTime();
+};
+
+const isValidDate = (date: Date): boolean => {
+  return date instanceof Date && !isNaN(date.getTime());
+};
 
 export default function CalendarPage() {
   const router = useRouter()
@@ -212,14 +241,87 @@ export default function CalendarPage() {
     }
   }, [products, handleNewEventChange])
 
+  // Memoized event filtering
+  const getFilteredEvents = useMemo(() => {
+    return events.filter((event: CalendarEvent) => {
+      try {
+        // If temporaryDateView is set, show events for that date
+        const dateToUse = temporaryDateView || selectedDate;
+        
+        // Validate dates
+        const eventDate = new Date(event.startDate);
+        const selectedDateObj = new Date(dateToUse);
+        
+        if (!isValidDate(eventDate) || !isValidDate(selectedDateObj)) {
+          console.error('Invalid date detected:', { eventDate, selectedDateObj });
+          return false;
+        }
+        
+        const isEventSameDay = isSameDay(eventDate, selectedDateObj);
+        const matchesFilter = filterType === "all" || 
+          (filterType === "expiration" && event.eventType === EVENT_TYPES.WARRANTY) ||
+          (event.eventType === filterType);
+        
+        // If showAllEvents is true and no temporary date is selected, show all events
+        if (showAllEvents && !temporaryDateView) {
+          return matchesFilter;
+        }
+        
+        return isEventSameDay && matchesFilter;
+      } catch (error) {
+        console.error('Error filtering event:', error);
+        return false;
+      }
+    });
+  }, [events, temporaryDateView, selectedDate, filterType, showAllEvents]);
+
+  // Improved event creation validation
+  const validateEvent = (event: Omit<CalendarEvent, '_id'>): string[] => {
+    const errors: string[] = [];
+    
+    if (!event.title?.trim()) {
+      errors.push('Title is required');
+    }
+    
+    if (!event.startDate) {
+      errors.push('Date is required');
+    } else {
+      const eventDate = new Date(event.startDate);
+      if (!isValidDate(eventDate)) {
+        errors.push('Invalid date format');
+      } else if (event.eventType === EVENT_TYPES.WARRANTY && eventDate < new Date()) {
+        errors.push('Warranty expiration date must be in the future');
+      }
+    }
+    
+    if (event.eventType === EVENT_TYPES.WARRANTY && !event.relatedWarranty) {
+      errors.push('Related product is required for warranty events');
+    }
+    
+    return errors;
+  };
+
+  // Improved event creation handler
   const handleCreateEvent = async () => {
-    if (!newEvent.title || !newEvent.startDate) {
-      toast.error("Please fill in all required fields")
-      return
+    const validationErrors = validateEvent(newEvent);
+    if (validationErrors.length > 0) {
+      toast.error(validationErrors.join('\n'));
+      return;
     }
     
     try {
-      setIsCreating(true)
+      setIsCreating(true);
+      
+      // Check for duplicate events
+      const isDuplicate = events.some(event => 
+        event.title === newEvent.title && 
+        isSameDay(new Date(event.startDate), new Date(newEvent.startDate))
+      );
+      
+      if (isDuplicate) {
+        toast.error('An event with the same title and date already exists');
+        return;
+      }
       
       // Create optimistic event
       const optimisticEvent: CalendarEvent = {
@@ -227,17 +329,17 @@ export default function CalendarPage() {
         _id: 'temp-' + Date.now(),
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
-      }
+      };
       
       // Add optimistic event to state
-      setEvents(prev => [...prev, optimisticEvent])
+      setEvents(prev => [...prev, optimisticEvent]);
       
       // Format event data to match API requirements
       const formattedEvent = {
         title: newEvent.title,
         description: newEvent.description || '',
         date: new Date(newEvent.startDate).toISOString(),
-        type: eventTypeMap[newEvent.eventType as keyof typeof eventTypeMap] || 'reminder',
+        type: EVENT_TYPE_MAP[newEvent.eventType as keyof typeof EVENT_TYPE_MAP] || EVENT_TYPES.REMINDER,
         warranty: newEvent.relatedWarranty || undefined,
         allDay: newEvent.allDay || false,
         color: newEvent.color || '#3498db',
@@ -245,34 +347,34 @@ export default function CalendarPage() {
           enabled: true,
           reminderTime: 24
         }
-      }
+      };
       
       const response = await fetch(
         apiEndpoints.events.list,
         createApiRequest(apiEndpoints.events.list, 'POST', formattedEvent)
-      )
+      );
       
       if (!response.ok) {
         // Remove optimistic event on failure
-        setEvents(prev => prev.filter(e => e._id !== optimisticEvent._id))
-        const errorMessage = await handleApiError(response)
-        throw new Error(errorMessage)
+        setEvents(prev => prev.filter(e => e._id !== optimisticEvent._id));
+        const errorMessage = await handleApiError(response);
+        throw new Error(errorMessage);
       }
       
-      const data = await response.json()
-      const createdEvent = data.event || data
+      const data = await response.json();
+      const createdEvent = data.event || data;
       
       if (createdEvent && createdEvent._id) {
         // Replace optimistic event with real event
         setEvents(prev => prev.map(e => 
           e._id === optimisticEvent._id ? createdEvent : e
-        ))
+        ));
         
         // Reset form and close dialog
         setNewEvent({
           title: "",
           description: "",
-          eventType: "warranty",
+          eventType: EVENT_TYPES.WARRANTY,
           startDate: new Date().toISOString().split('T')[0],
           allDay: true,
           color: "#3498db",
@@ -280,25 +382,25 @@ export default function CalendarPage() {
             enabled: true,
             reminderTime: 24
           }
-        })
-        setIsDialogOpen(false)
+        });
+        setIsDialogOpen(false);
         
         // Select the date of the new event
-        setSelectedDate(new Date(createdEvent.startDate))
+        setSelectedDate(new Date(createdEvent.startDate));
         
         // Clear cache for events
-        ApiCache.removeFromCache(apiEndpoints.events.list)
+        ApiCache.removeFromCache(apiEndpoints.events.list);
         
-        toast.success("Event created successfully")
+        toast.success("Event created successfully");
       } else {
-        throw new Error('Invalid event data returned')
+        throw new Error('Invalid event data returned');
       }
     } catch (error) {
-      toast.error(`Failed to create event: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      toast.error(`Failed to create event: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
-      setIsCreating(false)
+      setIsCreating(false);
     }
-  }
+  };
   
   const handleDeleteEvent = async (id: string) => {
     try {
@@ -427,31 +529,6 @@ export default function CalendarPage() {
       return date
     })
   }
-  
-  // Filter events based on selected date and type
-  const filteredEvents = events.filter(event => {
-    // If temporaryDateView is set, show events for that date
-    const dateToUse = temporaryDateView || selectedDate
-    
-    // Convert dates to local timezone for comparison
-    const eventDate = new Date(event.startDate)
-    const selectedDateObj = new Date(dateToUse)
-    
-    const eventDateStr = eventDate.toISOString().split('T')[0]
-    const selectedDateStr = selectedDateObj.toISOString().split('T')[0]
-    
-    const isSameDay = eventDateStr === selectedDateStr
-    const matchesFilter = filterType === "all" || 
-      (filterType === "expiration" && event.eventType === "warranty") ||
-      (event.eventType === filterType)
-    
-    // If showAllEvents is true and no temporary date is selected, show all events
-    if (showAllEvents && !temporaryDateView) {
-      return matchesFilter
-    }
-    
-    return isSameDay && matchesFilter
-  })
   
   if (isLoading) {
     return (
@@ -754,7 +831,7 @@ export default function CalendarPage() {
                         }
                       </h2>
                       <p className="text-sm text-amber-800 mt-1">
-                        {filteredEvents.length} {filteredEvents.length === 1 ? 'event' : 'events'} 
+                        {getFilteredEvents.length} {getFilteredEvents.length === 1 ? 'event' : 'events'} 
                         {temporaryDateView 
                           ? 'on this day'
                           : showAllEvents 
@@ -803,7 +880,7 @@ export default function CalendarPage() {
                     <div className="col-span-full flex justify-center items-center p-6 border-2 border-amber-800 rounded-lg bg-amber-100">
                       <Loader2 className="h-6 w-6 animate-spin text-amber-800" />
                     </div>
-                  ) : filteredEvents.length === 0 ? (
+                  ) : getFilteredEvents.length === 0 ? (
                     <div className="col-span-full text-center p-6 bg-amber-100 rounded-lg border-2 border-amber-800 shadow-[4px_4px_0px_0px_rgba(120,53,15,0.5)]">
                       <CalendarIcon className="h-10 w-10 mx-auto text-amber-800 mb-3" />
                       <h3 className="text-base font-semibold text-amber-900">No Events</h3>
@@ -817,7 +894,7 @@ export default function CalendarPage() {
                       </Button>
                     </div>
                   ) : (
-                    filteredEvents.map((event) => (
+                    getFilteredEvents.map((event) => (
                       <Card
                         key={event._id}
                         className="border-2 border-amber-800 hover:border-amber-900 transition-all duration-200 bg-amber-100 shadow-[4px_4px_0px_0px_rgba(120,53,15,0.5)] hover:shadow-[6px_6px_0px_0px_rgba(120,53,15,0.5)]"
