@@ -587,7 +587,7 @@ export default function CalendarPage() {
                       <Input
                         value={newEvent.title}
                         onChange={(e) => handleNewEventChange('title', e.target.value)}
-                        className="border-2 border-amber-200 bg-white"
+                        className="border-2 border-amber-200 bg-white text-amber-900"
                         placeholder="Event title"
                       />
                     </div>
@@ -596,7 +596,7 @@ export default function CalendarPage() {
                       <Textarea
                         value={newEvent.description}
                         onChange={(e) => handleNewEventChange('description', e.target.value)}
-                        className="border-2 border-amber-200 bg-white"
+                        className="border-2 border-amber-200 bg-white text-amber-900"
                         placeholder="Event description"
                       />
                     </div>
@@ -606,14 +606,14 @@ export default function CalendarPage() {
                         value={newEvent.eventType}
                         onValueChange={(value) => handleNewEventChange('eventType', value)}
                       >
-                        <SelectTrigger className="border-2 border-amber-200 bg-white">
+                        <SelectTrigger className="border-2 border-amber-200 bg-white text-amber-900">
                           <SelectValue placeholder="Select type" />
                         </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="warranty">Warranty Expiration</SelectItem>
-                          <SelectItem value="maintenance">Maintenance</SelectItem>
-                          <SelectItem value="reminder">Reminder</SelectItem>
-                          <SelectItem value="other">Other</SelectItem>
+                        <SelectContent className="border-2 border-amber-800 bg-white">
+                          <SelectItem value="warranty" className="text-amber-900">Warranty Expiration</SelectItem>
+                          <SelectItem value="maintenance" className="text-amber-900">Maintenance</SelectItem>
+                          <SelectItem value="reminder" className="text-amber-900">Reminder</SelectItem>
+                          <SelectItem value="other" className="text-amber-900">Other</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -623,7 +623,7 @@ export default function CalendarPage() {
                         type="date"
                         value={newEvent.startDate}
                         onChange={(e) => handleNewEventChange('startDate', e.target.value)}
-                        className="border-2 border-amber-200 bg-white"
+                        className="border-2 border-amber-200 bg-white text-amber-900"
                       />
                     </div>
                     <div className="space-y-2">
@@ -632,12 +632,12 @@ export default function CalendarPage() {
                         value={newEvent.relatedWarranty}
                         onValueChange={handleProductSelect}
                       >
-                        <SelectTrigger className="border-2 border-amber-200 bg-white">
+                        <SelectTrigger className="border-2 border-amber-200 bg-white text-amber-900">
                           <SelectValue placeholder="Select product" />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="border-2 border-amber-800 bg-white">
                           {products.map((product) => (
-                            <SelectItem key={product._id} value={product._id}>
+                            <SelectItem key={product._id} value={product._id} className="text-amber-900">
                               {product.name}
                             </SelectItem>
                           ))}
@@ -649,7 +649,7 @@ export default function CalendarPage() {
                     <Button
                       variant="outline"
                       onClick={() => setIsDialogOpen(false)}
-                      className="border-2 border-amber-200"
+                      className="bg-amber-50 hover:bg-amber-100 text-amber-800 hover:text-amber-900 border-2 border-amber-800"
                     >
                       Cancel
                     </Button>
