@@ -393,7 +393,7 @@ export default function AddWarrantyPage() {
                         <Button 
                           type="button" 
                           variant="outline" 
-                          className="border-2 border-amber-800 text-amber-800"
+                          className="border-2 border-amber-800 bg-amber-50 text-amber-800 hover:bg-amber-100 hover:text-amber-900"
                         >
                           Browse Files
                         </Button>
@@ -423,7 +423,7 @@ export default function AddWarrantyPage() {
                         <Button 
                           type="button" 
                           variant="outline" 
-                          className="border-2 border-amber-800 text-amber-800"
+                          className="border-2 border-amber-800 bg-amber-50 text-amber-800 hover:bg-amber-100 hover:text-amber-900"
                         >
                           Browse Files
                         </Button>
@@ -465,7 +465,7 @@ export default function AddWarrantyPage() {
                     <Button 
                       type="button" 
                       variant="outline" 
-                      className="border-2 border-amber-800 text-amber-800"
+                      className="border-2 border-amber-800 bg-amber-50 text-amber-800 hover:bg-amber-100 hover:text-amber-900"
                     >
                       Cancel
                     </Button>
