@@ -134,11 +134,7 @@ interface ProfileUpdateData {
 }
 
 // API base URL
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
-
-if (!API_BASE_URL) {
-  throw new Error('NEXT_PUBLIC_API_URL environment variable is not set');
-}
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
 
 // Remove any trailing slash from the API base URL
 const cleanApiBaseUrl = API_BASE_URL.replace(/\/$/, '');

@@ -36,6 +36,11 @@ const nextConfig = {
     parallelServerBuildTraces: true,
     parallelServerCompiles: true,
   },
+  generateBuildId: async () => {
+    return 'build-' + Date.now()
+  },
+  skipTrailingSlashRedirect: true,
+  skipMiddlewareUrlNormalize: true,
 }
 
 mergeConfig(nextConfig, userConfig)

@@ -446,282 +446,237 @@ export default function CalendarPage() {
   }
   
   return (
-    <div className="flex min-h-screen bg-amber-50">
-      <WarrantySidebar />
-      
-      <div className="flex-1 p-6 ml-64">
-        <div className="mb-6">
-          <Link href="/user" className="flex items-center text-amber-800 hover:text-amber-600 transition-colors">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Dashboard
-          </Link>
-        </div>
+    <div className="min-h-screen bg-amber-50">
+      <div className="flex h-screen">
+        <WarrantySidebar />
         
-        <div className="max-w-5xl mx-auto">
-          <div className="flex justify-between items-center mb-6">
-            <div>
-              <h1 className="text-3xl font-bold text-amber-900">Warranty Calendar</h1>
-              <p className="text-amber-700">Track your warranty expirations and maintenance schedules</p>
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <Select value={filterType} onValueChange={(value) => setFilterType(value as FilterType)}>
-                <SelectTrigger className="w-[180px] border-2 border-amber-800 bg-amber-50">
-                  <SelectValue placeholder="Filter by type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Events</SelectItem>
-                  <SelectItem value="expiration">Warranty Expiration</SelectItem>
-                  <SelectItem value="maintenance">Maintenance</SelectItem>
-                  <SelectItem value="reminder">Reminder</SelectItem>
-                </SelectContent>
-              </Select>
+        <main className="flex-1 p-6 ml-64 overflow-y-auto">
+          <div className="max-w-7xl mx-auto">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-4">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => router.back()}
+                  className="text-amber-900 hover:bg-amber-100"
+                >
+                  <ArrowLeft className="h-5 w-5" />
+                </Button>
+                <h1 className="text-2xl font-bold text-amber-900">Calendar</h1>
+              </div>
               
-              {isLoading && (
-                <div className="flex items-center text-blue-600">
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  <span>Loading events...</span>
-                </div>
-              )}
-              
-              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button className="bg-amber-800 hover:bg-amber-900 text-amber-100 border-2 border-amber-900">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Event
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="bg-amber-50 border-4 border-amber-800 max-w-lg">
-                  <DialogHeader>
-                    <DialogTitle className="text-2xl font-bold text-amber-900">Add New Event</DialogTitle>
-                    <DialogDescription className="text-amber-700">
-                      Create a new calendar event for your warranty or maintenance schedule.
-                    </DialogDescription>
-                  </DialogHeader>
-                  
-                  <div className="space-y-4 py-4">
-                    <div className="grid grid-cols-1 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="title" className="text-amber-900">Event Title</Label>
+              <div className="flex items-center gap-4">
+                <Select
+                  value={filterType}
+                  onValueChange={(value) => setFilterType(value as FilterType)}
+                >
+                  <SelectTrigger className="w-[180px] border-2 border-amber-800 bg-amber-50 text-amber-900">
+                    <SelectValue placeholder="Filter events" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-amber-50 text-amber-900">
+                    <SelectItem value="all">All Events</SelectItem>
+                    <SelectItem value="expiration">Warranty Expirations</SelectItem>
+                    <SelectItem value="maintenance">Maintenance</SelectItem>
+                    <SelectItem value="reminder">Reminders</SelectItem>
+                  </SelectContent>
+                </Select>
+                
+                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button className="bg-amber-800 hover:bg-amber-900 text-amber-50">
+                      <Plus className="h-4 w-4 mr-2" />
+                      New Event
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[500px] border-2 border-amber-800 bg-amber-50">
+                    <DialogHeader>
+                      <DialogTitle className="text-amber-900">Create New Event</DialogTitle>
+                      <DialogDescription className="text-amber-800">
+                        Add a new event to your calendar
+                      </DialogDescription>
+                    </DialogHeader>
+                    
+                    <div className="grid gap-4 py-4">
+                      <div className="grid gap-2">
+                        <Label htmlFor="title" className="text-amber-900">Title</Label>
                         <Input
                           id="title"
-                          placeholder="Enter title"
                           value={newEvent.title}
                           onChange={(e) => handleNewEventChange('title', e.target.value)}
-                          className="border-2 border-amber-700 bg-amber-50 text-amber-900"
+                          className="border-2 border-amber-800 bg-amber-50 text-amber-900"
                         />
                       </div>
                       
-                      <div className="space-y-2">
+                      <div className="grid gap-2">
                         <Label htmlFor="description" className="text-amber-900">Description</Label>
                         <Textarea
                           id="description"
-                          placeholder="Enter description"
                           value={newEvent.description}
                           onChange={(e) => handleNewEventChange('description', e.target.value)}
-                          className="border-2 border-amber-700 bg-amber-50 text-amber-900 min-h-[100px]"
+                          className="border-2 border-amber-800 bg-amber-50 text-amber-900"
                         />
                       </div>
                       
-                      <div className="space-y-2">
+                      <div className="grid gap-2">
                         <Label htmlFor="eventType" className="text-amber-900">Event Type</Label>
                         <Select
                           value={newEvent.eventType}
                           onValueChange={(value) => handleNewEventChange('eventType', value)}
                         >
-                          <SelectTrigger id="eventType" className="border-2 border-amber-700 bg-amber-50">
+                          <SelectTrigger className="border-2 border-amber-800 bg-amber-50 text-amber-900">
                             <SelectValue placeholder="Select event type" />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="bg-amber-50 text-amber-900">
                             <SelectItem value="warranty">Warranty Expiration</SelectItem>
                             <SelectItem value="maintenance">Maintenance</SelectItem>
                             <SelectItem value="reminder">Reminder</SelectItem>
+                            <SelectItem value="other">Other</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
                       
-                      <div className="space-y-2">
-                        <Label htmlFor="startDate" className="text-amber-900">Date</Label>
+                      <div className="grid gap-2">
+                        <Label htmlFor="date" className="text-amber-900">Date</Label>
                         <Input
-                          id="startDate"
+                          id="date"
                           type="date"
                           value={newEvent.startDate}
                           onChange={(e) => handleNewEventChange('startDate', e.target.value)}
-                          className="border-2 border-amber-700 bg-amber-50 text-amber-900"
+                          className="border-2 border-amber-800 bg-amber-50 text-amber-900"
                         />
                       </div>
-                      
-                      {products.length > 0 && (
-                        <div className="space-y-2">
-                          <Label htmlFor="relatedProduct" className="text-amber-900">Related Product</Label>
-                          <Select
-                            onValueChange={handleProductSelect}
-                          >
-                            <SelectTrigger id="relatedProduct" className="border-2 border-amber-700 bg-amber-50">
-                              <SelectValue placeholder="Select a product" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {products.map(product => (
-                                <SelectItem key={product._id} value={product._id}>
-                                  {product.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      )}
                     </div>
+                    
+                    <DialogFooter>
+                      <Button
+                        type="submit"
+                        onClick={handleCreateEvent}
+                        disabled={isCreating}
+                        className="bg-amber-800 hover:bg-amber-900 text-amber-50"
+                      >
+                        {isCreating ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Creating...
+                          </>
+                        ) : (
+                          'Create Event'
+                        )}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <Card className="lg:col-span-2 border-2 border-amber-800 bg-amber-50">
+                <CardHeader className="border-b-2 border-amber-300 bg-amber-100">
+                  <CardTitle className="text-amber-900">Calendar</CardTitle>
+                </CardHeader>
+                <CardContent className="p-6">
+                  <div className="[&_.rdp]:text-amber-900 [&_.rdp-button]:text-amber-900 [&_.rdp-nav_button]:text-amber-900 [&_.rdp-head_cell]:text-amber-900 [&_.rdp-day]:text-amber-900 [&_.rdp-day_selected]:bg-amber-800 [&_.rdp-day_selected]:text-white [&_.rdp-day_today]:bg-amber-100 [&_.rdp-day_today]:text-amber-900">
+                    <Calendar
+                      mode="single"
+                      selected={selectedDate}
+                      onSelect={handleDateSelect}
+                      modifiers={{ hasEvent: getDatesWithEvents() }}
+                      modifiersStyles={{
+                        hasEvent: {
+                          backgroundColor: 'rgb(146, 64, 14)',
+                          color: 'white',
+                          borderRadius: '50%'
+                        }
+                      }}
+                      className="rounded-lg border-2 border-amber-800 bg-amber-50"
+                    />
                   </div>
-                  
-                  <DialogFooter>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setIsDialogOpen(false)}
-                      className="border-2 border-amber-700 text-amber-900 hover:bg-amber-100"
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      type="button"
-                      onClick={handleCreateEvent}
-                      disabled={isCreating}
-                      className="bg-amber-800 hover:bg-amber-900 text-amber-100 border-2 border-amber-900"
-                    >
-                      {isCreating ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Creating...
-                        </>
-                      ) : (
-                        <>Create Event</>
-                      )}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
+                </CardContent>
+              </Card>
+              
+              <Card className="border-2 border-amber-800 bg-amber-50">
+                <CardHeader className="border-b-2 border-amber-300 bg-amber-100">
+                  <CardTitle className="text-amber-900">Events for {formatDate(selectedDate.toISOString())}</CardTitle>
+                </CardHeader>
+                <CardContent className="p-6">
+                  {isLoading ? (
+                    <div className="flex items-center justify-center h-32">
+                      <Loader2 className="h-8 w-8 animate-spin text-amber-800" />
+                    </div>
+                  ) : events.length === 0 ? (
+                    <div className="text-center text-amber-800 py-8">
+                      <CalendarIcon className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>No events for this date</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {events
+                        .filter(event => {
+                          const eventDate = new Date(event.startDate).toDateString()
+                          const selectedDateStr = selectedDate.toDateString()
+                          return eventDate === selectedDateStr
+                        })
+                        .map(event => (
+                          <div
+                            key={event._id}
+                            className="p-4 rounded-lg border-2 border-amber-300 bg-amber-100 hover:bg-amber-200 transition-colors cursor-pointer"
+                            onClick={() => handleViewEvent(event)}
+                          >
+                            <div className="flex items-start justify-between">
+                              <div>
+                                <h3 className="font-medium text-amber-900">{event.title}</h3>
+                                <p className="text-sm text-amber-800 mt-1">{event.description}</p>
+                              </div>
+                              {getEventTypeBadge(event.eventType)}
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             </div>
           </div>
-          
-          <div className="grid grid-cols-1 lg:grid-cols-[350px_1fr] gap-6">
-            <Card className="border-4 border-amber-800 bg-amber-50">
-              <CardHeader>
-                <CardTitle className="text-xl font-bold text-amber-900">Select Date</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Calendar
-                  mode="single"
-                  selected={selectedDate}
-                  onSelect={handleDateSelect}
-                  className="border-2 border-amber-700 rounded-md p-3"
-                  modifiers={{
-                    highlighted: getDatesWithEvents()
-                  }}
-                  modifiersStyles={{
-                    highlighted: { 
-                      fontWeight: 'bold',
-                      backgroundColor: 'rgba(217, 119, 6, 0.2)',
-                      borderRadius: '100%'
-                    }
-                  }}
-                />
-              </CardContent>
-            </Card>
-            
-            <Card className="border-4 border-amber-800 bg-amber-50">
-              <CardHeader>
-                <CardTitle className="text-xl font-bold text-amber-900">
-                  Events for {formatDate(selectedDate.toISOString())}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-6">
-                {filteredEvents.length > 0 ? (
-                  <div className="space-y-4">
-                    {filteredEvents.map(event => (
-                      <div 
-                        key={event._id} 
-                        className="p-4 border-2 border-amber-300 rounded-md bg-amber-50 hover:shadow-md transition-shadow cursor-pointer"
-                        onClick={() => handleViewEvent(event)}
-                      >
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <h3 className="font-bold text-amber-900">{event.title}</h3>
-                            <p className="text-amber-700 text-sm mt-1">
-                              {event.allDay ? 'All day' : new Date(event.startDate).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                            </p>
-                          </div>
-                          {getEventTypeBadge(event.eventType)}
-                        </div>
-                        {event.description && (
-                          <p className="text-amber-700 mt-2 text-sm line-clamp-2">{event.description}</p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <p className="text-amber-700">No events scheduled for this day.</p>
-                    <Button 
-                      onClick={() => setIsDialogOpen(true)}
-                      className="mt-4 bg-amber-800 hover:bg-amber-900 text-amber-100 border-2 border-amber-900"
-                    >
-                      <Plus className="mr-2 h-4 w-4" />
-                      Add Event
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+        </main>
       </div>
       
-      {/* Event Details Dialog */}
+      {/* View Event Dialog */}
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-        <DialogContent className="bg-amber-50 border-4 border-amber-800 max-w-md">
+        <DialogContent className="sm:max-w-[500px] border-2 border-amber-800 bg-amber-50">
           {selectedEvent && (
             <>
               <DialogHeader>
-                <div className="flex justify-between items-center">
-                  <DialogTitle className="text-2xl font-bold text-amber-900">{selectedEvent.title}</DialogTitle>
-                  {getEventTypeBadge(selectedEvent.eventType)}
-                </div>
-                <DialogDescription className="text-amber-700">
-                  {formatDate(selectedEvent.startDate)}
-                  {!selectedEvent.allDay && ` at ${new Date(selectedEvent.startDate).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`}
+                <DialogTitle className="text-amber-900">{selectedEvent.title}</DialogTitle>
+                <DialogDescription className="text-amber-800">
+                  {selectedEvent.description}
                 </DialogDescription>
               </DialogHeader>
               
-              <div className="space-y-4 py-4">
-                {selectedEvent.relatedWarranty && (
-                  <div>
-                    <h4 className="font-semibold text-amber-900">Related Warranty</h4>
-                    <p className="text-amber-700">
-                      {selectedEvent.relatedWarranty}
-                    </p>
-                  </div>
-                )}
+              <div className="grid gap-4 py-4">
+                <div className="flex items-center gap-2">
+                  <CalendarIcon className="h-4 w-4 text-amber-800" />
+                  <span className="text-amber-900">
+                    {formatDate(selectedEvent.startDate)}
+                  </span>
+                </div>
                 
-                {selectedEvent.description && (
-                  <div>
-                    <h4 className="font-semibold text-amber-900">Description</h4>
-                    <p className="text-amber-700 whitespace-pre-wrap">{selectedEvent.description}</p>
-                  </div>
-                )}
-                
-                {selectedEvent.notifications?.enabled && (
-                  <div>
-                    <h4 className="font-semibold text-amber-900">Notifications</h4>
-                    <p className="text-amber-700">
-                      You will be notified {selectedEvent.notifications.reminderTime} hours before this event.
-                    </p>
-                  </div>
-                )}
+                <div className="flex items-center gap-2">
+                  {selectedEvent.eventType === 'warranty' ? (
+                    <Shield className="h-4 w-4 text-amber-800" />
+                  ) : selectedEvent.eventType === 'maintenance' ? (
+                    <Wrench className="h-4 w-4 text-amber-800" />
+                  ) : (
+                    <Info className="h-4 w-4 text-amber-800" />
+                  )}
+                  <span className="text-amber-900">
+                    {selectedEvent.eventType.charAt(0).toUpperCase() + selectedEvent.eventType.slice(1)}
+                  </span>
+                </div>
               </div>
               
-              <DialogFooter className="sm:justify-between">
-                <Button 
-                  variant="destructive" 
+              <DialogFooter>
+                <Button
+                  variant="destructive"
                   onClick={() => handleDeleteEvent(selectedEvent._id)}
                   disabled={isDeleting}
                   className="bg-red-600 hover:bg-red-700"
@@ -737,12 +692,6 @@ export default function CalendarPage() {
                       Delete Event
                     </>
                   )}
-                </Button>
-                <Button 
-                  onClick={() => setIsViewDialogOpen(false)}
-                  className="bg-amber-800 hover:bg-amber-900 text-amber-100"
-                >
-                  Close
                 </Button>
               </DialogFooter>
             </>

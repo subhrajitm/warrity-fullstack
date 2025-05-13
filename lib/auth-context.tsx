@@ -184,6 +184,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     try {
       console.log('Attempting login with:', { email });
+      
+      // Validate input
+      if (!email || !password) {
+        toast.error('Email and password are required');
+        return false;
+      }
+
+      // Make API request
       const response = await authApi.login({ email, password });
       
       console.log('Login response:', response);
@@ -224,7 +232,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return true;
     } catch (error) {
       console.error('Login error:', error);
-      toast.error('Login failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Detailed error:', {
+        message: errorMessage,
+        stack: error instanceof Error ? error.stack : undefined,
+        error
+      });
+      toast.error(`Login failed: ${errorMessage}`);
       return false;
     } finally {
       setLoading(false);

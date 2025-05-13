@@ -11,7 +11,7 @@ const inter = Inter({ subsets: ["latin"] })
 export const metadata: Metadata = {
   title: "Warrity - Smart Warranty Management",
   description: "Track and manage all your product warranties in one place",
-    generator: 'Dev'
+  generator: 'Dev'
 }
 
 export default function RootLayout({
@@ -20,9 +20,14 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
           <AuthProvider>
             {children}
             <Toaster position="top-right" richColors />
@@ -32,7 +37,3 @@ export default function RootLayout({
     </html>
   )
 }
-
-
-
-import './globals.css'

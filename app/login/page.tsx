@@ -9,14 +9,14 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { LogIn, User, Lock, AlertCircle } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
+import { toast } from 'sonner'
 
 export default function LoginPage() {
   const router = useRouter()
-  const { login, isAuthenticated, user, isLoading: authLoading } = useAuth()
+  const { login, isAuthenticated, user, isLoading } = useAuth()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
   
   // Check if user is already logged in
   useEffect(() => {
@@ -43,9 +43,8 @@ export default function LoginPage() {
     e.preventDefault()
     setError("")
     
-    // Validate form
     if (!email || !password) {
-      setError("Please enter both email and password")
+      toast.error('Please enter both email and password');
       return
     }
     
@@ -61,8 +60,6 @@ export default function LoginPage() {
       setError("Password must be at least 6 characters long")
       return
     }
-    
-    setIsLoading(true)
     
     try {
       console.log("Attempting login with:", { email }) // Don't log password
@@ -95,13 +92,12 @@ export default function LoginPage() {
     } catch (err: any) {
       console.error("Login error:", err)
       setError(err?.message || "An unexpected error occurred. Please try again.")
-    } finally {
-      setIsLoading(false)
+      toast.error('An unexpected error occurred during login')
     }
   }
   
   // Show loading state while checking authentication
-  if (authLoading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-amber-50 flex items-center justify-center p-6">
         <div className="text-amber-800 text-xl flex items-center">

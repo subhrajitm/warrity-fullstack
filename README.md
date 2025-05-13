@@ -1,97 +1,97 @@
-# Warrity API
+# Warrity - Full Stack Warranty Management System
 
 <div align="center">
-  <p><em>Backend API for Warrity - Warranty Management System</em></p>
+  <p><em>A modern, full-stack warranty management system built with Next.js, TypeScript, and AWS</em></p>
 </div>
 
 ## Overview
 
-This is the backend API for Warrity, a comprehensive warranty management application. The API provides endpoints for user authentication, warranty management, product management, and administrative functions.
+Warrity is a comprehensive warranty management system that provides a modern web interface, mobile application, and robust backend API. The system enables efficient management of warranties, products, and user interactions across multiple platforms.
 
 ## Features
 
-### Authentication
-- User registration and login
+### Web Application
+- Modern, responsive UI built with Next.js and Tailwind CSS
+- Real-time warranty tracking and management
+- Interactive dashboards and analytics
+- Role-based access control
+- Dark/Light theme support
+
+### Mobile Application
+- Cross-platform mobile app
+- Offline support
+- Push notifications
+- QR code scanning for warranty verification
+- Mobile-optimized user experience
+
+### Backend API
+- RESTful API architecture
 - JWT-based authentication
-- Role-based access control (User, Admin)
-- Password hashing and security
+- Role-based access control
+- File upload and management
+- Real-time notifications
 
-### Warranty Management
-- CRUD operations for warranties
-- Warranty status tracking
-- Warranty expiration notifications
-- Warranty history and audit logs
-
-### Product Management
+### Core Features
+- Warranty registration and tracking
 - Product catalog management
-- Product categories
-- Product search and filtering
-- Product warranty associations
-
-### User Management
 - User profile management
-- User preferences
-- User activity tracking
-- Admin user management
-
-### Admin Features
-- System-wide analytics
-- User management
-- Product management
-- Warranty oversight
-- System configuration
-
-## Dependency Management
-
-Warrity includes a robust dependency management system to prevent "module not found" errors and ensure all required packages are properly installed:
-
-### Automatic Dependency Checking
-
-- **Pre-dev/Pre-build Checks**: Automatically checks for missing dependencies before running development or build commands
-- **Custom Error Page**: A helpful error page that displays detailed information about missing packages
-- **Import Validation Tool**: A utility to scan the codebase for imports and validate them against package.json
-- **Pre-commit Hook**: Prevents commits when missing dependencies are detected
-
-### Usage
-
-- **Checking Dependencies**: `npm run check-deps`
-- **Validating Imports**: `npm run validate-imports`
-
-These tools help maintain a consistent development environment and reduce build failures due to missing packages.
+- Admin dashboard
+- Analytics and reporting
+- Document management
+- Email notifications
 
 ## Technology Stack
 
+### Frontend
+- **Framework**: Next.js 15
+- **Language**: TypeScript
+- **UI Library**: React 19
+- **Styling**: Tailwind CSS
+- **UI Components**: 
+  - Shadcn UI
+  - Radix UI
+  - Lucide Icons
+- **State Management**: React Context
+- **Form Handling**: React Hook Form + Zod
+- **Charts**: Recharts
+- **Animations**: Framer Motion
+
+### Backend
 - **Runtime**: Node.js
-- **Framework**: Express.js
+- **API Framework**: Next.js API Routes
 - **Database**: MongoDB
 - **Authentication**: JWT
-- **API Documentation**: Swagger/OpenAPI
-- **File Upload**: Multer
-- **Logging**: Winston
-- **Validation**: Joi
-- **Testing**: Jest
+- **File Storage**: AWS S3
+- **Caching**: Redis
+
+### Infrastructure
+- **Cloud Provider**: AWS
+- **Containerization**: Docker
+- **CI/CD**: GitHub Actions
+- **Deployment**: AWS Amplify
+- **CDN**: CloudFront
+- **Monitoring**: AWS CloudWatch
 
 ## Getting Started
 
 ### Prerequisites
 
 - Node.js 18.x or higher
+- pnpm package manager
 - MongoDB 6.x or higher
-- npm or yarn package manager
+- AWS Account (for deployment)
 
 ### Installation
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/subhrajitm/warrityapi.git
-   cd warrityapi
+   git clone https://github.com/subhrajitm/warrity-fullstack.git
+   cd warrity-fullstack
    ```
 
 2. Install dependencies:
    ```bash
-   npm install
-   # or
-   yarn install
+   pnpm install
    ```
 
 3. Set up environment variables:
@@ -102,43 +102,70 @@ These tools help maintain a consistent development environment and reduce build 
 
 4. Start the development server:
    ```bash
-   npm run dev
-   # or
-   yarn dev
+   pnpm dev
    ```
 
 ### Building for Production
 
 ```bash
-npm run build
-npm start
-# or
-yarn build
-yarn start
+pnpm build
+pnpm start
 ```
-
-## API Documentation
-
-The API documentation is available at `/api-docs` when running the server. It provides detailed information about all available endpoints, request/response formats, and authentication requirements.
 
 ## Project Structure
 
 ```
-warrityapi/
-├── src/
-│   ├── config/         # Configuration files
-│   ├── controllers/    # Route controllers
-│   ├── middleware/     # Custom middleware
-│   ├── models/         # Database models
-│   ├── routes/         # API routes
-│   ├── services/       # Business logic
-│   ├── utils/          # Utility functions
-│   └── server.js       # Application entry point
-├── scripts/            # Utility scripts
-├── tests/              # Test files
-├── .env.example        # Example environment variables
-├── package.json        # Project dependencies
-└── README.md           # Project documentation
+warrity-fullstack/
+├── app/              # Next.js app directory
+├── api/              # Backend API routes
+├── components/       # Reusable React components
+├── contexts/         # React context providers
+├── hooks/            # Custom React hooks
+├── lib/             # Utility functions and shared code
+├── mobile/          # Mobile application code
+├── public/          # Static assets
+├── styles/          # Global styles
+├── types/           # TypeScript type definitions
+├── infra/           # Infrastructure as Code (AWS CDK)
+└── scripts/         # Build and utility scripts
+```
+
+## Development
+
+### Available Scripts
+
+- `pnpm dev` - Start development server
+- `pnpm build` - Build for production
+- `pnpm start` - Start production server
+- `pnpm lint` - Run ESLint
+- `pnpm check-deps` - Check for missing dependencies
+- `pnpm validate-imports` - Validate import statements
+
+### Dependency Management
+
+The project includes robust dependency management:
+- Pre-build dependency checks
+- Import validation
+- Automatic dependency updates
+- TypeScript type checking
+
+## Deployment
+
+### AWS Deployment
+
+The project is configured for AWS deployment using:
+- AWS Amplify for frontend
+- ECS Fargate for backend
+- S3 for file storage
+- CloudFront for CDN
+- Route 53 for DNS
+
+### Docker Deployment
+
+A Dockerfile is provided for containerized deployment:
+```bash
+docker build -t warrity .
+docker run -p 3000:3000 warrity
 ```
 
 ## Contributing
@@ -155,27 +182,6 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-## Future Development Plans
-
-### Upcoming Features
-
-- **Rate Limiting**: Implement rate limiting for API endpoints
-- **Caching**: Add Redis caching for improved performance
-- **WebSocket Support**: Real-time notifications and updates
-- **Enhanced Security**: Additional security measures and validations
-- **API Versioning**: Support for multiple API versions
-- **Monitoring**: Enhanced logging and monitoring capabilities
-- **Testing**: Expanded test coverage and automated testing
-- **Documentation**: Improved API documentation and examples
-
-### Long-term Roadmap
-
-- **Microservices Architecture**: Split into smaller, focused services
-- **GraphQL Support**: Add GraphQL API alongside REST
-- **Event Sourcing**: Implement event sourcing for better audit trails
-- **Performance Optimization**: Optimize database queries and caching
-- **Enterprise Features**: Add features for enterprise customers
-
 ## Acknowledgments
 
 - [Next.js](https://nextjs.org/)
@@ -183,3 +189,4 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - [Shadcn UI](https://ui.shadcn.com/)
 - [Lucide Icons](https://lucide.dev/)
 - [Radix UI](https://www.radix-ui.com/)
+- [AWS CDK](https://aws.amazon.com/cdk/)
