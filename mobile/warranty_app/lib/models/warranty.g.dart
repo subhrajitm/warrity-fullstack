@@ -19,6 +19,8 @@ Warranty _$WarrantyFromJson(Map<String, dynamic> json) => Warranty(
       notes: json['notes'] as String?,
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String),
+      warrantyType: json['warrantyType'] as String? ?? 'Standard',
+      status: json['status'] as String? ?? 'active',
     );
 
 Map<String, dynamic> _$WarrantyToJson(Warranty instance) => <String, dynamic>{
@@ -34,6 +36,8 @@ Map<String, dynamic> _$WarrantyToJson(Warranty instance) => <String, dynamic>{
       'notes': instance.notes,
       'createdAt': instance.createdAt.toIso8601String(),
       'updatedAt': instance.updatedAt.toIso8601String(),
+      'warrantyType': instance.warrantyType,
+      'status': instance.status,
     };
 
 WarrantyDocument _$WarrantyDocumentFromJson(Map<String, dynamic> json) =>

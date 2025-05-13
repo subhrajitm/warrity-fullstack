@@ -6,11 +6,12 @@ import '../models/warranty.dart';
 import '../models/product.dart';
 import '../models/auth.dart';
 import '../models/dashboard_stats.dart';
+import '../models/notification.dart' as app;
 
 class ApiService {
   // Update this to your actual API server address
   // static const String baseUrl = 'http://10.0.2.2:5000/api'; // For Android Emulator
-  static const String baseUrl = 'http://127.0.0.1:5001/api'; // For iOS Simulator
+  static const String baseUrl = 'http://localhost:3000/api'; // For iOS Simulator
   final SharedPreferences _prefs;
   String? _token;
 
@@ -254,23 +255,85 @@ class ApiService {
     );
 
     if (response.statusCode == 200) {
-      return DashboardStats.fromJson(jsonDecode(response.body));
+      final data = json.decode(response.body);
+      return DashboardStats.fromJson(data);
     } else {
-      throw Exception(jsonDecode(response.body)['message'] ?? 'Failed to get dashboard stats');
+      throw Exception('Failed to load dashboard stats');
     }
   }
 
   Future<List<Warranty>> getRecentWarranties() async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/warranties'),
-      headers: _headers,
-    );
+    try {
+      print('Fetching recent warranties...');
+      final response = await http.get(
+        Uri.parse('$baseUrl/warranties'),
+        headers: _headers,
+      );
 
-    if (response.statusCode == 200) {
-      final List<dynamic> data = jsonDecode(response.body);
-      return data.map((json) => Warranty.fromJson(json)).toList();
-    } else {
-      throw Exception(jsonDecode(response.body)['message'] ?? 'Failed to get recent warranties');
+      print('Response status: ${response.statusCode}');
+      print('Response headers: ${response.headers}');
+      print('Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        try {
+          final dynamic responseData = jsonDecode(response.body);
+          print('Decoded response data: $responseData');
+          
+          List<dynamic> data;
+          if (responseData is List) {
+            data = responseData;
+          } else if (responseData is Map) {
+            if (responseData.containsKey('warranties')) {
+              data = responseData['warranties'] as List<dynamic>;
+            } else if (responseData.containsKey('data')) {
+              data = responseData['data'] as List<dynamic>;
+            } else {
+              print('Unexpected response format: $responseData');
+              return [];
+            }
+          } else {
+            print('Unexpected response type: ${responseData.runtimeType}');
+            return [];
+          }
+          
+          print('Extracted data list: $data');
+          
+          if (data.isEmpty) {
+            print('No warranties found');
+            return [];
+          }
+
+          final warranties = data.map((json) {
+            try {
+              print('Processing warranty JSON: $json');
+              // Ensure all required fields are present
+              if (json is! Map<String, dynamic>) {
+                throw Exception('Invalid warranty data format');
+              }
+              return Warranty.fromJson(json);
+            } catch (e) {
+              print('Error parsing warranty JSON: $e');
+              print('Problematic JSON: $json');
+              rethrow;
+            }
+          }).toList();
+          
+          print('Successfully parsed ${warranties.length} warranties');
+          
+          warranties.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          return warranties.take(5).toList();
+        } catch (e) {
+          print('Error parsing response: $e');
+          rethrow;
+        }
+      } else {
+        final errorMessage = jsonDecode(response.body)['message'] ?? 'Failed to get recent warranties';
+        print('API error: $errorMessage');
+        throw Exception(errorMessage);
+      }
+    } catch (e) {
+      print('Error in getRecentWarranties: $e');
+      rethrow;
     }
   }
 
@@ -321,8 +384,8 @@ class ApiService {
       headers: _headers,
     );
 
-    if (response.statusCode != 204) {
-      throw Exception(jsonDecode(response.body)['message'] ?? 'Failed to delete warranty');
+    if (response.statusCode != 200) {
+      throw Exception('Failed to delete warranty');
     }
   }
 
@@ -396,6 +459,64 @@ class ApiService {
     if (response.statusCode != 204) {
       final error = json.decode(response.body);
       throw Exception(error['message'] ?? 'Failed to delete product');
+    }
+  }
+
+  Future<void> submitClaim({
+    required String warrantyId,
+    required String issueDescription,
+    required String contactNumber,
+    required List<File> images,
+  }) async {
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse('$baseUrl/claims'),
+    );
+
+    request.headers.addAll(_headers);
+    request.fields['warrantyId'] = warrantyId;
+    request.fields['issueDescription'] = issueDescription;
+    request.fields['contactNumber'] = contactNumber;
+
+    for (var i = 0; i < images.length; i++) {
+      request.files.add(
+        await http.MultipartFile.fromPath(
+          'images',
+          images[i].path,
+        ),
+      );
+    }
+
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
+
+    if (response.statusCode != 201) {
+      throw Exception('Failed to submit claim');
+    }
+  }
+
+  Future<List<app.Notification>> getNotifications() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/notifications'),
+      headers: _headers,
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = json.decode(response.body);
+      return data.map((json) => app.Notification.fromJson(json)).toList();
+    } else {
+      throw Exception('Failed to load notifications');
+    }
+  }
+
+  Future<void> markNotificationAsRead(String id) async {
+    final response = await http.patch(
+      Uri.parse('$baseUrl/notifications/$id/read'),
+      headers: _headers,
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to mark notification as read');
     }
   }
 } 

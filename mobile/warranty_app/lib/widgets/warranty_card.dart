@@ -18,6 +18,14 @@ class WarrantyCard extends StatelessWidget {
     final isExpiringSoon = daysLeft <= 30 && daysLeft >= 0;
     final isExpired = daysLeft < 0;
 
+    // Use the status from the warranty model
+    final status = warranty.status;
+    final statusColor = status == 'active' 
+        ? Colors.green 
+        : status == 'expiring' 
+            ? Colors.orange 
+            : Colors.red;
+
     return Card(
       elevation: 2,
       child: InkWell(
@@ -29,73 +37,54 @@ class WarrantyCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          warranty.productName,
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          warranty.productBrand,
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                              ),
-                        ),
-                      ],
+                    child: Text(
+                      warranty.productName,
+                      style: Theme.of(context).textTheme.titleMedium,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: isExpired
-                          ? Theme.of(context).colorScheme.error.withOpacity(0.1)
-                          : isExpiringSoon
-                              ? Colors.orange.withOpacity(0.1)
-                              : Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                      color: statusColor.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: statusColor),
                     ),
                     child: Text(
-                      isExpired
-                          ? 'Expired'
-                          : isExpiringSoon
-                              ? '$daysLeft days left'
-                              : 'Active',
+                      status.toUpperCase(),
                       style: TextStyle(
-                        color: isExpired
-                            ? Theme.of(context).colorScheme.error
-                            : isExpiringSoon
-                                ? Colors.orange
-                                : Theme.of(context).colorScheme.primary,
+                        color: statusColor,
+                        fontSize: 12,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
                 ],
               ),
+              const SizedBox(height: 8),
+              Text(
+                warranty.productBrand,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.secondary,
+                ),
+              ),
               const SizedBox(height: 16),
               Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Expanded(
-                    child: _InfoItem(
-                      icon: Icons.calendar_today,
-                      label: 'Purchase Date',
-                      value: DateFormat('MMM d, y').format(warranty.purchaseDate),
-                    ),
+                  Text(
+                    'Expires: ${DateFormat('MMM d, y').format(warranty.expiryDate)}',
+                    style: Theme.of(context).textTheme.bodySmall,
                   ),
-                  Expanded(
-                    child: _InfoItem(
-                      icon: Icons.event,
-                      label: 'Expiry Date',
-                      value: DateFormat('MMM d, y').format(warranty.expiryDate),
+                  Text(
+                    '${daysLeft.abs()} days ${isExpired ? 'overdue' : 'left'}',
+                    style: TextStyle(
+                      color: isExpired ? Colors.red : isExpiringSoon ? Colors.orange : Colors.green,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                 ],

@@ -5,6 +5,8 @@ import 'services/api_service.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/dashboard_screen.dart';
+import 'screens/add_warranty_screen.dart';
+import 'screens/warranty_details_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -29,6 +31,18 @@ class MyApp extends StatelessWidget {
             brightness: Brightness.light,
           ),
           useMaterial3: true,
+          cardTheme: CardTheme(
+            elevation: 2,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          inputDecorationTheme: InputDecorationTheme(
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            filled: true,
+          ),
         ),
         darkTheme: ThemeData(
           colorScheme: ColorScheme.fromSeed(
@@ -36,6 +50,18 @@ class MyApp extends StatelessWidget {
             brightness: Brightness.dark,
           ),
           useMaterial3: true,
+          cardTheme: CardTheme(
+            elevation: 2,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          inputDecorationTheme: InputDecorationTheme(
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            filled: true,
+          ),
         ),
         themeMode: ThemeMode.system,
         initialRoute: '/',
@@ -43,6 +69,18 @@ class MyApp extends StatelessWidget {
           '/': (context) => const LoginScreen(),
           '/register': (context) => const RegisterScreen(),
           '/dashboard': (context) => const DashboardScreen(),
+          '/add-warranty': (context) => const AddWarrantyScreen(),
+        },
+        onGenerateRoute: (settings) {
+          if (settings.name == '/warranty-details') {
+            final warranty = settings.arguments as Map<String, dynamic>;
+            return MaterialPageRoute(
+              builder: (context) => WarrantyDetailsScreen(
+                warranty: warranty['warranty'],
+              ),
+            );
+          }
+          return null;
         },
       ),
     );
