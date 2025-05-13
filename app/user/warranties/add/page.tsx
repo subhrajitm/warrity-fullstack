@@ -46,6 +46,8 @@ export default function AddWarrantyPage() {
     notes: ""
   })
   const [products, setProducts] = useState<ProductOption[]>([])
+  const [filteredProducts, setFilteredProducts] = useState<ProductOption[]>([])
+  const [searchQuery, setSearchQuery] = useState("")
   const [loadingProducts, setLoadingProducts] = useState(false)
   const [receiptFile, setReceiptFile] = useState<File | null>(null)
   const [warrantyFile, setWarrantyFile] = useState<File | null>(null)
@@ -74,11 +76,12 @@ export default function AddWarrantyPage() {
           setError('Failed to load products. Please try again later.')
         } else {
           const productOptions = response.data?.map(product => ({
-            id: product.id || product._id || '',  // Ensure id is always a string
+            id: product.id || product._id || '',
             name: product.name,
             manufacturer: product.manufacturer || 'Unknown'
           })) || []
           setProducts(productOptions)
+          setFilteredProducts(productOptions)
         }
       } catch (err) {
         console.error('Error fetching products:', err)
@@ -92,6 +95,20 @@ export default function AddWarrantyPage() {
       fetchProducts()
     }
   }, [isAuthenticated, authLoading])
+  
+  // Add search filter effect
+  useEffect(() => {
+    if (searchQuery.trim() === '') {
+      setFilteredProducts(products)
+    } else {
+      const query = searchQuery.toLowerCase()
+      const filtered = products.filter(product => 
+        product.name.toLowerCase().includes(query) ||
+        product.manufacturer.toLowerCase().includes(query)
+      )
+      setFilteredProducts(filtered)
+    }
+  }, [searchQuery, products])
   
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -279,14 +296,23 @@ export default function AddWarrantyPage() {
                         <SelectTrigger className="border-2 border-amber-800 bg-amber-50 text-amber-900 hover:bg-amber-100 hover:text-amber-900">
                           <SelectValue placeholder="Select a product" />
                         </SelectTrigger>
-                        <SelectContent className="bg-amber-50 border-2 border-amber-800">
+                        <SelectContent className="bg-amber-50 border-2 border-amber-800 z-40">
+                          <div className="sticky top-0 p-2 bg-amber-50 border-b-2 border-amber-800">
+                            <Input
+                              type="text"
+                              placeholder="Search products..."
+                              value={searchQuery}
+                              onChange={(e) => setSearchQuery(e.target.value)}
+                              className="border-2 border-amber-800 bg-amber-50 text-amber-900"
+                            />
+                          </div>
                           {loadingProducts ? (
                             <div className="flex items-center justify-center p-2 text-amber-900">
                               <Loader2 className="h-4 w-4 animate-spin mr-2" />
                               <span>Loading products...</span>
                             </div>
-                          ) : products.length > 0 ? (
-                            products.map((product) => (
+                          ) : filteredProducts.length > 0 ? (
+                            filteredProducts.map((product) => (
                               <SelectItem 
                                 key={product.id} 
                                 value={product.id}
@@ -297,7 +323,7 @@ export default function AddWarrantyPage() {
                             ))
                           ) : (
                             <div className="p-2 text-center text-sm text-amber-800">
-                              No products found. Please add a product first.
+                              No products found matching your search.
                             </div>
                           )}
                         </SelectContent>
