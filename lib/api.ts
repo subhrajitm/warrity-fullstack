@@ -124,12 +124,19 @@ interface ProfileUpdateData {
   name?: string;
   phone?: string;
   bio?: string;
-  profilePicture?: File;
+  profilePicture?: File | string;
   socialLinks?: {
     twitter?: string;
     linkedin?: string;
     github?: string;
     instagram?: string;
+  };
+  preferences?: {
+    emailNotifications?: boolean;
+    reminderDays?: number;
+    theme?: string;
+    notifications?: boolean;
+    language?: string;
   };
 }
 
@@ -479,28 +486,24 @@ export const userApi = {
     try {
       const formData = new FormData();
       
-      // Append basic profile information
-      if (data.name) formData.append('name', data.name);
-      if (data.phone) formData.append('phone', data.phone);
-      if (data.bio) formData.append('bio', data.bio);
-      
-      // Append profile picture if provided
-      if (data.profilePicture) {
+      // Handle profile picture upload separately if present
+      if (data.profilePicture && typeof data.profilePicture === 'object') {
         formData.append('profilePicture', data.profilePicture);
       }
       
-      // Append social links
-      if (data.socialLinks) {
-        formData.append('socialLinks', JSON.stringify(data.socialLinks));
-      }
-
-      const response = await fetchWithRetry('/users/profile', {
-        method: 'PUT',
-        body: formData,
+      // Append other profile data
+      Object.entries(data).forEach(([key, value]) => {
+        if (value !== undefined && key !== 'profilePicture') {
+          formData.append(key, JSON.stringify(value));
+        }
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to update profile');
+      const response = await apiRequest<User>('/users/profile', 'PUT', formData, {
+        'Content-Type': 'multipart/form-data',
+      });
+
+      if (response.error) {
+        throw new Error(response.error);
       }
 
       return true;
@@ -509,10 +512,10 @@ export const userApi = {
       throw error;
     }
   },
+  uploadProfilePicture: (file: File) => 
+    uploadFile<{ url: string }>('/users/profile/picture', file, 'profilePicture'),
   changePassword: (passwordData: { currentPassword: string, newPassword: string }) => 
     apiRequest('/users/change-password', 'POST', passwordData),
-  uploadProfilePicture: (file: File) => 
-    uploadFile<{ url: string }>('/users/profile/picture', file, 'image'),
   getNotificationSettings: () => 
     apiRequest<{ settings: User['preferences'] }>('/users/notification-settings', 'GET'),
   updateNotificationSettings: (settings: Partial<User['preferences']>) => 

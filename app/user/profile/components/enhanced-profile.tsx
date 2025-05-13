@@ -16,7 +16,7 @@ import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
 import { Camera, Save, Shield, Mail, Globe, Phone, User, AlertCircle, Loader2 } from "lucide-react"
-import { createApiRequest, handleApiError } from "@/lib/api-utils"
+import { userApi } from "@/lib/api"
 
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -105,34 +105,31 @@ export default function EnhancedProfile() {
   const onSubmit = async (data: z.infer<typeof formSchema>) => {
     setIsLoading(true)
     try {
-      const formData = new FormData()
-      
-      // Append profile picture if changed
+      let profilePictureUrl = user?.profilePicture;
+
+      // Handle profile picture upload separately if changed
       if (profilePicture) {
-        formData.append('profilePicture', profilePicture)
-      }
-      
-      // Append other profile data
-      Object.entries(data).forEach(([key, value]) => {
-        if (value !== undefined && key !== 'profilePicture') {
-          formData.append(key, JSON.stringify(value))
+        const uploadResponse = await userApi.uploadProfilePicture(profilePicture);
+        if (uploadResponse.error) {
+          throw new Error(uploadResponse.error);
         }
-      })
+        profilePictureUrl = uploadResponse.data?.url;
+      }
 
       const success = await updateProfile({
         ...data,
-        profilePicture: profilePicture,
-      })
+        profilePicture: profilePictureUrl,
+      });
 
       if (success) {
-        toast.success("Profile updated successfully")
+        toast.success("Profile updated successfully");
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to update profile")
+      toast.error(error instanceof Error ? error.message : "Failed to update profile");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
     <div className="space-y-6">

@@ -35,7 +35,7 @@ interface ProfileUpdateData {
   name?: string;
   phone?: string;
   bio?: string;
-  profilePicture?: File;
+  profilePicture?: File | string;
   socialLinks?: {
     twitter?: string;
     linkedin?: string;
@@ -293,18 +293,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const updateProfile = async (data: {
-    name?: string;
-    phone?: string;
-    bio?: string;
-    profilePicture?: File;
-    socialLinks?: {
-      twitter?: string;
-      linkedin?: string;
-      github?: string;
-      instagram?: string;
-    };
-  }) => {
+  const updateProfile = async (data: ProfileUpdateData): Promise<boolean> => {
     try {
       const success = await userApi.updateProfile(data);
       if (success) {
