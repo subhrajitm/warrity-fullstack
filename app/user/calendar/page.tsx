@@ -82,6 +82,7 @@ export default function CalendarPage() {
   const [products, setProducts] = useState<Product[]>([])
   const [isProductsLoading, setIsProductsLoading] = useState(false)
   const [showAllEvents, setShowAllEvents] = useState(false)
+  const [temporaryDateView, setTemporaryDateView] = useState<Date | null>(null)
   
   // UI state
   const [isCreating, setIsCreating] = useState(false)
@@ -359,6 +360,7 @@ export default function CalendarPage() {
   const handleDateSelect = (date: Date | undefined) => {
     if (date) {
       setSelectedDate(date)
+      setTemporaryDateView(date)
       // Scroll to events section on mobile
       if (window.innerWidth < 768) {
         const eventsSection = document.getElementById('events-section')
@@ -367,6 +369,11 @@ export default function CalendarPage() {
         }
       }
     }
+  }
+  
+  const handleShowAllToggle = () => {
+    setShowAllEvents(!showAllEvents)
+    setTemporaryDateView(null) // Clear temporary date view when toggling show all
   }
   
   // Helper functions 
@@ -423,16 +430,12 @@ export default function CalendarPage() {
   
   // Filter events based on selected date and type
   const filteredEvents = events.filter(event => {
-    // If showAllEvents is true, only filter by type
-    if (showAllEvents) {
-      return filterType === "all" || 
-        (filterType === "expiration" && event.eventType === "warranty") ||
-        (event.eventType === filterType)
-    }
-
-    // Otherwise, filter by both date and type
+    // If temporaryDateView is set, show events for that date
+    const dateToUse = temporaryDateView || selectedDate
+    
+    // Convert dates to local timezone for comparison
     const eventDate = new Date(event.startDate)
-    const selectedDateObj = new Date(selectedDate)
+    const selectedDateObj = new Date(dateToUse)
     
     const eventDateStr = eventDate.toISOString().split('T')[0]
     const selectedDateStr = selectedDateObj.toISOString().split('T')[0]
@@ -441,6 +444,11 @@ export default function CalendarPage() {
     const matchesFilter = filterType === "all" || 
       (filterType === "expiration" && event.eventType === "warranty") ||
       (event.eventType === filterType)
+    
+    // If showAllEvents is true and no temporary date is selected, show all events
+    if (showAllEvents && !temporaryDateView) {
+      return matchesFilter
+    }
     
     return isSameDay && matchesFilter
   })
@@ -728,37 +736,64 @@ export default function CalendarPage() {
                   <div className="flex justify-between items-center">
                     <div>
                       <h2 className="text-2xl font-bold text-amber-900">
-                        {showAllEvents ? 'All Events' : selectedDate.toLocaleDateString('en-US', { 
-                          weekday: 'long',
-                          month: 'long', 
-                          day: 'numeric',
-                          year: 'numeric' 
-                        })}
+                        {temporaryDateView 
+                          ? temporaryDateView.toLocaleDateString('en-US', { 
+                              weekday: 'long',
+                              month: 'long', 
+                              day: 'numeric',
+                              year: 'numeric' 
+                            })
+                          : showAllEvents 
+                            ? 'All Events' 
+                            : selectedDate.toLocaleDateString('en-US', { 
+                                weekday: 'long',
+                                month: 'long', 
+                                day: 'numeric',
+                                year: 'numeric' 
+                              })
+                        }
                       </h2>
                       <p className="text-sm text-amber-800 mt-1">
-                        {filteredEvents.length} {filteredEvents.length === 1 ? 'event' : 'events'} {showAllEvents ? 'total' : 'on this day'}
+                        {filteredEvents.length} {filteredEvents.length === 1 ? 'event' : 'events'} 
+                        {temporaryDateView 
+                          ? 'on this day'
+                          : showAllEvents 
+                            ? 'total' 
+                            : 'on this day'
+                        }
                       </p>
                     </div>
-                    <Button
-                      onClick={() => setShowAllEvents(!showAllEvents)}
-                      className={`${
-                        showAllEvents 
-                          ? 'bg-amber-100 hover:bg-amber-200 text-amber-900 border-2 border-amber-800' 
-                          : 'bg-amber-800 hover:bg-amber-900 text-white border-2 border-amber-900'
-                      } transition-colors duration-200`}
-                    >
-                      {showAllEvents ? (
-                        <>
-                          <CalendarIcon className="h-4 w-4 mr-2" />
-                          Show Daily
-                        </>
-                      ) : (
-                        <>
-                          <List className="h-4 w-4 mr-2" />
-                          Show All
-                        </>
+                    <div className="flex items-center gap-2">
+                      {temporaryDateView && (
+                        <Button
+                          onClick={() => setTemporaryDateView(null)}
+                          className="bg-amber-100 hover:bg-amber-200 text-amber-900 border-2 border-amber-800"
+                        >
+                          <XCircle className="h-4 w-4 mr-2" />
+                          Clear Date
+                        </Button>
                       )}
-                    </Button>
+                      <Button
+                        onClick={handleShowAllToggle}
+                        className={`${
+                          showAllEvents 
+                            ? 'bg-amber-100 hover:bg-amber-200 text-amber-900 border-2 border-amber-800' 
+                            : 'bg-amber-800 hover:bg-amber-900 text-white border-2 border-amber-900'
+                        } transition-colors duration-200`}
+                      >
+                        {showAllEvents ? (
+                          <>
+                            <CalendarIcon className="h-4 w-4 mr-2" />
+                            Show Daily
+                          </>
+                        ) : (
+                          <>
+                            <List className="h-4 w-4 mr-2" />
+                            Show All
+                          </>
+                        )}
+                      </Button>
+                    </div>
                   </div>
                 </div>
 
