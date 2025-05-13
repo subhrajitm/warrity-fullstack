@@ -264,35 +264,39 @@ export default function AddWarrantyPage() {
               )}
               
               <form onSubmit={handleSubmit} className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Product Information</CardTitle>
-                    <CardDescription>Select the product for this warranty</CardDescription>
+                <Card className="border-2 border-amber-800 bg-amber-100">
+                  <CardHeader className="border-b-2 border-amber-800 bg-amber-200 px-6 py-4">
+                    <CardTitle className="text-xl font-bold text-amber-900">Product Information</CardTitle>
+                    <CardDescription className="text-amber-800">Select the product for this warranty</CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardContent className="p-6 space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="productId">Product</Label>
+                      <Label htmlFor="productId" className="text-amber-900">Product</Label>
                       <Select 
                         value={formData.productId} 
                         onValueChange={(value) => handleSelectChange('productId', value)}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="border-2 border-amber-800 bg-amber-50 text-amber-900">
                           <SelectValue placeholder="Select a product" />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="bg-amber-50 border-2 border-amber-800">
                           {loadingProducts ? (
-                            <div className="flex items-center justify-center p-2">
+                            <div className="flex items-center justify-center p-2 text-amber-900">
                               <Loader2 className="h-4 w-4 animate-spin mr-2" />
                               <span>Loading products...</span>
                             </div>
                           ) : products.length > 0 ? (
                             products.map((product) => (
-                              <SelectItem key={product.id} value={product.id}>
+                              <SelectItem 
+                                key={product.id} 
+                                value={product.id}
+                                className="text-amber-900 hover:bg-amber-200 focus:bg-amber-200"
+                              >
                                 {product.name} ({product.manufacturer})
                               </SelectItem>
                             ))
                           ) : (
-                            <div className="p-2 text-center text-sm text-gray-500">
+                            <div className="p-2 text-center text-sm text-amber-800">
                               No products found. Please add a product first.
                             </div>
                           )}
@@ -315,7 +319,7 @@ export default function AddWarrantyPage() {
                         type="date"
                         value={formData.purchaseDate}
                         onChange={handleChange}
-                        className="pl-10 border-2 border-amber-800 bg-amber-50"
+                        className="pl-10 border-2 border-amber-800 bg-amber-50 text-amber-900"
                         required
                       />
                     </div>
@@ -333,7 +337,7 @@ export default function AddWarrantyPage() {
                       value={formData.warrantyPeriod}
                       onChange={handleChange}
                       placeholder="e.g. 12"
-                      className="border-2 border-amber-800 bg-amber-50"
+                      className="border-2 border-amber-800 bg-amber-50 text-amber-900"
                       required
                     />
                   </div>
@@ -348,7 +352,7 @@ export default function AddWarrantyPage() {
                       value={formData.warrantyProvider}
                       onChange={handleChange}
                       placeholder="e.g. Samsung Electronics"
-                      className="border-2 border-amber-800 bg-amber-50"
+                      className="border-2 border-amber-800 bg-amber-50 text-amber-900"
                       required
                     />
                   </div>
@@ -363,7 +367,7 @@ export default function AddWarrantyPage() {
                       value={formData.warrantyNumber}
                       onChange={handleChange}
                       placeholder="e.g. WR12345678"
-                      className="border-2 border-amber-800 bg-amber-50"
+                      className="border-2 border-amber-800 bg-amber-50 text-amber-900"
                     />
                   </div>
                 </div>
@@ -438,7 +442,7 @@ export default function AddWarrantyPage() {
                     value={formData.coverageDetails}
                     onChange={handleChange}
                     placeholder="Describe what is covered by this warranty..."
-                    className="border-2 border-amber-800 bg-amber-50 min-h-[100px]"
+                    className="border-2 border-amber-800 bg-amber-50 text-amber-900 min-h-[100px]"
                   />
                 </div>
                 
@@ -452,7 +456,7 @@ export default function AddWarrantyPage() {
                     value={formData.notes}
                     onChange={handleChange}
                     placeholder="Any additional information about this warranty..."
-                    className="border-2 border-amber-800 bg-amber-50 min-h-[100px]"
+                    className="border-2 border-amber-800 bg-amber-50 text-amber-900 min-h-[100px]"
                   />
                 </div>
                 

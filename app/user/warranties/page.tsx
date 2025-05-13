@@ -274,14 +274,18 @@ function WarrantiesContent() {
               <div className="flex gap-2">
                 <Button 
                   variant="outline" 
-                  className={`border-2 ${!statusFilter ? 'bg-amber-200 border-amber-900' : 'border-amber-800'} text-amber-800`}
+                  className={`border-2 ${!statusFilter 
+                    ? 'bg-amber-200 border-amber-900 text-amber-900 hover:bg-amber-300 hover:text-amber-900' 
+                    : 'bg-amber-50 border-amber-800 text-amber-800 hover:bg-amber-100 hover:text-amber-900'}`}
                   onClick={() => router.push('/user/warranties')}
                 >
                   All
                 </Button>
                 <Button 
                   variant="outline" 
-                  className={`border-2 ${statusFilter === 'active' ? 'bg-green-200 border-green-900' : 'border-amber-800'} text-amber-800`}
+                  className={`border-2 ${statusFilter === 'active' 
+                    ? 'bg-green-200 border-green-900 text-green-900 hover:bg-green-300 hover:text-green-900' 
+                    : 'bg-amber-50 border-amber-800 text-amber-800 hover:bg-amber-100 hover:text-amber-900'}`}
                   onClick={() => router.push('/user/warranties?status=active')}
                 >
                   <CheckCircle className="h-4 w-4 mr-1" />
@@ -289,7 +293,9 @@ function WarrantiesContent() {
                 </Button>
                 <Button 
                   variant="outline" 
-                  className={`border-2 ${statusFilter === 'expiring' ? 'bg-amber-200 border-amber-900' : 'border-amber-800'} text-amber-800`}
+                  className={`border-2 ${statusFilter === 'expiring' 
+                    ? 'bg-amber-200 border-amber-900 text-amber-900 hover:bg-amber-300 hover:text-amber-900' 
+                    : 'bg-amber-50 border-amber-800 text-amber-800 hover:bg-amber-100 hover:text-amber-900'}`}
                   onClick={() => router.push('/user/warranties?status=expiring')}
                 >
                   <Clock className="h-4 w-4 mr-1" />
@@ -297,7 +303,9 @@ function WarrantiesContent() {
                 </Button>
                 <Button 
                   variant="outline" 
-                  className={`border-2 ${statusFilter === 'expired' ? 'bg-red-200 border-red-900' : 'border-amber-800'} text-amber-800`}
+                  className={`border-2 ${statusFilter === 'expired' 
+                    ? 'bg-red-200 border-red-900 text-red-900 hover:bg-red-300 hover:text-red-900' 
+                    : 'bg-amber-50 border-amber-800 text-amber-800 hover:bg-amber-100 hover:text-amber-900'}`}
                   onClick={() => router.push('/user/warranties?status=expired')}
                 >
                   <AlertTriangle className="h-4 w-4 mr-1" />
