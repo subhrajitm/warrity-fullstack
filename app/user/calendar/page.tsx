@@ -587,48 +587,61 @@ export default function CalendarPage() {
                       Calendar
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="p-4">
-                    <Calendar
-                      mode="single"
-                      selected={selectedDate}
-                      onSelect={handleDateSelect}
-                      modifiers={{ 
-                        hasEvent: getDatesWithEvents(),
-                        today: new Date()
-                      }}
-                      modifiersStyles={{
-                        hasEvent: { 
-                          backgroundColor: 'rgba(180, 83, 9, 0.15)',
-                          borderRadius: '50%',
-                          fontWeight: 'bold',
-                          boxShadow: '0 0 0 2px rgba(120, 53, 15, 0.2)'
-                        },
-                        today: {
-                          backgroundColor: 'rgba(180, 83, 9, 0.2)',
-                          borderRadius: '50%',
-                          fontWeight: 'bold',
-                          boxShadow: '0 0 0 2px rgba(120, 53, 15, 0.3)'
-                        }
-                      }}
-                      className="rounded-lg border-2 border-amber-800 bg-white"
-                      classNames={{
-                        day_selected: "bg-amber-800 text-white hover:bg-amber-900 hover:text-white focus:bg-amber-800 focus:text-white",
-                        day_today: "bg-amber-100 text-amber-900 font-bold",
-                        day: "hover:bg-amber-50 focus:bg-amber-50 rounded-full transition-colors",
-                        head_cell: "text-amber-900 font-semibold uppercase text-xs",
-                        cell: "text-amber-800 p-0 text-center text-sm relative hover:with-ring",
-                        button: "hover:bg-amber-50 focus:bg-amber-50 h-9 w-9 p-0 font-normal aria-selected:opacity-100",
-                        nav_button: "hover:bg-amber-50 focus:bg-amber-50 rounded-full",
-                        nav_button_previous: "hover:bg-amber-50 focus:bg-amber-50 rounded-full",
-                        nav_button_next: "hover:bg-amber-50 focus:bg-amber-50 rounded-full",
-                        caption: "text-amber-900 font-semibold text-base",
-                        caption_label: "text-amber-900 font-semibold text-base",
-                        dropdown: "bg-white border-2 border-amber-800",
-                        dropdown_year: "bg-white border-2 border-amber-800",
-                        dropdown_month: "bg-white border-2 border-amber-800",
-                        vhidden: "hidden"
-                      }}
-                    />
+                  <CardContent className="p-6">
+                    <div className="w-full">
+                      <Calendar
+                        mode="single"
+                        selected={selectedDate}
+                        onSelect={handleDateSelect}
+                        modifiers={{ 
+                          hasEvent: getDatesWithEvents(),
+                          today: new Date()
+                        }}
+                        modifiersStyles={{
+                          hasEvent: { 
+                            backgroundColor: 'rgba(180, 83, 9, 0.2)',
+                            borderRadius: '50%',
+                            fontWeight: 'bold',
+                            boxShadow: '0 0 0 2px rgba(120, 53, 15, 0.3)',
+                            color: 'rgb(120, 53, 15)'
+                          },
+                          today: {
+                            backgroundColor: 'rgba(180, 83, 9, 0.3)',
+                            borderRadius: '50%',
+                            fontWeight: 'bold',
+                            boxShadow: '0 0 0 2px rgba(120, 53, 15, 0.4)',
+                            color: 'rgb(120, 53, 15)'
+                          }
+                        }}
+                        className="rounded-lg border-2 border-amber-800 bg-white"
+                        classNames={{
+                          months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
+                          month: "space-y-4",
+                          caption: "flex justify-center pt-1 relative items-center text-amber-900 font-bold text-lg mb-4",
+                          caption_label: "text-amber-900 font-bold text-lg",
+                          nav: "space-x-1 flex items-center",
+                          nav_button: "hover:bg-amber-50 focus:bg-amber-50 rounded-full h-8 w-8 border-2 border-amber-800",
+                          nav_button_previous: "hover:bg-amber-50 focus:bg-amber-50 rounded-full h-8 w-8 border-2 border-amber-800",
+                          nav_button_next: "hover:bg-amber-50 focus:bg-amber-50 rounded-full h-8 w-8 border-2 border-amber-800",
+                          table: "w-full border-collapse space-y-1",
+                          head_row: "flex justify-between",
+                          head_cell: "text-amber-900 font-bold uppercase text-sm p-2",
+                          row: "flex w-full mt-2 justify-between",
+                          cell: "text-amber-800 p-0 text-center text-base relative hover:with-ring flex items-center justify-center",
+                          day: "hover:bg-amber-50 focus:bg-amber-50 rounded-full transition-colors text-base font-medium text-amber-900 h-10 w-10 flex items-center justify-center",
+                          day_selected: "bg-amber-800 text-white hover:bg-amber-900 hover:text-white focus:bg-amber-800 focus:text-white font-bold text-lg h-10 w-10 flex items-center justify-center",
+                          day_today: "bg-amber-100 text-amber-900 font-bold text-lg h-10 w-10 flex items-center justify-center",
+                          day_outside: "text-amber-400 opacity-50",
+                          day_disabled: "text-amber-400 opacity-50",
+                          day_range_middle: "aria-selected:bg-amber-100 aria-selected:text-amber-900",
+                          day_hidden: "invisible",
+                          dropdown: "bg-white border-2 border-amber-800 font-medium",
+                          dropdown_year: "bg-white border-2 border-amber-800 font-medium",
+                          dropdown_month: "bg-white border-2 border-amber-800 font-medium",
+                          vhidden: "hidden"
+                        }}
+                      />
+                    </div>
                   </CardContent>
                 </Card>
 
