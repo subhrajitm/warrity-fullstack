@@ -276,7 +276,7 @@ export default function AddWarrantyPage() {
                         value={formData.productId} 
                         onValueChange={(value) => handleSelectChange('productId', value)}
                       >
-                        <SelectTrigger className="border-2 border-amber-800 bg-amber-50 text-amber-900">
+                        <SelectTrigger className="border-2 border-amber-800 bg-amber-50 text-amber-900 hover:bg-amber-100 hover:text-amber-900">
                           <SelectValue placeholder="Select a product" />
                         </SelectTrigger>
                         <SelectContent className="bg-amber-50 border-2 border-amber-800">
@@ -290,7 +290,7 @@ export default function AddWarrantyPage() {
                               <SelectItem 
                                 key={product.id} 
                                 value={product.id}
-                                className="text-amber-900 hover:bg-amber-200 focus:bg-amber-200"
+                                className="text-amber-900 hover:bg-amber-200 hover:text-amber-900 focus:bg-amber-200 focus:text-amber-900"
                               >
                                 {product.name} ({product.manufacturer})
                               </SelectItem>
