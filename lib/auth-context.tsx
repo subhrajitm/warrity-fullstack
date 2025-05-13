@@ -35,6 +35,7 @@ interface ProfileUpdateData {
   name?: string;
   phone?: string;
   bio?: string;
+  profilePicture?: File;
   socialLinks?: {
     twitter?: string;
     linkedin?: string;
@@ -96,7 +97,7 @@ function validateProfileData(data: ProfileUpdateData): { isValid: boolean; error
   if (data.socialLinks) {
     const urlRegex = /^https?:\/\/[^\s/$.?#].[^\s]*$/i;
     for (const [platform, url] of Object.entries(data.socialLinks)) {
-      if (url && !urlRegex.test(url)) {
+      if (url && url.trim() !== '' && !urlRegex.test(url)) {
         return {
           isValid: false,
           error: `Invalid ${platform} URL. Please enter a valid URL starting with http:// or https://`

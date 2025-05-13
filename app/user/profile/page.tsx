@@ -1,15 +1,27 @@
 "use client"
 
 import { useAuth } from "@/lib/auth-context"
-import { redirect } from "next/navigation"
+import { useRouter } from "next/navigation"
+import { useEffect } from "react"
 import EnhancedProfile from "./components/enhanced-profile"
 import WarrantySidebar from "../warranties/components/sidebar"
 
 export default function ProfilePage() {
-  const { user, isAuthenticated } = useAuth()
+  const { user, isAuthenticated, isLoading } = useAuth()
+  const router = useRouter()
+
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.push("/auth/login")
+    }
+  }, [isLoading, isAuthenticated, router])
+
+  if (isLoading) {
+    return <div>Loading...</div>
+  }
 
   if (!isAuthenticated) {
-    redirect("/auth/login")
+    return null
   }
 
   return (

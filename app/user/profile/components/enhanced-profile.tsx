@@ -8,24 +8,40 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form"
 import { toast } from "sonner"
 import { useAuth } from "@/lib/auth-context"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Camera, Save, Shield, Mail, Globe, Phone, User, AlertCircle } from "lucide-react"
+import { Switch } from "@/components/ui/switch"
+import { Camera, Save, Shield, Mail, Globe, Phone, User, AlertCircle, Loader2 } from "lucide-react"
+import { createApiRequest, handleApiError } from "@/lib/api-utils"
 
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   phone: z.string().regex(/^\+?[\d\s-()]{8,}$/, "Invalid phone number format").optional(),
   bio: z.string().max(500, "Bio must not exceed 500 characters").optional(),
   socialLinks: z.object({
-    twitter: z.string().url("Invalid Twitter URL").optional(),
-    linkedin: z.string().url("Invalid LinkedIn URL").optional(),
-    github: z.string().url("Invalid GitHub URL").optional(),
-    instagram: z.string().url("Invalid Instagram URL").optional(),
+    twitter: z.string().refine((val) => !val || /^https?:\/\/[^\s/$.?#].[^\s]*$/i.test(val), {
+      message: "Invalid Twitter URL"
+    }).optional(),
+    linkedin: z.string().refine((val) => !val || /^https?:\/\/[^\s/$.?#].[^\s]*$/i.test(val), {
+      message: "Invalid LinkedIn URL"
+    }).optional(),
+    github: z.string().refine((val) => !val || /^https?:\/\/[^\s/$.?#].[^\s]*$/i.test(val), {
+      message: "Invalid GitHub URL"
+    }).optional(),
+    instagram: z.string().refine((val) => !val || /^https?:\/\/[^\s/$.?#].[^\s]*$/i.test(val), {
+      message: "Invalid Instagram URL"
+    }).optional(),
+  }).optional(),
+  preferences: z.object({
+    emailNotifications: z.boolean().optional(),
+    reminderDays: z.number().min(1).max(365).optional(),
+    notifications: z.boolean().optional(),
+    theme: z.string().optional(),
+    language: z.string().optional(),
   }).optional(),
 })
 
@@ -47,6 +63,13 @@ export default function EnhancedProfile() {
         github: "",
         instagram: "",
       },
+      preferences: user?.preferences || {
+        emailNotifications: true,
+        reminderDays: 7,
+        notifications: true,
+        theme: "light",
+        language: "en",
+      },
     },
   })
 
@@ -58,10 +81,6 @@ export default function EnhancedProfile() {
       user.phone,
       user.bio,
       user.profilePicture,
-      user.socialLinks?.twitter,
-      user.socialLinks?.linkedin,
-      user.socialLinks?.github,
-      user.socialLinks?.instagram,
     ]
     const completedFields = fields.filter(Boolean).length
     return Math.round((completedFields / fields.length) * 100)
@@ -70,6 +89,10 @@ export default function EnhancedProfile() {
   const handleProfilePictureChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (file) {
+      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        toast.error("Profile picture must be less than 5MB")
+        return
+      }
       setProfilePicture(file)
       const reader = new FileReader()
       reader.onloadend = () => {
@@ -82,15 +105,30 @@ export default function EnhancedProfile() {
   const onSubmit = async (data: z.infer<typeof formSchema>) => {
     setIsLoading(true)
     try {
+      const formData = new FormData()
+      
+      // Append profile picture if changed
+      if (profilePicture) {
+        formData.append('profilePicture', profilePicture)
+      }
+      
+      // Append other profile data
+      Object.entries(data).forEach(([key, value]) => {
+        if (value !== undefined && key !== 'profilePicture') {
+          formData.append(key, JSON.stringify(value))
+        }
+      })
+
       const success = await updateProfile({
         ...data,
         profilePicture: profilePicture,
       })
+
       if (success) {
         toast.success("Profile updated successfully")
       }
     } catch (error) {
-      toast.error("Failed to update profile")
+      toast.error(error instanceof Error ? error.message : "Failed to update profile")
     } finally {
       setIsLoading(false)
     }
@@ -156,6 +194,7 @@ export default function EnhancedProfile() {
                       className="hidden"
                       onChange={handleProfilePictureChange}
                     />
+                    <p className="text-xs text-amber-700 mt-1">Max file size: 5MB</p>
                   </div>
                 </div>
 
@@ -168,7 +207,7 @@ export default function EnhancedProfile() {
                       <FormControl>
                         <Input
                           {...field}
-                          className="border-2 border-amber-800 bg-amber-50"
+                          className="border-2 border-amber-800 bg-amber-50 text-amber-900"
                         />
                       </FormControl>
                       <FormMessage />
@@ -185,7 +224,7 @@ export default function EnhancedProfile() {
                       <FormControl>
                         <Input
                           {...field}
-                          className="border-2 border-amber-800 bg-amber-50"
+                          className="border-2 border-amber-800 bg-amber-50 text-amber-900"
                         />
                       </FormControl>
                       <FormMessage />
@@ -202,7 +241,7 @@ export default function EnhancedProfile() {
                       <FormControl>
                         <Textarea
                           {...field}
-                          className="border-2 border-amber-800 bg-amber-50"
+                          className="border-2 border-amber-800 bg-amber-50 text-amber-900"
                           rows={4}
                         />
                       </FormControl>
@@ -233,7 +272,7 @@ export default function EnhancedProfile() {
                         <Input
                           {...field}
                           placeholder="https://twitter.com/username"
-                          className="border-2 border-amber-800 bg-amber-50"
+                          className="border-2 border-amber-800 bg-amber-50 text-amber-900"
                         />
                       </FormControl>
                       <FormMessage />
@@ -251,7 +290,7 @@ export default function EnhancedProfile() {
                         <Input
                           {...field}
                           placeholder="https://linkedin.com/in/username"
-                          className="border-2 border-amber-800 bg-amber-50"
+                          className="border-2 border-amber-800 bg-amber-50 text-amber-900"
                         />
                       </FormControl>
                       <FormMessage />
@@ -269,7 +308,7 @@ export default function EnhancedProfile() {
                         <Input
                           {...field}
                           placeholder="https://github.com/username"
-                          className="border-2 border-amber-800 bg-amber-50"
+                          className="border-2 border-amber-800 bg-amber-50 text-amber-900"
                         />
                       </FormControl>
                       <FormMessage />
@@ -287,9 +326,89 @@ export default function EnhancedProfile() {
                         <Input
                           {...field}
                           placeholder="https://instagram.com/username"
-                          className="border-2 border-amber-800 bg-amber-50"
+                          className="border-2 border-amber-800 bg-amber-50 text-amber-900"
                         />
                       </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-4 border-amber-800 shadow-[8px_8px_0px_0px_rgba(120,53,15,0.5)] bg-amber-100">
+            <CardHeader className="border-b-4 border-amber-800 bg-amber-200 px-6 py-4">
+              <CardTitle className="text-2xl font-bold text-amber-900">Preferences</CardTitle>
+              <CardDescription className="text-amber-800">
+                Customize your notification and display preferences
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="space-y-6">
+                <FormField
+                  control={form.control}
+                  name="preferences.emailNotifications"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-amber-900">Email Notifications</FormLabel>
+                        <FormDescription className="text-amber-700">
+                          Receive email notifications for important updates
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          className="data-[state=checked]:bg-amber-800"
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="preferences.notifications"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-amber-900">Push Notifications</FormLabel>
+                        <FormDescription className="text-amber-700">
+                          Receive push notifications for reminders and updates
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          className="data-[state=checked]:bg-amber-800"
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="preferences.reminderDays"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-amber-900">Reminder Days</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min={1}
+                          max={365}
+                          {...field}
+                          onChange={(e) => field.onChange(Number(e.target.value))}
+                          className="border-2 border-amber-800 bg-amber-50 text-amber-900"
+                        />
+                      </FormControl>
+                      <FormDescription className="text-amber-700">
+                        Number of days before an event to send reminders (1-365)
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -302,13 +421,13 @@ export default function EnhancedProfile() {
             <Button
               type="submit"
               disabled={isLoading}
-              className="bg-amber-800 hover:bg-amber-900 text-amber-100 border-2 border-amber-900"
+              className="bg-amber-800 hover:bg-amber-900 text-white border-2 border-amber-900"
             >
               {isLoading ? (
-                <div className="flex items-center">
-                  <div className="animate-spin mr-2 h-4 w-4 border-2 border-amber-100 border-t-transparent rounded-full" />
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Saving...
-                </div>
+                </>
               ) : (
                 <>
                   <Save className="mr-2 h-4 w-4" />
