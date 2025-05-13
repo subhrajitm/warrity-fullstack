@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { ArrowLeft, Calendar as CalendarIcon, Shield, Wrench, AlertTriangle, Info, Plus, Trash2, Loader2, XCircle, Filter } from "lucide-react"
+import { ArrowLeft, Calendar as CalendarIcon, Shield, Wrench, AlertTriangle, Info, Plus, Trash2, Loader2, XCircle, Filter, List } from "lucide-react"
 import { toast } from "sonner"
 import WarrantySidebar from "../warranties/components/sidebar"
 import { useAuth } from "@/lib/auth-context"
@@ -81,6 +81,7 @@ export default function CalendarPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [products, setProducts] = useState<Product[]>([])
   const [isProductsLoading, setIsProductsLoading] = useState(false)
+  const [showAllEvents, setShowAllEvents] = useState(false)
   
   // UI state
   const [isCreating, setIsCreating] = useState(false)
@@ -358,6 +359,13 @@ export default function CalendarPage() {
   const handleDateSelect = (date: Date | undefined) => {
     if (date) {
       setSelectedDate(date)
+      // Scroll to events section on mobile
+      if (window.innerWidth < 768) {
+        const eventsSection = document.getElementById('events-section')
+        if (eventsSection) {
+          eventsSection.scrollIntoView({ behavior: 'smooth' })
+        }
+      }
     }
   }
   
@@ -415,11 +423,17 @@ export default function CalendarPage() {
   
   // Filter events based on selected date and type
   const filteredEvents = events.filter(event => {
-    // Convert dates to local timezone for comparison
+    // If showAllEvents is true, only filter by type
+    if (showAllEvents) {
+      return filterType === "all" || 
+        (filterType === "expiration" && event.eventType === "warranty") ||
+        (event.eventType === filterType)
+    }
+
+    // Otherwise, filter by both date and type
     const eventDate = new Date(event.startDate)
     const selectedDateObj = new Date(selectedDate)
     
-    // Format dates to YYYY-MM-DD for comparison
     const eventDateStr = eventDate.toISOString().split('T')[0]
     const selectedDateStr = selectedDateObj.toISOString().split('T')[0]
     
@@ -708,17 +722,44 @@ export default function CalendarPage() {
               </div>
 
               {/* Right Column - Events */}
-              <div className="col-span-12 lg:col-span-8">
+              <div className="col-span-12 lg:col-span-8" id="events-section">
                 {/* Date Header */}
                 <div className="mb-4 p-3 border-2 border-amber-800 rounded-lg bg-amber-100">
-                  <h2 className="text-2xl font-bold text-amber-900">
-                    {selectedDate.toLocaleDateString('en-US', { 
-                      weekday: 'long',
-                      month: 'long', 
-                      day: 'numeric',
-                      year: 'numeric' 
-                    })}
-                  </h2>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h2 className="text-2xl font-bold text-amber-900">
+                        {showAllEvents ? 'All Events' : selectedDate.toLocaleDateString('en-US', { 
+                          weekday: 'long',
+                          month: 'long', 
+                          day: 'numeric',
+                          year: 'numeric' 
+                        })}
+                      </h2>
+                      <p className="text-sm text-amber-800 mt-1">
+                        {filteredEvents.length} {filteredEvents.length === 1 ? 'event' : 'events'} {showAllEvents ? 'total' : 'on this day'}
+                      </p>
+                    </div>
+                    <Button
+                      onClick={() => setShowAllEvents(!showAllEvents)}
+                      className={`${
+                        showAllEvents 
+                          ? 'bg-amber-100 hover:bg-amber-200 text-amber-900 border-2 border-amber-800' 
+                          : 'bg-amber-800 hover:bg-amber-900 text-white border-2 border-amber-900'
+                      } transition-colors duration-200`}
+                    >
+                      {showAllEvents ? (
+                        <>
+                          <CalendarIcon className="h-4 w-4 mr-2" />
+                          Show Daily
+                        </>
+                      ) : (
+                        <>
+                          <List className="h-4 w-4 mr-2" />
+                          Show All
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </div>
 
                 {/* Events Grid */}
@@ -727,59 +768,61 @@ export default function CalendarPage() {
                     <div className="col-span-full flex justify-center items-center p-6 border-2 border-amber-800 rounded-lg bg-amber-100">
                       <Loader2 className="h-6 w-6 animate-spin text-amber-800" />
                     </div>
-                  ) : events.length === 0 ? (
+                  ) : filteredEvents.length === 0 ? (
                     <div className="col-span-full text-center p-6 bg-amber-100 rounded-lg border-2 border-amber-800 shadow-[4px_4px_0px_0px_rgba(120,53,15,0.5)]">
                       <CalendarIcon className="h-10 w-10 mx-auto text-amber-800 mb-3" />
                       <h3 className="text-base font-semibold text-amber-900">No Events</h3>
-                      <p className="text-sm text-amber-800">Create your first event to get started</p>
+                      <p className="text-sm text-amber-800">No events scheduled for this date</p>
+                      <Button
+                        onClick={() => setIsDialogOpen(true)}
+                        className="mt-4 bg-amber-800 hover:bg-amber-900 text-white border-2 border-amber-900"
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Event
+                      </Button>
                     </div>
                   ) : (
-                    events
-                      .filter(event => {
-                        if (filterType === 'all') return true;
-                        return event.eventType === eventTypeMap[filterType as keyof typeof eventTypeMap];
-                      })
-                      .map((event) => (
-                        <Card
-                          key={event._id}
-                          className="border-2 border-amber-800 hover:border-amber-900 transition-all duration-200 bg-amber-100 shadow-[4px_4px_0px_0px_rgba(120,53,15,0.5)] hover:shadow-[6px_6px_0px_0px_rgba(120,53,15,0.5)]"
-                        >
-                          <CardHeader className="border-b-2 border-amber-800 bg-amber-200 py-3">
-                            <div className="flex justify-between items-start">
-                              <CardTitle className="text-base font-semibold text-amber-900">
-                                {event.title}
-                              </CardTitle>
-                              {getEventTypeBadge(event.eventType)}
-                            </div>
-                            <p className="text-xs text-amber-800 mt-1">
-                              {formatDate(event.startDate)}
-                            </p>
-                          </CardHeader>
-                          <CardContent className="p-3">
-                            <p className="text-sm text-amber-800 mb-3 line-clamp-2">{event.description}</p>
-                            <div className="flex justify-end space-x-2">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleViewEvent(event)}
-                                className="text-amber-800 hover:text-amber-900 hover:bg-amber-200 h-8 px-2 border border-amber-800"
-                              >
-                                <Info className="h-3.5 w-3.5 mr-1" />
-                                View
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleDeleteEvent(event._id)}
-                                className="text-red-600 hover:text-red-700 hover:bg-red-100 h-8 px-2 border border-red-600"
-                              >
-                                <Trash2 className="h-3.5 w-3.5 mr-1" />
-                                Delete
-                              </Button>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))
+                    filteredEvents.map((event) => (
+                      <Card
+                        key={event._id}
+                        className="border-2 border-amber-800 hover:border-amber-900 transition-all duration-200 bg-amber-100 shadow-[4px_4px_0px_0px_rgba(120,53,15,0.5)] hover:shadow-[6px_6px_0px_0px_rgba(120,53,15,0.5)]"
+                      >
+                        <CardHeader className="border-b-2 border-amber-800 bg-amber-200 py-3">
+                          <div className="flex justify-between items-start">
+                            <CardTitle className="text-base font-semibold text-amber-900">
+                              {event.title}
+                            </CardTitle>
+                            {getEventTypeBadge(event.eventType)}
+                          </div>
+                          <p className="text-xs text-amber-800 mt-1">
+                            {formatDate(event.startDate)}
+                          </p>
+                        </CardHeader>
+                        <CardContent className="p-3">
+                          <p className="text-sm text-amber-800 mb-3 line-clamp-2">{event.description}</p>
+                          <div className="flex justify-end space-x-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleViewEvent(event)}
+                              className="text-amber-800 hover:text-amber-900 hover:bg-amber-200 h-8 px-2 border border-amber-800"
+                            >
+                              <Info className="h-3.5 w-3.5 mr-1" />
+                              View
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteEvent(event._id)}
+                              className="text-red-600 hover:text-red-700 hover:bg-red-100 h-8 px-2 border border-red-600"
+                            >
+                              <Trash2 className="h-3.5 w-3.5 mr-1" />
+                              Delete
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))
                   )}
                 </div>
               </div>
