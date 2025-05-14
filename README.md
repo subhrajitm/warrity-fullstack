@@ -1,7 +1,7 @@
 # Warrity - Full Stack Warranty Management System
 
 <div align="center">
-  <p><em>A modern, full-stack warranty management system built with Next.js, TypeScript, and AWS</em></p>
+  <p><em>A modern, full-stack warranty management system built with Next.js and TypeScript</em></p>
 </div>
 
 ## Overview
@@ -61,16 +61,8 @@ Warrity is a comprehensive warranty management system that provides a modern web
 - **API Framework**: Next.js API Routes
 - **Database**: MongoDB
 - **Authentication**: JWT
-- **File Storage**: AWS S3
+- **File Storage**: Local Storage
 - **Caching**: Redis
-
-### Infrastructure
-- **Cloud Provider**: AWS
-- **Containerization**: Docker
-- **CI/CD**: GitHub Actions
-- **Deployment**: AWS Amplify
-- **CDN**: CloudFront
-- **Monitoring**: AWS CloudWatch
 
 ## Getting Started
 
@@ -79,7 +71,7 @@ Warrity is a comprehensive warranty management system that provides a modern web
 - Node.js 18.x or higher
 - pnpm package manager
 - MongoDB 6.x or higher
-- AWS Account (for deployment)
+- Flutter (for mobile development)
 
 ### Installation
 
@@ -124,10 +116,7 @@ warrity-fullstack/
 ├── lib/             # Utility functions and shared code
 ├── mobile/          # Mobile application code
 ├── public/          # Static assets
-├── styles/          # Global styles
-├── types/           # TypeScript type definitions
-├── infra/           # Infrastructure as Code (AWS CDK)
-└── scripts/         # Build and utility scripts
+└── types/           # TypeScript type definitions
 ```
 
 ## Development
@@ -148,25 +137,6 @@ The project includes robust dependency management:
 - Import validation
 - Automatic dependency updates
 - TypeScript type checking
-
-## Deployment
-
-### AWS Deployment
-
-The project is configured for AWS deployment using:
-- AWS Amplify for frontend
-- ECS Fargate for backend
-- S3 for file storage
-- CloudFront for CDN
-- Route 53 for DNS
-
-### Docker Deployment
-
-A Dockerfile is provided for containerized deployment:
-```bash
-docker build -t warrity .
-docker run -p 3000:3000 warrity
-```
 
 ## Contributing
 
@@ -189,4 +159,3 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - [Shadcn UI](https://ui.shadcn.com/)
 - [Lucide Icons](https://lucide.dev/)
 - [Radix UI](https://www.radix-ui.com/)
-- [AWS CDK](https://aws.amazon.com/cdk/)

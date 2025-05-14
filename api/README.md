@@ -17,7 +17,6 @@ This API provides all the necessary endpoints for the Warrity application, inclu
 - Winston for logging
 - Express Rate Limit
 - Swagger for API documentation
-- Docker & Docker Compose (for production deployment)
 
 ## Getting Started
 
@@ -25,7 +24,6 @@ This API provides all the necessary endpoints for the Warrity application, inclu
 
 - Node.js v16 or higher
 - MongoDB (local installation or MongoDB Atlas)
-- Docker and Docker Compose (for production deployment)
 
 ### Installation
 
@@ -123,73 +121,6 @@ The Swagger documentation is organized into the following sections:
 - `GET /api/admin/products` - Get all products
 - `GET /api/admin/events` - Get all events
 
-## Production Deployment Options
-
-### Using Node.js Directly
-1. Set up environment variables:
-   ```
-   cp .env.example .env.production
-   ```
-2. Edit `.env.production` with your production settings
-3. Start the server:
-   ```
-   NODE_ENV=production node src/server.js
-   ```
-
-### Using the Server Control Script
-We provide a convenient server control script to manage the API server:
-
-1. Make the script executable (if not already):
-   ```
-   chmod +x server-control.sh
-   ```
-
-2. Available commands:
-   - Start the server: `./server-control.sh start`
-   - Stop the server: `./server-control.sh stop`
-   - Restart the server: `./server-control.sh restart`
-   - Check server status: `./server-control.sh status`
-
-The script automatically creates a PID file and logs server output to `logs/server.log`.
-
-### Using PM2 (Process Manager)
-1. Install PM2 globally:
-   ```
-   npm install -g pm2
-   ```
-2. Start the server with PM2:
-   ```
-   NODE_ENV=production pm2 start src/server.js --name warrity-api
-   ```
-3. Or use the ecosystem config:
-   ```
-   NODE_ENV=production pm2 start ecosystem.config.js
-   ```
-
-### Using Docker
-1. Build and start the Docker containers:
-   ```
-   docker-compose build
-   docker-compose up -d
-   ```
-2. Or use the deployment script:
-   ```
-   ./deploy.sh
-   ```
-
-## SSL Configuration
-
-For production deployment with HTTPS:
-
-1. Create a directory for SSL certificates:
-   ```
-   mkdir -p nginx/ssl
-   ```
-2. Place your SSL certificates in the `nginx/ssl` directory:
-   - `warrity.crt` - SSL certificate
-   - `warrity.key` - SSL private key
-3. Update the `CORS_ORIGIN` in your `.env.production` file to match your frontend domain.
-
 ## File Structure
 
 ```
@@ -201,17 +132,9 @@ api/
 │   ├── models/           # Mongoose models
 │   ├── routes/           # API routes
 │   └── server.js         # Entry point
-├── nginx/                # Nginx configuration
-│   └── conf.d/           # Nginx site configurations
 ├── logs/                 # Application logs
 ├── uploads/              # Uploaded files
 ├── .env                  # Environment variables
-├── .env.production       # Production environment variables
-├── Dockerfile            # Docker configuration
-├── docker-compose.yml    # Docker Compose configuration
-├── ecosystem.config.js   # PM2 configuration
-├── deploy.sh             # Deployment script
-├── server-control.sh     # Server control script
 ├── package.json          # Dependencies and scripts
 └── README.md             # Documentation
 ```
@@ -226,15 +149,12 @@ The API includes several security features:
 - Rate limiting
 - Helmet for HTTP headers
 - Input validation with Express Validator
-- HTTPS support with Nginx
 - Secure environment variable handling
 
 ## Monitoring and Logging
 
 - Winston logger for application logs
 - Morgan for HTTP request logging
-- PM2 for process management and monitoring
-- Docker logs for containerized deployment
 - Health check endpoints for monitoring
 
 ## Troubleshooting
@@ -247,39 +167,3 @@ If you encounter MongoDB connection errors:
 2. Check your MongoDB connection string in the .env file
 3. If using MongoDB Atlas, ensure your IP address is whitelisted in the Atlas dashboard
 4. Check network connectivity to your MongoDB instance
-
-### API Endpoint Testing
-
-You can test the API endpoints using tools like:
-- [Postman](https://www.postman.com/)
-- [Insomnia](https://insomnia.rest/)
-- cURL commands from the terminal
-
-Example cURL command to test the health endpoint:
-```
-curl http://localhost:5001/api/health
-```
-
-### Docker Issues
-
-If you encounter issues with Docker deployment:
-
-1. Check Docker logs:
-   ```
-   docker-compose logs
-   ```
-2. Ensure ports are not already in use:
-   ```
-   lsof -i :5001
-   ```
-3. Verify environment variables are correctly set in `.env.production`
-
-## Performance Optimization
-
-The API includes several performance optimizations:
-
-- Compression middleware
-- MongoDB connection pooling
-- Proper error handling
-- Static file caching
-- PM2 clustering for multi-core utilization
