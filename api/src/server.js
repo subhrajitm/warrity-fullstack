@@ -14,6 +14,12 @@ const swaggerConfig = require('./config/swagger');
 // Load environment variables
 dotenv.config();
 
+// Set default JWT secret if not provided
+if (!process.env.JWT_SECRET) {
+  process.env.JWT_SECRET = '2b8e4c1e-7f2a-4c3b-9e2d-1a5f6b7c8d9e';
+  logger.warn('JWT_SECRET not set in environment, using default value. This is not recommended for production.');
+}
+
 // Create logs directory if it doesn't exist
 const logsDir = path.join(process.cwd(), 'logs');
 if (!fs.existsSync(logsDir)) {
@@ -125,7 +131,12 @@ app.use((err, req, res, next) => {
 // Connect to MongoDB
 const connectDB = async () => {
   try {
-    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/warrity');
+    const mongoURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/warrity';
+    await mongoose.connect(mongoURI, {
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 45000,
+      family: 4
+    });
     logger.info('MongoDB connected successfully');
   } catch (error) {
     logger.error(`MongoDB connection error: ${error.message}`);
@@ -134,7 +145,7 @@ const connectDB = async () => {
 };
 
 // Start server
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 connectDB().then(() => {
   app.listen(PORT, () => {
     logger.info(`Server running on port ${PORT}`);

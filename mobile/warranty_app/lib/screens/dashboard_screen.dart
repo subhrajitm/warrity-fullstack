@@ -84,7 +84,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
         height: MediaQuery.of(context).size.height * 0.9,
         decoration: BoxDecoration(
           color: Theme.of(context).scaffoldBackgroundColor,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         ),
         child: Column(
           children: [
@@ -93,7 +93,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: Colors.grey[300],
+                color: Theme.of(context).colorScheme.outlineVariant,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -101,7 +101,9 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
               padding: const EdgeInsets.all(16),
               child: Text(
                 'Add New Warranty',
-                style: Theme.of(context).textTheme.titleLarge,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
             // Add warranty form will go here
@@ -113,12 +115,19 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Dashboard'),
+        title: Text(
+          'Dashboard',
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.notifications_outlined),
+            icon: const Icon(Icons.notifications_rounded),
             onPressed: () {
               Navigator.push(
                 context,
@@ -129,11 +138,11 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
             },
           ),
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh_rounded),
             onPressed: _loadData,
           ),
           IconButton(
-            icon: const Icon(Icons.logout),
+            icon: const Icon(Icons.logout_rounded),
             onPressed: () async {
               final apiService = Provider.of<ApiService>(context, listen: false);
               await apiService.logout();
@@ -144,6 +153,11 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
           ),
         ],
       ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _showAddWarrantyModal,
+        icon: const Icon(Icons.add_rounded),
+        label: const Text('Add Warranty'),
+      ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
@@ -151,17 +165,23 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
+                      Icon(
+                        Icons.error_outline_rounded,
+                        size: 48,
+                        color: colorScheme.error,
+                      ),
+                      const SizedBox(height: 16),
                       Text(
                         _error!,
                         style: TextStyle(
-                          color: Theme.of(context).colorScheme.error,
+                          color: colorScheme.error,
                         ),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 16),
                       FilledButton.icon(
                         onPressed: _loadData,
-                        icon: const Icon(Icons.refresh),
+                        icon: const Icon(Icons.refresh_rounded),
                         label: const Text('Retry'),
                       ),
                     ],
@@ -181,7 +201,9 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                               if (_stats != null) ...[
                                 Text(
                                   'Overview',
-                                  style: Theme.of(context).textTheme.titleLarge,
+                                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                                 const SizedBox(height: 16),
                                 Row(
@@ -190,8 +212,8 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                                       child: StatsCard(
                                         title: 'Total Warranties',
                                         value: _stats!.totalWarranties.toString(),
-                                        icon: Icons.inventory_2,
-                                        color: Colors.blue,
+                                        icon: Icons.inventory_2_rounded,
+                                        color: colorScheme.primary,
                                       ),
                                     ),
                                     const SizedBox(width: 16),
@@ -199,8 +221,8 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                                       child: StatsCard(
                                         title: 'Expiring Soon',
                                         value: _stats!.expiringSoon.toString(),
-                                        icon: Icons.warning,
-                                        color: Colors.orange,
+                                        icon: Icons.warning_rounded,
+                                        color: colorScheme.tertiary,
                                       ),
                                     ),
                                   ],
@@ -211,7 +233,9 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                               // Quick Actions
                               Text(
                                 'Quick Actions',
-                                style: Theme.of(context).textTheme.titleLarge,
+                                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                               const SizedBox(height: 16),
                               const QuickActionsCard(),
@@ -224,52 +248,21 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                                   children: [
                                     Text(
                                       'Expiring Soon',
-                                      style: Theme.of(context).textTheme.titleLarge,
+                                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                     ),
-                                    TextButton(
+                                    TextButton.icon(
                                       onPressed: () {
                                         // Navigate to all warranties screen
                                       },
-                                      child: const Text('View All'),
+                                      icon: const Icon(Icons.arrow_forward_rounded),
+                                      label: const Text('View All'),
                                     ),
                                   ],
                                 ),
                                 const SizedBox(height: 16),
                                 ..._expiringWarranties.map((warranty) => Padding(
-                                      padding: const EdgeInsets.only(bottom: 16),
-                                      child: WarrantyCard(
-                                        warranty: warranty,
-                                        onTap: () {
-                                          Navigator.pushNamed(
-                                            context,
-                                            '/warranty-details',
-                                            arguments: {'warranty': warranty},
-                                          );
-                                        },
-                                      ),
-                                    )),
-                                const SizedBox(height: 24),
-                              ],
-
-                              // Recent Warranties
-                              if (_recentWarranties.isNotEmpty) ...[
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      'Recent Warranties',
-                                      style: Theme.of(context).textTheme.titleLarge,
-                                    ),
-                                    TextButton(
-                                      onPressed: () {
-                                        // Navigate to all warranties screen
-                                      },
-                                      child: const Text('View All'),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 16),
-                                ..._recentWarranties.map((warranty) => Padding(
                                       padding: const EdgeInsets.only(bottom: 16),
                                       child: WarrantyCard(
                                         warranty: warranty,
@@ -290,11 +283,6 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                     ),
                   ),
                 ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _showAddWarrantyModal,
-        icon: const Icon(Icons.add),
-        label: const Text('Add Warranty'),
-      ),
     );
   }
 } 

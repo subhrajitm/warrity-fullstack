@@ -11,7 +11,7 @@ import '../models/notification.dart' as app;
 class ApiService {
   // Update this to your actual API server address
   // static const String baseUrl = 'http://10.0.2.2:5000/api'; // For Android Emulator
-  static const String baseUrl = 'http://localhost:3000/api'; // For iOS Simulator
+  static const String baseUrl = 'http://localhost:5001/api'; // For iOS Simulator
   final SharedPreferences _prefs;
   String? _token;
 
