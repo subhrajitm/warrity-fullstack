@@ -15,6 +15,7 @@ import { useAuth } from "@/lib/auth-context"
 import { WarrantyInput, WarrantyDocument } from "@/types/warranty"
 import { warrantyApi } from "@/lib/api"
 import { productApi } from "@/lib/api"
+import { format } from "date-fns"
 
 // Interface for product data
 interface ProductOption {
@@ -38,7 +39,7 @@ export default function AddWarrantyPage() {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth()
   const [formData, setFormData] = useState<FormData>({
     productId: "",
-    purchaseDate: "",
+    purchaseDate: new Date().toISOString().split('T')[0], // Set default to today
     warrantyPeriod: "",
     warrantyProvider: "",
     warrantyNumber: "",
@@ -95,6 +96,19 @@ export default function AddWarrantyPage() {
   
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
+    
+    // Special handling for date inputs
+    if (name === 'purchaseDate') {
+      const date = new Date(value);
+      if (!isNaN(date.getTime())) {
+        setFormData(prev => ({
+          ...prev,
+          [name]: value
+        }));
+      }
+      return;
+    }
+    
     setFormData(prev => ({
       ...prev,
       [name]: value
@@ -228,6 +242,10 @@ export default function AddWarrantyPage() {
     }
   }
   
+  const handleDateClick = (e: React.MouseEvent<HTMLInputElement>) => {
+    e.currentTarget.showPicker();
+  }
+  
   return (
     <div className="flex min-h-screen bg-amber-50">
       <WarrantySidebar />
@@ -319,11 +337,17 @@ export default function AddWarrantyPage() {
                         type="date"
                         value={formData.purchaseDate}
                         onChange={handleChange}
-                        className="pl-10 border-2 border-amber-800 bg-amber-50 text-amber-900"
+                        onClick={handleDateClick}
+                        className="pl-10 border-2 border-amber-800 bg-amber-50 text-amber-900 cursor-pointer"
                         required
-                        max={new Date().toISOString().split('T')[0]} // Prevent future dates
+                        max={new Date().toISOString().split('T')[0]}
+                        min="2000-01-01"
+                        onKeyDown={(e) => e.preventDefault()}
                       />
                     </div>
+                    <p className="text-sm text-amber-700 mt-1">
+                      Click to select a date between 2000 and today
+                    </p>
                   </div>
                   
                   <div className="space-y-2">
