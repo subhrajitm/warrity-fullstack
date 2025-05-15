@@ -5,6 +5,7 @@ import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/lib/auth-context"
 import { Toaster } from "sonner"
+import 'antd/dist/reset.css'
 
 const inter = Inter({ subsets: ["latin"] })
 

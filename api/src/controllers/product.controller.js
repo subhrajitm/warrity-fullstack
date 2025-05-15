@@ -8,7 +8,7 @@ const getAllProducts = async (req, res) => {
     const { category, sort } = req.query;
     
     // Build query
-    const query = {};
+    const query = { isActive: true };
     
     // Filter by category if provided
     if (category) {
@@ -28,8 +28,10 @@ const getAllProducts = async (req, res) => {
       sortOptions = { name: 1 };
     }
     
-    // Find products
-    const products = await Product.find(query).sort(sortOptions);
+    // Find products and populate category
+    const products = await Product.find(query)
+      .populate('category', 'name description serviceInfo')
+      .sort(sortOptions);
     
     res.status(200).json({ products });
   } catch (error) {
@@ -40,7 +42,8 @@ const getAllProducts = async (req, res) => {
 // Get product by ID
 const getProductById = async (req, res) => {
   try {
-    const product = await Product.findById(req.params.id);
+    const product = await Product.findById(req.params.id)
+      .populate('category', 'name description serviceInfo');
     
     if (!product) {
       return res.status(404).json({ message: 'Product not found' });
@@ -52,10 +55,21 @@ const getProductById = async (req, res) => {
   }
 };
 
-// Create new product (admin only)
+// Create new product
 const createProduct = async (req, res) => {
   try {
-    const { name, description, category, manufacturer, model } = req.body;
+    const {
+      name,
+      description,
+      category,
+      manufacturer,
+      model,
+      serialNumber,
+      purchaseDate,
+      price,
+      images,
+      specifications
+    } = req.body;
     
     // Create product
     const product = new Product({
@@ -63,10 +77,18 @@ const createProduct = async (req, res) => {
       description,
       category,
       manufacturer,
-      model
+      model,
+      serialNumber,
+      purchaseDate,
+      price,
+      images: images || [],
+      specifications: specifications || {}
     });
     
     await product.save();
+    
+    // Populate category before sending response
+    await product.populate('category', 'name description serviceInfo');
     
     res.status(201).json({
       message: 'Product created successfully',
@@ -77,7 +99,7 @@ const createProduct = async (req, res) => {
   }
 };
 
-// Update product (admin only)
+// Update product
 const updateProduct = async (req, res) => {
   try {
     const {
@@ -89,9 +111,9 @@ const updateProduct = async (req, res) => {
       serialNumber,
       purchaseDate,
       price,
-      purchaseLocation,
-      receiptNumber,
-      notes
+      images,
+      specifications,
+      isActive
     } = req.body;
     
     // Find product
@@ -101,19 +123,22 @@ const updateProduct = async (req, res) => {
     }
     
     // Update fields
-    if (name) product.name = name;
-    if (description) product.description = description;
-    if (category) product.category = category;
+    if (name !== undefined) product.name = name;
+    if (description !== undefined) product.description = description;
+    if (category !== undefined) product.category = category;
     if (manufacturer !== undefined) product.manufacturer = manufacturer;
     if (model !== undefined) product.model = model;
-    if (serialNumber) product.serialNumber = serialNumber;
+    if (serialNumber !== undefined) product.serialNumber = serialNumber;
     if (purchaseDate !== undefined) product.purchaseDate = purchaseDate;
     if (price !== undefined) product.price = price;
-    if (purchaseLocation !== undefined) product.purchaseLocation = purchaseLocation;
-    if (receiptNumber !== undefined) product.receiptNumber = receiptNumber;
-    if (notes !== undefined) product.notes = notes;
+    if (images !== undefined) product.images = images;
+    if (specifications !== undefined) product.specifications = specifications;
+    if (isActive !== undefined) product.isActive = isActive;
     
     await product.save();
+    
+    // Populate category before sending response
+    await product.populate('category', 'name description serviceInfo');
     
     res.status(200).json({
       message: 'Product updated successfully',
@@ -124,7 +149,7 @@ const updateProduct = async (req, res) => {
   }
 };
 
-// Delete product (admin only)
+// Delete product (soft delete)
 const deleteProduct = async (req, res) => {
   try {
     // Find product
@@ -133,15 +158,9 @@ const deleteProduct = async (req, res) => {
       return res.status(404).json({ message: 'Product not found' });
     }
     
-    // Delete product image if exists
-    if (product.image) {
-      const imagePath = path.join(process.env.UPLOAD_PATH || './uploads', path.basename(product.image));
-      if (fs.existsSync(imagePath)) {
-        fs.unlinkSync(imagePath);
-      }
-    }
-    
-    await Product.findByIdAndDelete(req.params.id);
+    // Soft delete by setting isActive to false
+    product.isActive = false;
+    await product.save();
     
     res.status(200).json({ message: 'Product deleted successfully' });
   } catch (error) {

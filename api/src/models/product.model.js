@@ -11,9 +11,9 @@ const productSchema = new mongoose.Schema({
     required: true
   },
   category: {
-    type: String,
-    required: true,
-    enum: ['Electronics', 'Appliances', 'Furniture', 'Automotive', 'Clothing', 'Other']
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Category',
+    required: true
   },
   manufacturer: {
     type: String,
@@ -24,9 +24,27 @@ const productSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
-  image: {
+  serialNumber: {
     type: String,
-    default: null
+    trim: true
+  },
+  purchaseDate: {
+    type: Date
+  },
+  price: {
+    type: Number,
+    required: true
+  },
+  images: [{
+    type: String
+  }],
+  specifications: {
+    type: Map,
+    of: String
+  },
+  isActive: {
+    type: Boolean,
+    default: true
   },
   createdAt: {
     type: Date,

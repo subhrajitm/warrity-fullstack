@@ -41,7 +41,8 @@ export default function AdminSidebar() {
     warranties: false,
     users: false,
     analytics: false,
-    settings: false
+    settings: false,
+    categories: false
   })
   
   const { logout } = useAuth()
@@ -60,6 +61,8 @@ export default function AdminSidebar() {
       setOpenSections(prev => ({ ...prev, analytics: true }))
     } else if (pathname?.startsWith('/admin/settings')) {
       setOpenSections(prev => ({ ...prev, settings: true }))
+    } else if (pathname?.startsWith('/admin/categories')) {
+      setOpenSections(prev => ({ ...prev, categories: true }))
     }
   }, [pathname])
   
@@ -360,6 +363,41 @@ export default function AdminSidebar() {
               >
                 <Shield className="mr-2 h-4 w-4" />
                 Security Settings
+              </Button>
+            </Link>
+          </CollapsibleContent>
+        </Collapsible>
+        
+        {/* Categories Section */}
+        <Collapsible 
+          open={openSections.categories} 
+          onOpenChange={() => toggleSection('categories')}
+          className={`${isActiveSection('categories') ? 'bg-amber-900/50 rounded-md' : ''}`}
+        >
+          <CollapsibleTrigger asChild>
+            <Button 
+              variant="ghost" 
+              className={`w-full justify-between ${isActiveSection('categories') ? 'text-amber-50' : 'text-amber-100 hover:bg-amber-700'}`}
+            >
+              <div className="flex items-center">
+                <Shield className="mr-2 h-5 w-5" />
+                Categories
+              </div>
+              {openSections.categories ? 
+                <ChevronDown className="h-4 w-4" /> : 
+                <ChevronRight className="h-4 w-4" />
+              }
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="pl-7 space-y-1 pt-1">
+            <Link href="/admin/categories">
+              <Button 
+                variant="ghost" 
+                size="sm"
+                className={`w-full justify-start ${isActive('/admin/categories') ? 'bg-amber-900 text-amber-50' : 'text-amber-100 hover:bg-amber-700'}`}
+              >
+                <List className="mr-2 h-4 w-4" />
+                Manage Categories
               </Button>
             </Link>
           </CollapsibleContent>

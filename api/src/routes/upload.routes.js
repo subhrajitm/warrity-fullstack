@@ -4,7 +4,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
-const { auth } = require('../middleware/auth.middleware');
+const { authenticate } = require('../middleware/auth');
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -89,7 +89,7 @@ const upload = multer({
  *       500:
  *         $ref: '#/components/responses/ServerError'
  */
-router.post('/', auth, upload.single('file'), (req, res) => {
+router.post('/', authenticate, upload.single('file'), (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ message: 'No file uploaded' });
