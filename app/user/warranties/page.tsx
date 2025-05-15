@@ -98,10 +98,13 @@ function WarrantiesContent() {
           return
         }
         toast.success('Warranty deleted successfully')
-        // Refresh the warranties list
+        
+        // Update local state immediately
+        setWarranties(prevWarranties => prevWarranties.filter(w => w._id !== id && w.id !== id))
+        setFilteredWarranties(prevFiltered => prevFiltered.filter(w => w._id !== id && w.id !== id))
+        
+        // Then fetch fresh data from the server
         await fetchWarranties()
-        // Refresh the router cache
-        router.refresh()
       } catch (error) {
         toast.error('An error occurred while deleting the warranty')
         console.error('Error deleting warranty:', error)
@@ -121,6 +124,20 @@ function WarrantiesContent() {
       }
     }
   }, [router, searchParams, authLoading, isAuthenticated, user])
+  
+  // Add effect to refresh data when the page becomes visible
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchWarranties()
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [])
   
   // Update filtered warranties when status filter changes
   useEffect(() => {

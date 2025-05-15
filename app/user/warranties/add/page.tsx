@@ -321,6 +321,7 @@ export default function AddWarrantyPage() {
                         onChange={handleChange}
                         className="pl-10 border-2 border-amber-800 bg-amber-50 text-amber-900"
                         required
+                        max={new Date().toISOString().split('T')[0]} // Prevent future dates
                       />
                     </div>
                   </div>

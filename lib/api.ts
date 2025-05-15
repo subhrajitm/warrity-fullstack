@@ -830,44 +830,24 @@ export const warrantyApi = {
   },
   
   createWarranty: async (warrantyData: WarrantyInput) => {
-    try {
-      const response = await apiRequest<Warranty | { warranty: Warranty }>('/warranties', 'POST', warrantyData);
-      
-      // Handle both response formats (object or object with warranty property)
-      if (response.error) {
-        // Try to parse validation errors if present
-        let errorMessage = response.error;
-        
-        try {
-          // Check if the response contains a JSON string with validation errors
-          if (typeof response.error === 'string' && response.error.includes('Validation error')) {
-            const match = response.error.match(/{.*}/);
-            if (match) {
-              const errorObj = JSON.parse(match[0]);
-              if (errorObj.errors && Array.isArray(errorObj.errors)) {
-                // Return detailed validation errors
-                return { 
-                  error: 'Validation error', 
-                  validationErrors: errorObj.errors 
-                };
-              }
-            }
-          }
-        } catch (e) {
-          console.error('Error parsing validation errors:', e);
-        }
-        
-        return { error: errorMessage };
-      }
-      
-      // Check if response.data has a warranty property
-      const warranty = (response.data as { warranty?: Warranty }).warranty || response.data;
-      
-      return { data: warranty as Warranty };
-    } catch (error) {
-      console.error('Error creating warranty:', error);
-      return { error: error instanceof Error ? error.message : 'Unknown error occurred' };
+    const response = await apiRequest<Warranty | { warranty: Warranty }>('/warranties', 'POST', warrantyData);
+    
+    if (response.error) {
+      return { error: response.error };
     }
+    
+    // Clear the warranties cache after successful creation
+    const warrantyCachePattern = /^GET:\/warranties/;
+    for (const [key] of requestCache.cache.entries()) {
+      if (warrantyCachePattern.test(key)) {
+        requestCache.delete(key);
+      }
+    }
+    
+    // Check if response.data has a warranty property
+    const warranty = (response.data as { warranty?: Warranty }).warranty || response.data;
+    
+    return { data: warranty as Warranty };
   },
   
   updateWarranty: async (id: string, warrantyData: Partial<WarrantyInput>) => {
@@ -905,6 +885,14 @@ export const warrantyApi = {
         return { error: errorMessage };
       }
       
+      // Clear the warranties cache after successful update
+      const warrantyCachePattern = /^GET:\/warranties/;
+      for (const [key] of requestCache.cache.entries()) {
+        if (warrantyCachePattern.test(key)) {
+          requestCache.delete(key);
+        }
+      }
+      
       // Check if response.data has a warranty property
       const warranty = (response.data as { warranty?: Warranty }).warranty || response.data;
       
@@ -915,8 +903,21 @@ export const warrantyApi = {
     }
   },
   
-  deleteWarranty: (id: string) => 
-    apiRequest(`/warranties/${id}`, 'DELETE'),
+  deleteWarranty: async (id: string) => {
+    const response = await apiRequest(`/warranties/${id}`, 'DELETE');
+    
+    if (!response.error) {
+      // Clear the warranties cache after successful deletion
+      const warrantyCachePattern = /^GET:\/warranties/;
+      for (const [key] of requestCache.cache.entries()) {
+        if (warrantyCachePattern.test(key)) {
+          requestCache.delete(key);
+        }
+      }
+    }
+    
+    return response;
+  },
   
   getExpiringWarranties: () => 
     apiRequest<{ warranties: Warranty[] }>('/warranties/expiring', 'GET'),
