@@ -523,11 +523,19 @@ export default function CalendarPage() {
   
   // Get dates with events for highlighting in calendar
   const getDatesWithEvents = () => {
-    return events.map(event => {
-      const date = new Date(event.startDate)
-      date.setHours(0, 0, 0, 0)
-      return date
-    })
+    const datesWithEvents = new Set<string>();
+    
+    events.forEach(event => {
+      if (event && event.startDate) {
+        const date = new Date(event.startDate);
+        if (isValidDate(date)) {
+          date.setHours(0, 0, 0, 0);
+          datesWithEvents.add(date.toISOString());
+        }
+      }
+    });
+    
+    return Array.from(datesWithEvents).map(dateStr => new Date(dateStr));
   }
   
   if (isLoading) {
