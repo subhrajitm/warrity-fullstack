@@ -9,13 +9,14 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ArrowLeft, Calendar, Upload, AlertCircle, Loader2 } from "lucide-react"
+import { ArrowLeft, Calendar, Upload, AlertCircle, Loader2, Search, Info } from "lucide-react"
 import WarrantySidebar from "../components/sidebar"
 import { useAuth } from "@/lib/auth-context"
 import { WarrantyInput, WarrantyDocument } from "@/types/warranty"
 import { warrantyApi } from "@/lib/api"
 import { productApi } from "@/lib/api"
-import { format } from "date-fns"
+import { format, addMonths, isValid, parseISO } from "date-fns"
+import { toast } from "sonner"
 
 // Interface for product data
 interface ProductOption {
@@ -52,6 +53,10 @@ export default function AddWarrantyPage() {
   const [warrantyFile, setWarrantyFile] = useState<File | null>(null)
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [searchTerm, setSearchTerm] = useState("")
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
+  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({})
+  const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({})
   
   // Check if user is logged in
   useEffect(() => {
@@ -94,19 +99,75 @@ export default function AddWarrantyPage() {
     }
   }, [isAuthenticated, authLoading])
   
+  // Filter products based on search term
+  const filteredProducts = products.filter(product => 
+    product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    product.manufacturer.toLowerCase().includes(searchTerm.toLowerCase())
+  )
+
+  // Calculate expiration date preview
+  const expirationDatePreview = formData.purchaseDate && formData.warrantyPeriod
+    ? addMonths(parseISO(formData.purchaseDate), parseInt(formData.warrantyPeriod))
+    : null
+
+  // Validate form fields
+  const validateField = (name: string, value: string) => {
+    const errors: Record<string, string> = {}
+    
+    switch (name) {
+      case 'purchaseDate':
+        const purchaseDate = new Date(value)
+        if (!isValid(purchaseDate)) {
+          errors[name] = 'Invalid date format'
+        } else if (purchaseDate > new Date()) {
+          errors[name] = 'Purchase date cannot be in the future'
+        }
+        break
+      case 'warrantyPeriod':
+        const months = parseInt(value)
+        if (isNaN(months) || months <= 0) {
+          errors[name] = 'Warranty period must be a positive number'
+        } else if (months > 120) { // 10 years
+          errors[name] = 'Warranty period seems unusually long'
+        }
+        break
+      case 'warrantyProvider':
+        if (!value.trim()) {
+          errors[name] = 'Warranty provider is required'
+        }
+        break
+      case 'warrantyNumber':
+        if (!value.trim()) {
+          errors[name] = 'Warranty number is required'
+        }
+        break
+      case 'coverageDetails':
+        if (!value.trim()) {
+          errors[name] = 'Coverage details are required'
+        }
+        break
+    }
+    
+    setValidationErrors(prev => ({ ...prev, ...errors }))
+    return Object.keys(errors).length === 0
+  }
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
     
+    // Validate field on change
+    validateField(name, value)
+    
     // Special handling for date inputs
     if (name === 'purchaseDate') {
-      const date = new Date(value);
+      const date = new Date(value)
       if (!isNaN(date.getTime())) {
         setFormData(prev => ({
           ...prev,
           [name]: value
-        }));
+        }))
       }
-      return;
+      return
     }
     
     setFormData(prev => ({
@@ -122,8 +183,30 @@ export default function AddWarrantyPage() {
     }))
   }
   
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'receipt' | 'warranty') => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, type: 'receipt' | 'warranty') => {
     const file = e.target.files?.[0] || null
+    if (!file) return
+
+    // Validate file type
+    const allowedTypes = type === 'receipt' 
+      ? ['image/jpeg', 'image/png', 'image/gif']
+      : ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
+    
+    if (!allowedTypes.includes(file.type)) {
+      toast.error(`Invalid file type. ${type === 'receipt' ? 'Please upload an image' : 'Please upload a PDF or Word document'}`)
+      return
+    }
+
+    // Validate file size (5MB limit)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('File size must be less than 5MB')
+      return
+    }
+
+    // Create preview URL
+    const previewUrl = URL.createObjectURL(file)
+    setPreviewUrls(prev => ({ ...prev, [type]: previewUrl }))
+
     if (type === 'receipt') {
       setReceiptFile(file)
     } else {
@@ -289,6 +372,21 @@ export default function AddWarrantyPage() {
                   </CardHeader>
                   <CardContent className="p-6 space-y-4">
                     <div className="space-y-2">
+                      <Label htmlFor="productSearch" className="text-amber-900">Search Products</Label>
+                      <div className="relative">
+                        <Search className="absolute left-3 top-3 h-4 w-4 text-amber-800" />
+                        <Input
+                          id="productSearch"
+                          type="text"
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          placeholder="Search by product name or manufacturer..."
+                          className="pl-10 border-2 border-amber-800 bg-amber-50 text-amber-900"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2">
                       <Label htmlFor="productId" className="text-amber-900">Product</Label>
                       <Select 
                         value={formData.productId} 
@@ -303,8 +401,8 @@ export default function AddWarrantyPage() {
                               <Loader2 className="h-4 w-4 animate-spin mr-2" />
                               <span>Loading products...</span>
                             </div>
-                          ) : products.length > 0 ? (
-                            products.map((product) => (
+                          ) : filteredProducts.length > 0 ? (
+                            filteredProducts.map((product) => (
                               <SelectItem 
                                 key={product.id} 
                                 value={product.id}
@@ -320,6 +418,9 @@ export default function AddWarrantyPage() {
                           )}
                         </SelectContent>
                       </Select>
+                      {validationErrors.productId && (
+                        <p className="text-sm text-red-600 mt-1">{validationErrors.productId}</p>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -345,6 +446,9 @@ export default function AddWarrantyPage() {
                         onKeyDown={(e) => e.preventDefault()}
                       />
                     </div>
+                    {validationErrors.purchaseDate && (
+                      <p className="text-sm text-red-600 mt-1">{validationErrors.purchaseDate}</p>
+                    )}
                     <p className="text-sm text-amber-700 mt-1">
                       Click to select a date between 2000 and today
                     </p>
@@ -365,6 +469,14 @@ export default function AddWarrantyPage() {
                       className="border-2 border-amber-800 bg-amber-50 text-amber-900"
                       required
                     />
+                    {validationErrors.warrantyPeriod && (
+                      <p className="text-sm text-red-600 mt-1">{validationErrors.warrantyPeriod}</p>
+                    )}
+                    {expirationDatePreview && (
+                      <p className="text-sm text-amber-700 mt-1">
+                        Warranty will expire on: {format(expirationDatePreview, 'MMMM d, yyyy')}
+                      </p>
+                    )}
                   </div>
                   
                   <div className="space-y-2">
@@ -380,6 +492,9 @@ export default function AddWarrantyPage() {
                       className="border-2 border-amber-800 bg-amber-50 text-amber-900"
                       required
                     />
+                    {validationErrors.warrantyProvider && (
+                      <p className="text-sm text-red-600 mt-1">{validationErrors.warrantyProvider}</p>
+                    )}
                   </div>
                   
                   <div className="space-y-2">
@@ -394,6 +509,9 @@ export default function AddWarrantyPage() {
                       placeholder="e.g. WR12345678"
                       className="border-2 border-amber-800 bg-amber-50 text-amber-900"
                     />
+                    {validationErrors.warrantyNumber && (
+                      <p className="text-sm text-red-600 mt-1">{validationErrors.warrantyNumber}</p>
+                    )}
                   </div>
                 </div>
                 
@@ -407,6 +525,15 @@ export default function AddWarrantyPage() {
                       <p className="text-amber-800 mb-2">
                         {receiptFile ? receiptFile.name : "Drag and drop or click to upload"}
                       </p>
+                      {previewUrls.receipt && (
+                        <div className="mt-2">
+                          <img 
+                            src={previewUrls.receipt} 
+                            alt="Receipt preview" 
+                            className="max-h-32 rounded-md"
+                          />
+                        </div>
+                      )}
                       <input
                         type="file"
                         id="receiptFile"
@@ -469,6 +596,9 @@ export default function AddWarrantyPage() {
                     placeholder="Describe what is covered by this warranty..."
                     className="border-2 border-amber-800 bg-amber-50 text-amber-900 min-h-[100px]"
                   />
+                  {validationErrors.coverageDetails && (
+                    <p className="text-sm text-red-600 mt-1">{validationErrors.coverageDetails}</p>
+                  )}
                 </div>
                 
                 <div className="space-y-2">
@@ -498,7 +628,7 @@ export default function AddWarrantyPage() {
                   <Button 
                     type="submit"
                     className="bg-amber-800 hover:bg-amber-900 text-amber-100 border-2 border-amber-900"
-                    disabled={isLoading}
+                    disabled={isLoading || Object.keys(validationErrors).length > 0}
                   >
                     {isLoading ? (
                       <div className="flex items-center">
