@@ -99,6 +99,47 @@ const eventValidationRules = {
   ]
 };
 
+// Service Info validation rules
+const serviceInfoValidationRules = {
+  create: [
+    body('name').trim().notEmpty().withMessage('Name is required'),
+    body('description').trim().notEmpty().withMessage('Description is required'),
+    body('serviceType')
+      .isIn(['Warranty', 'Maintenance', 'Repair', 'Support', 'Other'])
+      .withMessage('Invalid service type'),
+    body('terms').trim().notEmpty().withMessage('Terms are required'),
+    body('company').trim().notEmpty().withMessage('Company is required'),
+    body('contactInfo.email').optional().isEmail().withMessage('Invalid email'),
+    body('contactInfo.phone').optional().trim(),
+    body('contactInfo.website').optional().trim().isURL().withMessage('Invalid website URL'),
+    body('contactInfo.address').optional().trim(),
+    body('warrantyInfo.duration').optional().trim(),
+    body('warrantyInfo.coverage').optional().trim(),
+    body('warrantyInfo.exclusions').optional().trim(),
+    body('product').optional().isMongoId().withMessage('Invalid product ID'),
+    body('isActive').optional().isBoolean().withMessage('isActive must be a boolean')
+  ],
+  update: [
+    body('name').optional().trim().notEmpty().withMessage('Name cannot be empty'),
+    body('description').optional().trim().notEmpty().withMessage('Description cannot be empty'),
+    body('serviceType')
+      .optional()
+      .isIn(['Warranty', 'Maintenance', 'Repair', 'Support', 'Other'])
+      .withMessage('Invalid service type'),
+    body('terms').optional().trim().notEmpty().withMessage('Terms cannot be empty'),
+    body('company').optional().trim().notEmpty().withMessage('Company cannot be empty'),
+    body('contactInfo.email').optional().isEmail().withMessage('Invalid email'),
+    body('contactInfo.phone').optional().trim(),
+    body('contactInfo.website').optional().trim().isURL().withMessage('Invalid website URL'),
+    body('contactInfo.address').optional().trim(),
+    body('warrantyInfo.duration').optional().trim(),
+    body('warrantyInfo.coverage').optional().trim(),
+    body('warrantyInfo.exclusions').optional().trim(),
+    body('product').optional().isMongoId().withMessage('Invalid product ID'),
+    body('isActive').optional().isBoolean().withMessage('isActive must be a boolean')
+  ]
+};
+
 // Middleware to validate request
 const validate = (req, res, next) => {
   const errors = validationResult(req);
@@ -148,5 +189,6 @@ module.exports = {
   validate,
   validateWarrantyUpdate,
   validateProductUpdate,
-  validateUserRoleUpdate
+  validateUserRoleUpdate,
+  serviceInfoValidationRules
 };

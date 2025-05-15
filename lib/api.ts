@@ -140,6 +140,54 @@ interface ProfileUpdateData {
   };
 }
 
+// Service Info types
+export interface ServiceInfo {
+  _id: string;
+  name: string;
+  description: string;
+  serviceType: string;
+  terms: string;
+  contactInfo: {
+    email?: string;
+    phone?: string;
+    website?: string;
+    address?: string;
+  };
+  warrantyInfo: {
+    duration?: string;
+    coverage?: string;
+    exclusions?: string;
+  };
+  product?: {
+    _id: string;
+    name: string;
+    model: string;
+  };
+  company: string;
+  isActive: boolean;
+}
+
+export interface ServiceInfoInput {
+  name: string;
+  description: string;
+  serviceType: string;
+  terms: string;
+  contactInfo: {
+    email: string;
+    phone: string;
+    website: string;
+    address: string;
+  };
+  warrantyInfo: {
+    duration: string;
+    coverage: string;
+    exclusions: string;
+  };
+  product?: string;
+  company: string;
+  isActive: boolean;
+}
+
 // API base URL
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
 
@@ -858,6 +906,18 @@ export const adminApi = {
         totalPages: number;
       };
     }>('/admin/logs', 'GET', undefined, undefined, { params }),
+  getProducts: () => 
+    apiRequest<{ products: ProductData[] }>('/admin/products', 'GET'),
+  getAllServiceInfo: () => 
+    apiRequest<{ serviceInfo: ServiceInfo[] }>('/admin/service-info', 'GET'),
+  getServiceInfoById: (id: string) => 
+    apiRequest<{ serviceInfo: ServiceInfo }>(`/admin/service-info/${id}`, 'GET'),
+  createServiceInfo: (data: ServiceInfoInput) => 
+    apiRequest<{ serviceInfo: ServiceInfo }>('/admin/service-info', 'POST', data),
+  updateServiceInfo: (id: string, data: Partial<ServiceInfoInput>) => 
+    apiRequest<{ serviceInfo: ServiceInfo }>(`/admin/service-info/${id}`, 'PUT', data),
+  deleteServiceInfo: (id: string) => 
+    apiRequest<{ message: string }>(`/admin/service-info/${id}`, 'DELETE'),
 };
 
 // Error handling utility

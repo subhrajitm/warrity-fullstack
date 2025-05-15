@@ -29,7 +29,8 @@ import {
   Cog,
   Bell,
   Shield,
-  History
+  History,
+  Wrench
 } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 
@@ -41,7 +42,8 @@ export default function AdminSidebar() {
     warranties: false,
     users: false,
     analytics: false,
-    settings: false
+    settings: false,
+    serviceInfo: false
   })
   
   const { logout } = useAuth()
@@ -60,6 +62,8 @@ export default function AdminSidebar() {
       setOpenSections(prev => ({ ...prev, analytics: true }))
     } else if (pathname?.startsWith('/admin/settings')) {
       setOpenSections(prev => ({ ...prev, settings: true }))
+    } else if (pathname?.startsWith('/admin/service-info')) {
+      setOpenSections(prev => ({ ...prev, serviceInfo: true }))
     }
   }, [pathname])
   
@@ -305,6 +309,51 @@ export default function AdminSidebar() {
               >
                 <History className="mr-2 h-4 w-4" />
                 Admin Logs
+              </Button>
+            </Link>
+          </CollapsibleContent>
+        </Collapsible>
+        
+        {/* Service Information Section */}
+        <Collapsible 
+          open={openSections.serviceInfo} 
+          onOpenChange={() => toggleSection('serviceInfo')}
+          className={`${isActiveSection('serviceInfo') ? 'bg-amber-900/50 rounded-md' : ''}`}
+        >
+          <CollapsibleTrigger asChild>
+            <Button 
+              variant="ghost" 
+              className={`w-full justify-between ${isActiveSection('serviceInfo') ? 'text-amber-50' : 'text-amber-100 hover:bg-amber-700'}`}
+            >
+              <div className="flex items-center">
+                <Wrench className="mr-2 h-5 w-5" />
+                Service Info
+              </div>
+              {openSections.serviceInfo ? 
+                <ChevronDown className="h-4 w-4" /> : 
+                <ChevronRight className="h-4 w-4" />
+              }
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="pl-7 space-y-1 pt-1">
+            <Link href="/admin/service-info">
+              <Button 
+                variant="ghost" 
+                size="sm"
+                className={`w-full justify-start ${isActive('/admin/service-info') ? 'bg-amber-900 text-amber-50' : 'text-amber-100 hover:bg-amber-700'}`}
+              >
+                <List className="mr-2 h-4 w-4" />
+                All Service Info
+              </Button>
+            </Link>
+            <Link href="/admin/service-info/add">
+              <Button 
+                variant="ghost" 
+                size="sm"
+                className={`w-full justify-start ${isActive('/admin/service-info/add') ? 'bg-amber-900 text-amber-50' : 'text-amber-100 hover:bg-amber-700'}`}
+              >
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Add Service Info
               </Button>
             </Link>
           </CollapsibleContent>

@@ -6,6 +6,9 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ServiceHistory } from "@/components/service-history"
+import { ServiceInfoDisplay } from '@/components/service-info-display';
+import { useEffect, useState } from 'react';
+import { ServiceInfo } from '@/lib/api';
 
 interface ProductPageProps {
   params: {
@@ -14,6 +17,27 @@ interface ProductPageProps {
 }
 
 export default function ProductPage({ params }: ProductPageProps) {
+  const [serviceInfo, setServiceInfo] = useState<ServiceInfo | null>(null);
+  const [isLoadingServiceInfo, setIsLoadingServiceInfo] = useState(true);
+
+  useEffect(() => {
+    const fetchServiceInfo = async () => {
+      try {
+        const response = await fetch(`/api/service-info/product/${params.id}`);
+        const data = await response.json();
+        if (data.serviceInfo) {
+          setServiceInfo(data.serviceInfo);
+        }
+      } catch (error) {
+        console.error('Failed to fetch service information:', error);
+      } finally {
+        setIsLoadingServiceInfo(false);
+      }
+    };
+
+    fetchServiceInfo();
+  }, [params.id]);
+
   // In a real app, this would fetch from the database
   const product = {
     id: params.id,
@@ -231,6 +255,13 @@ export default function ProductPage({ params }: ProductPageProps) {
             </Card>
           </TabsContent>
         </Tabs>
+
+        <div className="mt-8">
+          <ServiceInfoDisplay
+            serviceInfo={serviceInfo}
+            isLoading={isLoadingServiceInfo}
+          />
+        </div>
       </div>
     </div>
   )
