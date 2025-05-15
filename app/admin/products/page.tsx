@@ -112,18 +112,22 @@ export default function AdminProductsPage() {
   // Focus state to track when page gains focus
   const [hasFocus, setHasFocus] = useState(false)
 
-  // Fetch products initially
+  // Add a key state to force re-render
+  const [key, setKey] = useState(0)
+
+  // Fetch products initially and when key changes
   useEffect(() => {
     if (isAuthenticated && user?.role === 'admin') {
       router.refresh() // Refresh router cache
       fetchProducts()
     }
-  }, [isAuthenticated, user?.role, authLoading])
+  }, [isAuthenticated, user?.role, authLoading, key])
 
   // Refetch products when page gains focus
   useEffect(() => {
     const onFocus = () => {
       setHasFocus(true)
+      setKey(prev => prev + 1) // Force re-render
       router.refresh() // Refresh router cache
       fetchProducts()
     }
@@ -135,12 +139,24 @@ export default function AdminProductsPage() {
   useEffect(() => {
     const onVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
+        setKey(prev => prev + 1) // Force re-render
         router.refresh() // Refresh router cache
         fetchProducts()
       }
     }
     document.addEventListener('visibilitychange', onVisibilityChange)
     return () => document.removeEventListener('visibilitychange', onVisibilityChange)
+  }, [])
+
+  // Add effect to handle popstate (browser back/forward)
+  useEffect(() => {
+    const handlePopState = () => {
+      setKey(prev => prev + 1) // Force re-render
+      router.refresh() // Refresh router cache
+      fetchProducts()
+    }
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
   }, [])
   
   // Filter and sort products

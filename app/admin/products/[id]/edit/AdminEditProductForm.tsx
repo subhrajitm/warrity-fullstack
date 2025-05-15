@@ -198,13 +198,11 @@ export default function AdminEditProductForm({ productId }: Props) {
       
       toast.success("Product updated successfully!")
       
-      // First refresh the router cache
+      // Force a router refresh and replace the current page with the products list
       router.refresh()
       
-      // Then navigate to the details page with a small delay to ensure cache is cleared
-      setTimeout(() => {
-        router.push(`/admin/products/${productId}`)
-      }, 100)
+      // Use replace to ensure proper navigation and cache invalidation
+      router.replace('/admin/products', { scroll: false })
     } catch (error) {
       console.error('Error updating product:', error)
       toast.error("Failed to update product. Please try again.")
