@@ -1,7 +1,7 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import React, { useState, useEffect, useCallback } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -43,6 +43,7 @@ interface Product {
 
 export default function AdminProductsPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { user, isAuthenticated, isLoading: authLoading } = useAuth()
   const [products, setProducts] = useState<Product[]>([])
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([])
@@ -50,6 +51,7 @@ export default function AdminProductsPage() {
   const [sortField, setSortField] = useState<keyof Product>("name")
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
   const [isLoading, setIsLoading] = useState(true)
+  const [isFetching, setIsFetching] = useState(false)
   
   // Handle authentication
   useEffect(() => {
@@ -65,28 +67,30 @@ export default function AdminProductsPage() {
     }
   }, [isAuthenticated, user?.role, router, authLoading])
 
-  // Function to fetch products
-  const fetchProducts = async () => {
-    if (authLoading || !isAuthenticated || user?.role !== 'admin') return
+  // Memoized fetch products function
+  const fetchProducts = useCallback(async (forceRefresh = false) => {
+    if (authLoading || !isAuthenticated || user?.role !== 'admin' || isFetching) return
     
     try {
-      // Force a fresh fetch by adding a timestamp
-      const timestamp = new Date().getTime()
+      setIsFetching(true)
+      
+      // Clear cache if force refresh is requested
+      if (forceRefresh) {
+        productApi.clearProductCache()
+      }
+      
       const response = await productApi.getAllProducts()
-      console.log('API Response:', response) // Add logging to debug response
       
       if (response.error) {
         toast.error('Failed to fetch products: ' + response.error)
         return
       }
 
-      // Handle both array and object with products property
       const productsData = Array.isArray(response.data) 
         ? response.data 
         : (response.data as { products: Product[] })?.products || []
 
       if (!productsData || productsData.length === 0) {
-        console.log('No products found in response')
         setProducts([])
         setFilteredProducts([])
         return
@@ -94,11 +98,9 @@ export default function AdminProductsPage() {
 
       const products = productsData.map((product: Product) => ({
         ...product,
-        id: product._id || product.id, // Handle both _id and id cases
-        _timestamp: timestamp // Add timestamp to force re-render
+        id: product._id || product.id,
       })) as Product[]
 
-      console.log('Processed products:', products) // Add logging to debug processed data
       setProducts(products)
       setFilteredProducts(products)
     } catch (error) {
@@ -106,58 +108,39 @@ export default function AdminProductsPage() {
       toast.error('An error occurred while fetching products')
     } finally {
       setIsLoading(false)
+      setIsFetching(false)
     }
-  }
+  }, [authLoading, isAuthenticated, user?.role, isFetching])
 
-  // Focus state to track when page gains focus
-  const [hasFocus, setHasFocus] = useState(false)
-
-  // Add a key state to force re-render
-  const [key, setKey] = useState(0)
-
-  // Fetch products initially and when key changes
+  // Initial fetch and URL parameter change
   useEffect(() => {
     if (isAuthenticated && user?.role === 'admin') {
-      router.refresh() // Refresh router cache
-      fetchProducts()
+      // Force refresh when URL has timestamp parameter
+      const timestamp = searchParams.get('t')
+      fetchProducts(!!timestamp)
     }
-  }, [isAuthenticated, user?.role, authLoading, key])
+  }, [isAuthenticated, user?.role, authLoading, searchParams, fetchProducts])
 
-  // Refetch products when page gains focus
+  // Single effect to handle visibility and focus changes
   useEffect(() => {
-    const onFocus = () => {
-      setHasFocus(true)
-      setKey(prev => prev + 1) // Force re-render
-      router.refresh() // Refresh router cache
-      fetchProducts()
-    }
-    window.addEventListener('focus', onFocus)
-    return () => window.removeEventListener('focus', onFocus)
-  }, [])
-
-  // Refetch products when navigating back using browser history
-  useEffect(() => {
-    const onVisibilityChange = () => {
+    const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        setKey(prev => prev + 1) // Force re-render
-        router.refresh() // Refresh router cache
-        fetchProducts()
+        fetchProducts(true)
       }
     }
-    document.addEventListener('visibilitychange', onVisibilityChange)
-    return () => document.removeEventListener('visibilitychange', onVisibilityChange)
-  }, [])
 
-  // Add effect to handle popstate (browser back/forward)
-  useEffect(() => {
     const handlePopState = () => {
-      setKey(prev => prev + 1) // Force re-render
-      router.refresh() // Refresh router cache
-      fetchProducts()
+      fetchProducts(true)
     }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
     window.addEventListener('popstate', handlePopState)
-    return () => window.removeEventListener('popstate', handlePopState)
-  }, [])
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('popstate', handlePopState)
+    }
+  }, [fetchProducts])
   
   // Filter and sort products
   useEffect(() => {

@@ -237,6 +237,39 @@ class RequestCache {
 
 const requestCache = new RequestCache();
 
+// Global request queue to prevent duplicate requests
+const globalRequestQueue = new Map<string, Promise<any>>();
+
+// Request queue implementation
+class RequestQueue {
+  private queue: Map<string, Promise<any>> = new Map();
+  private static instance: RequestQueue;
+
+  private constructor() {}
+
+  static getInstance(): RequestQueue {
+    if (!RequestQueue.instance) {
+      RequestQueue.instance = new RequestQueue();
+    }
+    return RequestQueue.instance;
+  }
+
+  async enqueue<T>(key: string, request: () => Promise<T>): Promise<T> {
+    if (this.queue.has(key)) {
+      return this.queue.get(key) as Promise<T>;
+    }
+
+    const promise = request().finally(() => {
+      this.queue.delete(key);
+    });
+
+    this.queue.set(key, promise);
+    return promise;
+  }
+}
+
+const requestQueue = RequestQueue.getInstance();
+
 // Utility to get the auth token from localStorage
 export function getAuthToken(): string | null {
   if (typeof window === 'undefined') return null;
@@ -260,6 +293,126 @@ export function isAuthenticated(): boolean {
   return !!getAuthToken();
 }
 
+// Error handling utility
+export function handleApiError(error: any): ApiResponse<any> {
+  let errorMessage = 'An error occurred';
+  
+  // Handle network errors
+  if (error instanceof TypeError && error.message === 'Failed to fetch') {
+    errorMessage = 'Network error. Please check your connection.';
+    return { data: null, error: errorMessage };
+  }
+  
+  // Handle timeout errors
+  if (error instanceof Error && error.name === 'AbortError') {
+    errorMessage = 'Request timed out. Please try again.';
+    return { data: null, error: errorMessage };
+  }
+  
+  // Handle authentication errors
+  if (error instanceof Error && 'status' in error && (error as any).status === 401) {
+    errorMessage = 'Your session has expired. Please log in again.';
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('authToken');
+      window.location.href = '/login';
+    }
+    return { data: null, error: errorMessage };
+  }
+  
+  // Handle forbidden errors
+  if (error instanceof Error && 'status' in error && (error as any).status === 403) {
+    errorMessage = 'You do not have permission to perform this action.';
+    return { data: null, error: errorMessage };
+  }
+  
+  // Handle all other errors
+  errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
+  return { data: null, error: errorMessage };
+}
+
+// File upload utility
+export async function uploadFile<T = any>(
+  endpoint: string,
+  file: File,
+  fileFieldName: string = 'file'
+): Promise<ApiResponse<T>> {
+  return new Promise((resolve) => {
+    const formData = new FormData();
+    formData.append(fileFieldName, file);
+    
+    const token = getAuthToken();
+    
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `${API_BASE_URL}${endpoint}`, true);
+    
+    // Set headers
+    if (token) {
+      xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+    }
+    
+    // Set timeout
+    xhr.timeout = 30000; // 30 seconds
+    
+    // Handle response
+    xhr.onload = function() {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          const response = JSON.parse(xhr.responseText);
+          resolve({ data: response, error: null });
+        } catch (parseError) {
+          const errorMessage = xhr.status === 404 
+            ? `Upload endpoint not found: ${endpoint}`
+            : `Upload failed: ${xhr.statusText || 'Unknown error'}`;
+          resolve({ data: null, error: errorMessage });
+        }
+      }
+    };
+    
+    xhr.onerror = () => {
+      const errorMessage = 'Network error during upload';
+      resolve({ data: null, error: errorMessage });
+    };
+    
+    xhr.ontimeout = () => {
+      const errorMessage = 'Upload request timed out';
+      resolve({ data: null, error: errorMessage });
+    };
+    
+    xhr.onabort = () => {
+      const errorMessage = 'Upload was cancelled';
+      resolve({ data: null, error: errorMessage });
+    };
+    
+    // Track upload progress
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) {
+        const percentComplete = Math.round((event.loaded / event.total) * 100);
+        console.log(`Upload progress: ${percentComplete}%`);
+      }
+    };
+    
+    // Send the form data
+    xhr.send(formData);
+  });
+}
+
+// Mock data utility for development
+export function getMockData<T>(endpoint: string, mockData: T): ApiResponse<T> {
+  console.log(`[MOCK] GET ${endpoint}`);
+  return { data: mockData, error: null };
+}
+
+// Logout utility
+export function logout(): void {
+  removeAuthToken();
+  // Call the logout API endpoint
+  authApi.logout().catch(console.error);
+  // Redirect to login page
+  if (typeof window !== 'undefined') {
+    window.location.href = '/login';
+  }
+}
+
 // Fetch with timeout utility
 async function fetchWithTimeout(
   url: string,
@@ -277,6 +430,66 @@ async function fetchWithTimeout(
 
   clearTimeout(id);
   return response;
+}
+
+// Fetch with retry utility
+async function fetchWithRetry(
+  url: string,
+  options: RequestInit & { timeout?: number } = {},
+  retries = MAX_RETRIES
+): Promise<Response> {
+  // Create a unique key for this request
+  const requestKey = `${options.method || 'GET'}:${url}`;
+  
+  // Check if this exact request is already in progress
+  if (globalRequestQueue.has(requestKey)) {
+    console.log('Request already in progress, reusing promise');
+    return globalRequestQueue.get(requestKey) as Promise<Response>;
+  }
+
+  // Create the request promise
+  const requestPromise = (async () => {
+    try {
+      const response = await fetchWithTimeout(url, options);
+      
+      // Handle rate limiting
+      if (response.status === 429) {
+        const retryAfter = response.headers.get('Retry-After');
+        const delay = retryAfter ? parseInt(retryAfter) * 1000 : Math.pow(2, MAX_RETRIES - retries) * 1000;
+        
+        if (retries > 0) {
+          console.log(`Rate limited. Retrying after ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          return fetchWithRetry(url, options, retries - 1);
+        }
+      }
+      
+      if (!response.ok && retries > 0) {
+        const delay = Math.pow(2, MAX_RETRIES - retries) * 1000;
+        console.log(`Request failed. Retrying after ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return fetchWithRetry(url, options, retries - 1);
+      }
+      
+      return response;
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError' && retries > 0) {
+        const delay = Math.pow(2, MAX_RETRIES - retries) * 1000;
+        console.log(`Request timed out. Retrying after ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return fetchWithRetry(url, options, retries - 1);
+      }
+      throw error;
+    } finally {
+      // Remove from queue when done
+      globalRequestQueue.delete(requestKey);
+    }
+  })();
+
+  // Store the promise in the queue
+  globalRequestQueue.set(requestKey, requestPromise);
+  
+  return requestPromise;
 }
 
 // Process API response
@@ -317,28 +530,6 @@ async function processResponse<T>(response: Response): Promise<ApiResponse<T>> {
     // toast.error(error);
   }
   return { data: null, error };
-}
-
-// Fetch with retry utility
-async function fetchWithRetry(
-  url: string,
-  options: RequestInit & { timeout?: number } = {},
-  retries = MAX_RETRIES
-): Promise<Response> {
-  try {
-    const response = await fetchWithTimeout(url, options);
-    if (!response.ok && retries > 0) {
-      await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
-      return fetchWithRetry(url, options, retries - 1);
-    }
-    return response;
-  } catch (error) {
-    if (error instanceof Error && error.name === 'AbortError' && retries > 0) {
-      await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
-      return fetchWithRetry(url, options, retries - 1);
-    }
-    throw error;
-  }
 }
 
 // Debounce utility for search functions
@@ -420,10 +611,35 @@ export async function apiRequest<T = any>(
     requestOptions.body = JSON.stringify(data);
   }
 
+  // Create a unique key for the request
+  const requestKey = `${method}:${endpoint}${params ? `?${new URLSearchParams(params).toString()}` : ''}`;
+
+  // Use the request queue for GET requests
+  if (method === 'GET') {
+    return requestQueue.enqueue(requestKey, async () => {
+      try {
+        const url = `${cleanApiBaseUrl}${endpoint}${params ? `?${new URLSearchParams(params).toString()}` : ''}`;
+        console.log('Making API request to:', url);
+        const response = await fetchWithRetry(url, requestOptions, retries);
+        const result = await processResponse<T>(response);
+        
+        // Cache successful GET responses
+        if (cacheKey && cache && result.data) {
+          requestCache.set(cacheKey, result.data);
+        }
+        
+        return result;
+      } catch (error) {
+        console.error('API request error:', error);
+        return handleApiError(error);
+      }
+    });
+  }
+
+  // For non-GET requests, proceed normally
   try {
-    // Make the request
     const url = `${cleanApiBaseUrl}${endpoint}${params ? `?${new URLSearchParams(params).toString()}` : ''}`;
-    console.log('Making API request to:', url); // Add logging
+    console.log('Making API request to:', url);
     const response = await fetchWithRetry(url, requestOptions, retries);
     const result = await processResponse<T>(response);
     
@@ -434,7 +650,7 @@ export async function apiRequest<T = any>(
     
     return result;
   } catch (error) {
-    console.error('API request error:', error); // Add error logging
+    console.error('API request error:', error);
     return handleApiError(error);
   }
 }
@@ -724,8 +940,14 @@ export const warrantyApi = {
 
 // Product API
 export const productApi = {
-  getAllProducts: async () => {
-    const response = await apiRequest<ProductData[] | { products: ProductData[] }>('/products', 'GET');
+  getAllProducts: async (forceFresh = false) => {
+    const response = await apiRequest<ProductData[] | { products: ProductData[] }>(
+      '/products', 
+      'GET',
+      undefined,
+      undefined,
+      { cache: true, forceFresh }
+    );
     
     // Handle both response formats (array or object with products property)
     if (response.error) {
@@ -740,7 +962,13 @@ export const productApi = {
     return { data: products };
   },
   getProduct: async (productId: string) => {
-    const response = await apiRequest<ProductData | { product: ProductData }>(`/products/${productId}`, 'GET');
+    const response = await apiRequest<ProductData | { product: ProductData }>(
+      `/products/${productId}`, 
+      'GET',
+      undefined,
+      undefined,
+      { cache: true }
+    );
     
     // Handle both response formats
     if (response.error) {
@@ -754,10 +982,22 @@ export const productApi = {
   },
   createProduct: (productData: ProductData) => 
     apiRequest<{ product: ProductData }>('/products', 'POST', productData),
-  updateProduct: (id: string, productData: Partial<ProductData>) => 
-    apiRequest<{ product: ProductData }>(`/products/${id}`, 'PUT', productData),
-  deleteProduct: (id: string) => 
-    apiRequest(`/products/${id}`, 'DELETE'),
+  updateProduct: async (id: string, productData: Partial<ProductData>) => {
+    const response = await apiRequest<{ product: ProductData }>(`/products/${id}`, 'PUT', productData);
+    if (!response.error) {
+      // Clear the product cache after successful update
+      productApi.clearProductCache();
+    }
+    return response;
+  },
+  deleteProduct: async (id: string) => {
+    const response = await apiRequest(`/products/${id}`, 'DELETE');
+    if (!response.error) {
+      // Clear the product cache after successful deletion
+      productApi.clearProductCache();
+    }
+    return response;
+  },
   getProductCategories: () => 
     apiRequest<{ categories: string[] }>('/products/categories', 'GET'),
   uploadProductImage: (productId: string, file: File) => 
@@ -919,133 +1159,3 @@ export const adminApi = {
   deleteServiceInfo: (id: string) => 
     apiRequest<{ message: string }>(`/admin/service-info/${id}`, 'DELETE'),
 };
-
-// Error handling utility
-export function handleApiError(error: any): ApiResponse<any> {
-  let errorMessage = 'An error occurred';
-  
-  // Handle network errors
-  if (error instanceof TypeError && error.message === 'Failed to fetch') {
-    errorMessage = 'Network error. Please check your connection.';
-    // toast.error(errorMessage);
-    return { data: null, error: errorMessage };
-  }
-  
-  // Handle timeout errors
-  if (error instanceof Error && error.name === 'AbortError') {
-    errorMessage = 'Request timed out. Please try again.';
-    // toast.error(errorMessage);
-    return { data: null, error: errorMessage };
-  }
-  
-  // Handle authentication errors
-  if (error instanceof Error && 'status' in error && (error as any).status === 401) {
-    errorMessage = 'Your session has expired. Please log in again.';
-    // toast.error(errorMessage);
-    // Clear token and redirect to login
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('authToken');
-      window.location.href = '/login';
-    }
-    return { data: null, error: errorMessage };
-  }
-  
-  // Handle forbidden errors
-  if (error instanceof Error && 'status' in error && (error as any).status === 403) {
-    errorMessage = 'You do not have permission to perform this action.';
-    // toast.error(errorMessage);
-    return { data: null, error: errorMessage };
-  }
-  
-  // Handle all other errors
-  errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
-  // toast.error(errorMessage);
-  return { data: null, error: errorMessage };
-}
-
-// File upload utility
-export async function uploadFile<T = any>(
-  endpoint: string,
-  file: File,
-  fileFieldName: string = 'file'
-): Promise<ApiResponse<T>> {
-  return new Promise((resolve) => {
-    const formData = new FormData();
-    formData.append(fileFieldName, file);
-    
-    const token = getAuthToken();
-    
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', `${API_BASE_URL}${endpoint}`, true);
-    
-    // Set headers
-    if (token) {
-      xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-    }
-    
-    // Set timeout
-    xhr.timeout = 30000; // 30 seconds
-    
-    // Handle response
-    xhr.onload = function() {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        try {
-          const response = JSON.parse(xhr.responseText);
-          resolve({ data: response, error: null });
-        } catch (parseError) {
-          const errorMessage = xhr.status === 404 
-            ? `Upload endpoint not found: ${endpoint}`
-            : `Upload failed: ${xhr.statusText || 'Unknown error'}`;
-          // toast.error(errorMessage);
-          resolve({ data: null, error: errorMessage });
-        }
-      };
-      
-      xhr.onerror = () => {
-        const errorMessage = 'Network error during upload';
-        // toast.error(errorMessage);
-        resolve({ data: null, error: errorMessage });
-      };
-      
-      xhr.ontimeout = () => {
-        const errorMessage = 'Upload request timed out';
-        // toast.error(errorMessage);
-        resolve({ data: null, error: errorMessage });
-      };
-      
-      xhr.onabort = () => {
-        const errorMessage = 'Upload was cancelled';
-        // toast.error(errorMessage);
-        resolve({ data: null, error: errorMessage });
-      };
-      
-      // Track upload progress
-      xhr.upload.onprogress = (event) => {
-        if (event.lengthComputable) {
-          const percentComplete = Math.round((event.loaded / event.total) * 100);
-          console.log(`Upload progress: ${percentComplete}%`);
-        }
-      };
-      
-      // Send the form data
-      xhr.send(formData);
-    };
-  });
-}
-
-// Mock data utility for development
-export function getMockData<T>(endpoint: string, mockData: T): ApiResponse<T> {
-  console.log(`[MOCK] GET ${endpoint}`);
-  return { data: mockData, error: null };
-}
-
-// Logout utility
-export function logout(): void {
-  removeAuthToken();
-  // Call the logout API endpoint
-  authApi.logout().catch(console.error);
-  // Redirect to login page
-  if (typeof window !== 'undefined') {
-    window.location.href = '/login';
-  }
-}

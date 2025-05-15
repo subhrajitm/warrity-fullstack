@@ -89,35 +89,35 @@ export default function AdminEditProductForm({ productId }: Props) {
     serviceInfo: ""
   })
 
-  // Validate product ID
+  // Combined effect for validation and data fetching
   useEffect(() => {
-    if (!productId) {
-      toast.error('Invalid product ID')
-      router.replace('/admin/products')
-    }
-  }, [productId, router])
-  
-  // Check if admin is logged in and fetch product data
-  useEffect(() => {
-    if (authLoading) return;
+    let isMounted = true;
     
-    if (!isAuthenticated || authUser?.role !== 'admin') {
-      router.replace('/login')
-      return
-    }
-
-    if (!productId) {
-      router.replace('/admin/products')
-      return
-    }
-
-    // Fetch the product data and service infos
     const fetchData = async () => {
+      // Validate product ID
+      if (!productId) {
+        toast.error('Invalid product ID')
+        router.replace('/admin/products')
+        return
+      }
+
+      // Wait for auth to be ready
+      if (authLoading) return;
+      
+      // Check authentication
+      if (!isAuthenticated || authUser?.role !== 'admin') {
+        router.replace('/login')
+        return
+      }
+
       try {
+        // Fetch product and service info concurrently
         const [productResponse, serviceInfoResponse] = await Promise.all([
-          productApi.getProduct(productId),
+          productApi.getProduct(productId), // Use getProduct instead of getProductWithCache
           adminApi.getAllServiceInfo()
         ])
+
+        if (!isMounted) return;
 
         if (productResponse.error) {
           toast.error('Failed to fetch product: ' + productResponse.error)
@@ -157,16 +157,24 @@ export default function AdminEditProductForm({ productId }: Props) {
           setServiceInfos(serviceInfoResponse.data.serviceInfo)
         }
       } catch (error) {
+        if (!isMounted) return;
         console.error('Error fetching data:', error)
         toast.error('Failed to fetch data')
         router.replace('/admin/products')
       } finally {
-        setIsLoading(false)
+        if (isMounted) {
+          setIsLoading(false)
+        }
       }
     }
     
-    fetchData()
-  }, [router, productId, authLoading, isAuthenticated, authUser])
+    fetchData();
+
+    // Cleanup function
+    return () => {
+      isMounted = false;
+    }
+  }, [productId, authLoading, isAuthenticated, authUser?.role]) // Add back authLoading to dependencies
   
   // Handle form input changes
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -187,10 +195,11 @@ export default function AdminEditProductForm({ productId }: Props) {
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
+    if (isSaving) return // Prevent double submission
+    
     setIsSaving(true)
     
     try {
-      // Send the updated data to the backend
       const response = await productApi.updateProduct(productId, formData)
       if (response.error) {
         throw new Error(response.error)
@@ -198,14 +207,12 @@ export default function AdminEditProductForm({ productId }: Props) {
       
       toast.success("Product updated successfully!")
       
-      // Force a router refresh and replace the current page with the products list
-      router.refresh()
-      
-      // Use replace to ensure proper navigation and cache invalidation
-      router.replace('/admin/products', { scroll: false })
+      // Navigate back to the products list
+      router.replace('/admin/products')
     } catch (error) {
       console.error('Error updating product:', error)
       toast.error("Failed to update product. Please try again.")
+    } finally {
       setIsSaving(false)
     }
   }

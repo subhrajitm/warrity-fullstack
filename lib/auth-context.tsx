@@ -182,7 +182,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string, shouldRedirect: boolean = true): Promise<boolean> => {
+    // Prevent multiple login attempts
+    if (loading) {
+      console.log('Login already in progress');
+      return false;
+    }
+
     setLoading(true);
+    let loginAttempted = false;
+
     try {
       console.log('Attempting login with:', { email });
       
@@ -193,13 +201,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       // Make API request
+      loginAttempted = true;
       const response = await authApi.login({ email, password });
       
       console.log('Login response:', response);
       
       if (response.error) {
         console.error('Login error:', response.error);
-        toast.error(response.error);
+        // Don't show error toast for rate limit errors
+        if (!response.error.includes('Too Many Requests')) {
+          toast.error(response.error);
+        }
         return false;
       }
       
@@ -234,15 +246,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error('Login error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      console.error('Detailed error:', {
-        message: errorMessage,
-        stack: error instanceof Error ? error.stack : undefined,
-        error
-      });
-      toast.error(`Login failed: ${errorMessage}`);
+      
+      // Don't show error toast for rate limit errors
+      if (!errorMessage.includes('Too Many Requests')) {
+        toast.error(`Login failed: ${errorMessage}`);
+      }
+      
       return false;
     } finally {
-      setLoading(false);
+      // Only reset loading if we actually attempted login
+      if (loginAttempted) {
+        setLoading(false);
+      }
     }
   };
 
