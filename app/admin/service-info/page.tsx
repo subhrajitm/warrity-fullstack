@@ -47,13 +47,22 @@ export default function ServiceInfoPage() {
 
   const fetchServiceInfo = async () => {
     try {
+      console.log('Fetching service info...')
       const response = await adminApi.getAllServiceInfo()
+      console.log('Service info response:', response)
+      
       if (response.error) {
+        console.error('Error in response:', response.error)
         toast.error('Failed to fetch service information')
         return
       }
+      
       if (response.data) {
+        console.log('Setting service info:', response.data.serviceInfo)
         setServiceInfo(response.data.serviceInfo || [])
+      } else {
+        console.log('No data in response')
+        setServiceInfo([])
       }
     } catch (error) {
       console.error('Error fetching service information:', error)
@@ -69,16 +78,22 @@ export default function ServiceInfoPage() {
     }
 
     try {
+      setLoading(true)
       const response = await adminApi.deleteServiceInfo(id)
+      
       if (response.error) {
         toast.error('Failed to delete service information')
         return
       }
+      
+      // Update the state immediately by filtering out the deleted item
+      setServiceInfo(prevServiceInfo => prevServiceInfo.filter(info => info._id !== id))
       toast.success('Service information deleted successfully')
-      fetchServiceInfo()
     } catch (error) {
       console.error('Error deleting service information:', error)
       toast.error('An error occurred while deleting service information')
+    } finally {
+      setLoading(false)
     }
   }
 

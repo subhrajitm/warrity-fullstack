@@ -30,7 +30,6 @@ export default function AddServiceInfoPage() {
   const router = useRouter()
   const { user, isAuthenticated, isLoading } = useAuth()
   const [loading, setLoading] = useState(false)
-  const [products, setProducts] = useState<Product[]>([])
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -47,10 +46,22 @@ export default function AddServiceInfoPage() {
       coverage: "",
       exclusions: ""
     },
-    product: "",
     company: "",
     isActive: true
   })
+
+  const [errors, setErrors] = useState<{
+    name?: string;
+    description?: string;
+    serviceType?: string;
+    terms?: string;
+    company?: string;
+    contactInfo?: {
+      email?: string;
+      phone?: string;
+      website?: string;
+    };
+  }>({})
 
   useEffect(() => {
     if (!isLoading) {
@@ -58,36 +69,68 @@ export default function AddServiceInfoPage() {
         router.replace('/login')
       } else if (user && user.role !== 'admin') {
         router.replace(user.role === 'user' ? '/user' : '/login')
-      } else {
-        fetchProducts()
       }
     }
   }, [isAuthenticated, isLoading, router, user])
 
-  const fetchProducts = async () => {
-    try {
-      const response = await adminApi.getProducts()
-      if (response.error) {
-        toast.error('Failed to fetch products')
-        return
-      }
-      if (response.data) {
-        setProducts((response.data.products || []).filter((p) => typeof p._id === 'string') as Product[])
-      }
-    } catch (error) {
-      console.error('Error fetching products:', error)
-      toast.error('An error occurred while fetching products')
+  const validateForm = () => {
+    const newErrors: typeof errors = {}
+    
+    // Required fields validation
+    if (!formData.name.trim()) {
+      newErrors.name = 'Name is required'
     }
+    if (!formData.description.trim()) {
+      newErrors.description = 'Description is required'
+    }
+    if (!formData.serviceType) {
+      newErrors.serviceType = 'Service type is required'
+    }
+    if (!formData.terms.trim()) {
+      newErrors.terms = 'Terms are required'
+    }
+    if (!formData.company.trim()) {
+      newErrors.company = 'Company is required'
+    }
+
+    // Contact info validation
+    if (formData.contactInfo.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.contactInfo.email)) {
+      newErrors.contactInfo = {
+        ...newErrors.contactInfo,
+        email: 'Invalid email format'
+      }
+    }
+    if (formData.contactInfo.phone && !/^\+?[\d\s-]{10,}$/.test(formData.contactInfo.phone)) {
+      newErrors.contactInfo = {
+        ...newErrors.contactInfo,
+        phone: 'Invalid phone number format'
+      }
+    }
+    if (formData.contactInfo.website && !/^https?:\/\/.+/.test(formData.contactInfo.website)) {
+      newErrors.contactInfo = {
+        ...newErrors.contactInfo,
+        website: 'Invalid website URL format'
+      }
+    }
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    if (!validateForm()) {
+      toast.error('Please fix the validation errors before submitting')
+      return
+    }
+
     setLoading(true)
 
     try {
       const response = await adminApi.createServiceInfo(formData)
       if (response.error) {
-        toast.error('Failed to create service information')
+        toast.error(typeof response.error === 'string' ? response.error : 'Failed to create service information')
         return
       }
       toast.success('Service information created successfully')
@@ -98,6 +141,35 @@ export default function AddServiceInfoPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }))
+    // Clear error when user starts typing
+    if (errors[field as keyof typeof errors]) {
+      setErrors(prev => ({ ...prev, [field]: undefined }))
+    }
+  }
+
+  const handleContactInfoChange = (field: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      contactInfo: { ...prev.contactInfo, [field]: value }
+    }))
+    // Clear error when user starts typing
+    if (errors.contactInfo?.[field as keyof typeof errors.contactInfo]) {
+      setErrors(prev => ({
+        ...prev,
+        contactInfo: { ...prev.contactInfo, [field]: undefined }
+      }))
+    }
+  }
+
+  const handleWarrantyInfoChange = (field: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      warrantyInfo: { ...prev.warrantyInfo, [field]: value }
+    }))
   }
 
   return (
@@ -128,19 +200,20 @@ export default function AddServiceInfoPage() {
                 <Input
                   id="name"
                   value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="border-2 border-amber-800 bg-amber-50"
+                  onChange={(e) => handleInputChange('name', e.target.value)}
+                  className={`border-2 ${errors.name ? 'border-red-500' : 'border-amber-800'} bg-amber-50`}
                   required
                 />
+                {errors.name && <p className="text-red-500 text-sm">{errors.name}</p>}
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="serviceType" className="text-amber-900">Service Type</Label>
                 <Select
                   value={formData.serviceType}
-                  onValueChange={(value) => setFormData({ ...formData, serviceType: value })}
+                  onValueChange={(value) => handleInputChange('serviceType', value)}
                 >
-                  <SelectTrigger className="border-2 border-amber-800 bg-amber-50">
+                  <SelectTrigger className={`border-2 ${errors.serviceType ? 'border-red-500' : 'border-amber-800'} bg-amber-50`}>
                     <SelectValue placeholder="Select service type" />
                   </SelectTrigger>
                   <SelectContent>
@@ -151,6 +224,7 @@ export default function AddServiceInfoPage() {
                     <SelectItem value="Other">Other</SelectItem>
                   </SelectContent>
                 </Select>
+                {errors.serviceType && <p className="text-red-500 text-sm">{errors.serviceType}</p>}
               </div>
             </div>
 
@@ -159,10 +233,11 @@ export default function AddServiceInfoPage() {
               <Textarea
                 id="description"
                 value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                className="border-2 border-amber-800 bg-amber-50"
+                onChange={(e) => handleInputChange('description', e.target.value)}
+                className={`border-2 ${errors.description ? 'border-red-500' : 'border-amber-800'} bg-amber-50`}
                 required
               />
+              {errors.description && <p className="text-red-500 text-sm">{errors.description}</p>}
             </div>
 
             <div className="space-y-2">
@@ -170,10 +245,11 @@ export default function AddServiceInfoPage() {
               <Textarea
                 id="terms"
                 value={formData.terms}
-                onChange={(e) => setFormData({ ...formData, terms: e.target.value })}
-                className="border-2 border-amber-800 bg-amber-50"
+                onChange={(e) => handleInputChange('terms', e.target.value)}
+                className={`border-2 ${errors.terms ? 'border-red-500' : 'border-amber-800'} bg-amber-50`}
                 required
               />
+              {errors.terms && <p className="text-red-500 text-sm">{errors.terms}</p>}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -182,29 +258,11 @@ export default function AddServiceInfoPage() {
                 <Input
                   id="company"
                   value={formData.company}
-                  onChange={(e) => setFormData({ ...formData, company: e.target.value })}
-                  className="border-2 border-amber-800 bg-amber-50"
+                  onChange={(e) => handleInputChange('company', e.target.value)}
+                  className={`border-2 ${errors.company ? 'border-red-500' : 'border-amber-800'} bg-amber-50`}
                   required
                 />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="product" className="text-amber-900">Product (Optional)</Label>
-                <Select
-                  value={formData.product}
-                  onValueChange={(value) => setFormData({ ...formData, product: value })}
-                >
-                  <SelectTrigger className="border-2 border-amber-800 bg-amber-50">
-                    <SelectValue placeholder="None (Company-level)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {products.map((product) => (
-                      <SelectItem key={product._id} value={product._id}>
-                        {product.name} ({product.model})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {errors.company && <p className="text-red-500 text-sm">{errors.company}</p>}
               </div>
             </div>
 
@@ -217,12 +275,10 @@ export default function AddServiceInfoPage() {
                     id="email"
                     type="email"
                     value={formData.contactInfo.email}
-                    onChange={(e) => setFormData({
-                      ...formData,
-                      contactInfo: { ...formData.contactInfo, email: e.target.value }
-                    })}
-                    className="border-2 border-amber-800 bg-amber-50"
+                    onChange={(e) => handleContactInfoChange('email', e.target.value)}
+                    className={`border-2 ${errors.contactInfo?.email ? 'border-red-500' : 'border-amber-800'} bg-amber-50`}
                   />
+                  {errors.contactInfo?.email && <p className="text-red-500 text-sm">{errors.contactInfo.email}</p>}
                 </div>
 
                 <div className="space-y-2">
@@ -230,12 +286,10 @@ export default function AddServiceInfoPage() {
                   <Input
                     id="phone"
                     value={formData.contactInfo.phone}
-                    onChange={(e) => setFormData({
-                      ...formData,
-                      contactInfo: { ...formData.contactInfo, phone: e.target.value }
-                    })}
-                    className="border-2 border-amber-800 bg-amber-50"
+                    onChange={(e) => handleContactInfoChange('phone', e.target.value)}
+                    className={`border-2 ${errors.contactInfo?.phone ? 'border-red-500' : 'border-amber-800'} bg-amber-50`}
                   />
+                  {errors.contactInfo?.phone && <p className="text-red-500 text-sm">{errors.contactInfo.phone}</p>}
                 </div>
 
                 <div className="space-y-2">
@@ -243,12 +297,10 @@ export default function AddServiceInfoPage() {
                   <Input
                     id="website"
                     value={formData.contactInfo.website}
-                    onChange={(e) => setFormData({
-                      ...formData,
-                      contactInfo: { ...formData.contactInfo, website: e.target.value }
-                    })}
-                    className="border-2 border-amber-800 bg-amber-50"
+                    onChange={(e) => handleContactInfoChange('website', e.target.value)}
+                    className={`border-2 ${errors.contactInfo?.website ? 'border-red-500' : 'border-amber-800'} bg-amber-50`}
                   />
+                  {errors.contactInfo?.website && <p className="text-red-500 text-sm">{errors.contactInfo.website}</p>}
                 </div>
 
                 <div className="space-y-2">
@@ -256,10 +308,7 @@ export default function AddServiceInfoPage() {
                   <Input
                     id="address"
                     value={formData.contactInfo.address}
-                    onChange={(e) => setFormData({
-                      ...formData,
-                      contactInfo: { ...formData.contactInfo, address: e.target.value }
-                    })}
+                    onChange={(e) => handleContactInfoChange('address', e.target.value)}
                     className="border-2 border-amber-800 bg-amber-50"
                   />
                 </div>
@@ -274,10 +323,7 @@ export default function AddServiceInfoPage() {
                   <Input
                     id="duration"
                     value={formData.warrantyInfo.duration}
-                    onChange={(e) => setFormData({
-                      ...formData,
-                      warrantyInfo: { ...formData.warrantyInfo, duration: e.target.value }
-                    })}
+                    onChange={(e) => handleWarrantyInfoChange('duration', e.target.value)}
                     className="border-2 border-amber-800 bg-amber-50"
                   />
                 </div>
@@ -287,10 +333,7 @@ export default function AddServiceInfoPage() {
                   <Input
                     id="coverage"
                     value={formData.warrantyInfo.coverage}
-                    onChange={(e) => setFormData({
-                      ...formData,
-                      warrantyInfo: { ...formData.warrantyInfo, coverage: e.target.value }
-                    })}
+                    onChange={(e) => handleWarrantyInfoChange('coverage', e.target.value)}
                     className="border-2 border-amber-800 bg-amber-50"
                   />
                 </div>
@@ -301,10 +344,7 @@ export default function AddServiceInfoPage() {
                 <Textarea
                   id="exclusions"
                   value={formData.warrantyInfo.exclusions}
-                  onChange={(e) => setFormData({
-                    ...formData,
-                    warrantyInfo: { ...formData.warrantyInfo, exclusions: e.target.value }
-                  })}
+                  onChange={(e) => handleWarrantyInfoChange('exclusions', e.target.value)}
                   className="border-2 border-amber-800 bg-amber-50"
                 />
               </div>

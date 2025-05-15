@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const adminController = require('../controllers/admin.controller');
+const serviceInfoController = require('../controllers/service-info.controller');
 const { auth, isAdmin } = require('../middleware/auth.middleware');
 const { adminRateLimiter, sensitiveAdminRateLimiter } = require('../middleware/rate-limit.middleware');
 const { validateWarrantyUpdate, validateProductUpdate, validateUserRoleUpdate } = require('../middleware/validation.middleware');
@@ -570,5 +571,12 @@ router.put('/settings',
 
 // Get admin logs (admin only)
 router.get('/logs', auth, isAdmin, adminController.getAdminLogs);
+
+// Service Info Routes
+router.get('/service-info', auth, isAdmin, serviceInfoController.getAllServiceInfo);
+router.get('/service-info/:id', auth, isAdmin, serviceInfoController.getServiceInfoById);
+router.post('/service-info', auth, isAdmin, serviceInfoController.createServiceInfo);
+router.put('/service-info/:id', auth, isAdmin, serviceInfoController.updateServiceInfo);
+router.delete('/service-info/:id', auth, isAdmin, serviceInfoController.deleteServiceInfo);
 
 module.exports = router;

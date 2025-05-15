@@ -14,30 +14,31 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ArrowLeft, Save, X } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 
-import { productApi } from "@/lib/api"
+import { productApi, adminApi, ProductData, ServiceInfo } from "@/lib/api"
 import { toast } from "sonner"
 
 // Define Product interface to match API
-interface Product {
-  id: string;
+interface ProductFormData {
   name: string;
   category: string;
-  manufacturer?: string;
-  model?: string;
+  manufacturer: string;
+  description: string;
+  model: string;
   serialNumber: string;
-  purchaseDate?: string;
-  price?: string;
-  purchaseLocation?: string;
-  receiptNumber?: string;
-  description?: string;
-  notes?: string;
+  purchaseDate: string;
+  price: string;
+  purchaseLocation: string;
+  receiptNumber: string;
+  notes: string;
+  serviceInfo?: string;
 }
 
 export default function AddProductPage() {
   const router = useRouter()
   const { user, isAuthenticated, isLoading: authLoading } = useAuth()
   const [isLoading, setIsLoading] = useState(true)
-  const [formData, setFormData] = useState<Omit<Product, 'id'>>({
+  const [serviceInfos, setServiceInfos] = useState<ServiceInfo[]>([])
+  const [formData, setFormData] = useState<ProductFormData>({
     name: "",
     category: "",
     manufacturer: "",
@@ -48,7 +49,8 @@ export default function AddProductPage() {
     price: "",
     purchaseLocation: "",
     receiptNumber: "",
-    notes: ""
+    notes: "",
+    serviceInfo: ""
   })
   const [productImage, setProductImage] = useState<File | null>(null)
   const [error, setError] = useState("")
@@ -60,10 +62,33 @@ export default function AddProductPage() {
         router.replace('/login?returnUrl=/admin/products/add')
       } else if (user?.role !== 'admin') {
         router.replace(user?.role === 'user' ? '/user' : '/login')
+      } else {
+        fetchServiceInfos()
       }
       setIsLoading(false)
     }
   }, [router, authLoading, isAuthenticated, user])
+  
+  const fetchServiceInfos = async () => {
+    try {
+      const response = await adminApi.getAllServiceInfo()
+      if (response.error) {
+        toast.error('Failed to fetch service information')
+        return
+      }
+      if (response.data) {
+        // Handle both possible response shapes
+        if (Array.isArray(response.data)) {
+          setServiceInfos(response.data as ServiceInfo[])
+        } else if ('serviceInfo' in response.data && Array.isArray((response.data as any).serviceInfo)) {
+          setServiceInfos((response.data as any).serviceInfo)
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching service information:', error)
+      toast.error('An error occurred while fetching service information')
+    }
+  }
   
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -86,7 +111,13 @@ export default function AddProductPage() {
     setError("")
     
     try {
-      const response = await productApi.createProduct(formData)
+      const productData: ProductData = {
+        ...formData,
+        id: "", // This will be set by the backend
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }
+      const response = await productApi.createProduct(productData)
       if (response.error) {
         setError(response.error)
         toast.error('Failed to create product: ' + response.error)
@@ -255,6 +286,41 @@ export default function AddProductPage() {
                         className="border-2 border-amber-800 bg-amber-50 min-h-[120px]"
                         required
                       />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="notes" className="text-amber-900 font-medium">
+                        Notes
+                      </Label>
+                      <Textarea
+                        id="notes"
+                        name="notes"
+                        value={formData.notes}
+                        onChange={handleInputChange}
+                        placeholder="Enter any additional notes"
+                        className="border-2 border-amber-800 bg-amber-50"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="serviceInfo" className="text-amber-900 font-medium">
+                        Service Information
+                      </Label>
+                      <Select
+                        value={formData.serviceInfo}
+                        onValueChange={(value) => handleSelectChange("serviceInfo", value)}
+                      >
+                        <SelectTrigger className="border-2 border-amber-800 bg-amber-50">
+                          <SelectValue placeholder="Select service information" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {serviceInfos.map((serviceInfo) => (
+                            <SelectItem key={serviceInfo._id} value={serviceInfo._id}>
+                              {serviceInfo.name} ({serviceInfo.serviceType}) - {serviceInfo.company}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                 </div>
