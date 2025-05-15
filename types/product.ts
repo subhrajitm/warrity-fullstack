@@ -1,5 +1,5 @@
 export interface Product {
-  id: string;
+  _id: string;
   name: string;
   category: string;
   manufacturer?: string;
@@ -11,7 +11,8 @@ export interface Product {
   receiptNumber?: string;
   description?: string;
   notes?: string;
+  serviceInfo?: string;
   images?: string[];
-  createdAt: string;
-  updatedAt: string;
+  createdAt?: string;
+  updatedAt?: string;
 }

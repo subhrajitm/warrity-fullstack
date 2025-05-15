@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -19,8 +19,9 @@ import {
 } from "@/components/ui/dialog"
 
 import { Product } from "@/types/product"
-import { productApi } from "@/lib/api"
+import { productApi, adminApi, ServiceInfo } from "@/lib/api"
 import { toast } from "sonner"
+import { ServiceInfoDisplay } from '../../../../components/service-info-display'
 
 interface Props {
   product: Product;
@@ -30,11 +31,53 @@ export default function AdminProductDetails({ product }: Props) {
   const router = useRouter()
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [serviceInfo, setServiceInfo] = useState<ServiceInfo | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
   
+  // Fetch service information
+  useEffect(() => {
+    const fetchServiceInfo = async () => {
+      try {
+        setIsLoading(true)
+        if (product.serviceInfo) {
+          console.log('Fetching service info for ID:', product.serviceInfo)
+          const response = await adminApi.getServiceInfoById(product.serviceInfo)
+          console.log('Service info response:', response)
+          
+          if (response.error) {
+            console.error('Error in response:', response.error)
+            toast.error('Failed to load service information: ' + response.error)
+            return
+          }
+          
+          if (response.data?.serviceInfo) {
+            setServiceInfo(response.data.serviceInfo)
+          } else {
+            console.log('No service info found in response:', response)
+            toast.error('No service information found')
+          }
+        } else {
+          console.log('No serviceInfo ID found in product:', product)
+        }
+      } catch (error) {
+        console.error('Error fetching service info:', error)
+        toast.error('Failed to load service information')
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchServiceInfo()
+  }, [product.serviceInfo])
+
   const handleDelete = async () => {
+    if (!confirm('Are you sure you want to delete this product?')) {
+      return
+    }
+
     try {
       setIsDeleting(true)
-      const response = await productApi.deleteProduct(product.id)
+      const response = await productApi.deleteProduct(product._id)
       if (response.error) {
         toast.error('Failed to delete product: ' + response.error)
         return
@@ -42,14 +85,19 @@ export default function AdminProductDetails({ product }: Props) {
       toast.success('Product deleted successfully')
       router.push('/admin/products')
     } catch (error) {
-      toast.error('An error occurred while deleting the product')
       console.error('Error deleting product:', error)
+      toast.error('Failed to delete product')
     } finally {
       setIsDeleting(false)
       setDeleteDialogOpen(false)
     }
   }
   
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleDateString();
+  };
+
   return (
     <div>
       <div className="mb-6">
@@ -63,7 +111,7 @@ export default function AdminProductDetails({ product }: Props) {
         <h1 className="text-3xl font-bold text-amber-900">{product.name}</h1>
         
         <div className="flex space-x-3">
-          <Link href={`/admin/products/${product.id}/edit`}>
+          <Link href={`/admin/products/${product._id}/edit`}>
             <Button className="bg-amber-800 hover:bg-amber-900 text-amber-100 border-2 border-amber-900">
               <Edit className="mr-2 h-4 w-4" />
               Edit Product
@@ -180,14 +228,14 @@ export default function AdminProductDetails({ product }: Props) {
                   <div>
                     <h3 className="text-sm font-medium text-amber-700">Created At</h3>
                     <p className="text-amber-900 font-semibold">
-                      {new Date(product.createdAt).toLocaleDateString()}
+                      {formatDate(product.createdAt)}
                     </p>
                   </div>
                   
                   <div>
                     <h3 className="text-sm font-medium text-amber-700">Last Updated</h3>
                     <p className="text-amber-900 font-semibold">
-                      {new Date(product.updatedAt).toLocaleDateString()}
+                      {formatDate(product.updatedAt)}
                     </p>
                   </div>
                 </div>
@@ -200,18 +248,14 @@ export default function AdminProductDetails({ product }: Props) {
           <Card className="border-4 border-amber-800 shadow-[8px_8px_0px_0px_rgba(120,53,15,0.5)] bg-amber-100">
             <CardHeader className="border-b-4 border-amber-800 bg-amber-200 px-6 py-4">
               <CardTitle className="text-2xl font-bold text-amber-900">
-                Product Images
+                Service Information
               </CardTitle>
             </CardHeader>
-            
             <CardContent className="p-6">
-              <div className="space-y-4">
-                {product.images?.map((image: string, index: number) => (
-                  <div key={index} className="border-2 border-amber-800 rounded-lg overflow-hidden">
-                    <img src={image} alt={`${product.name} - Image ${index + 1}`} className="w-full h-auto" />
-                  </div>
-                ))}
-              </div>
+              <ServiceInfoDisplay
+                serviceInfo={serviceInfo}
+                isLoading={isLoading}
+              />
             </CardContent>
           </Card>
         </div>

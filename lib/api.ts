@@ -1151,7 +1151,7 @@ export const adminApi = {
   getAllServiceInfo: () => 
     apiRequest<{ serviceInfo: ServiceInfo[] }>('/admin/service-info', 'GET'),
   getServiceInfoById: (id: string) => 
-    apiRequest<{ serviceInfo: ServiceInfo }>(`/admin/service-info/${id}`, 'GET'),
+    apiRequest<{ serviceInfo: ServiceInfo }>(`/api/service-info/${id}`, 'GET'),
   createServiceInfo: (data: ServiceInfoInput) => 
     apiRequest<{ serviceInfo: ServiceInfo }>('/admin/service-info', 'POST', data),
   updateServiceInfo: (id: string, data: Partial<ServiceInfoInput>) => 
