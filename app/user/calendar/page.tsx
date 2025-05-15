@@ -713,11 +713,13 @@ export default function CalendarPage() {
                             color: 'rgb(120, 53, 15)'
                           },
                           today: {
-                            backgroundColor: 'rgba(180, 83, 9, 0.3)',
+                            backgroundColor: 'rgb(234, 179, 8)',
                             borderRadius: '50%',
                             fontWeight: 'bold',
-                            boxShadow: '0 0 0 2px rgba(120, 53, 15, 0.4)',
-                            color: 'rgb(120, 53, 15)'
+                            boxShadow: '0 0 0 3px rgba(120, 53, 15, 0.5)',
+                            color: 'rgb(120, 53, 15)',
+                            transform: 'scale(1.1)',
+                            transition: 'all 0.2s ease-in-out'
                           }
                         }}
                         className="rounded-lg border-2 border-amber-800 bg-white"
