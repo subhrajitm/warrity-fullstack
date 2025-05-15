@@ -176,7 +176,8 @@ exports.updateWarranty = async (req, res) => {
       warrantyProvider,
       warrantyNumber,
       coverageDetails,
-      notes
+      notes,
+      status
     } = req.body;
     
     // Update fields if provided
@@ -187,6 +188,7 @@ exports.updateWarranty = async (req, res) => {
     if (warrantyNumber) warranty.warrantyNumber = warrantyNumber;
     if (coverageDetails) warranty.coverageDetails = coverageDetails;
     if (notes !== undefined) warranty.notes = notes;
+    if (status) warranty.status = status;
     
     // Validate the updated warranty
     const validationError = warranty.validateSync();
@@ -229,7 +231,8 @@ exports.deleteWarranty = async (req, res) => {
       return res.status(404).json({ message: 'Warranty not found' });
     }
     
-    await warranty.remove();
+    // Use deleteOne instead of remove
+    await Warranty.deleteOne({ _id: req.params.id });
     
     res.json({ message: 'Warranty deleted successfully' });
   } catch (error) {

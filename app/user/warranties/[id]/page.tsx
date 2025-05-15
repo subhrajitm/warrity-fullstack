@@ -47,16 +47,12 @@ export default function WarrantyDetailPage() {
         return null
       }
       
-      // The response data might be the warranty object directly or nested in a property
-      const warrantyData = response.data?.warranty || response.data
-      
-      if (!warrantyData) {
+      // The response data is the warranty object directly
+      if (!response.data) {
         throw new Error('Warranty not found')
       }
       
-      // Ensure we return a properly typed Warranty object
-      const warranty: Warranty = warrantyData as Warranty
-      return warranty
+      return response.data as Warranty
     } catch (err) {
       console.error('Error fetching warranty details:', err)
       setError('Failed to load warranty details. Please try again later.')
@@ -219,7 +215,7 @@ export default function WarrantyDetailPage() {
           </div>
           
           <div className="flex justify-between items-center mb-6">
-            <h1 className="text-3xl font-bold text-amber-900">{warranty.product.name}</h1>
+            <h1 className="text-3xl font-bold text-amber-900">{warranty.product?.name || "Unknown Product"}</h1>
             <div className="flex space-x-2">
               <Link href={`/user/warranties/${warranty._id || warranty.id}/edit`}>
                 <Button className="bg-amber-800 hover:bg-amber-900 text-amber-100 border-2 border-amber-900">
@@ -248,11 +244,11 @@ export default function WarrantyDetailPage() {
               <CardContent className="p-6 space-y-4">
                 <div className="flex justify-between">
                   <span className="text-amber-800 font-medium">Product:</span>
-                  <span className="text-amber-900">{warranty.product.name}</span>
+                  <span className="text-amber-900">{warranty.product?.name || "Unknown Product"}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-amber-800 font-medium">Category:</span>
-                  <Badge className="bg-amber-800">{warranty.product.manufacturer}</Badge>
+                  <Badge className="bg-amber-800">{warranty.product?.manufacturer || "Unknown"}</Badge>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-amber-800 font-medium">Status:</span>

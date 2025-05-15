@@ -24,6 +24,7 @@ import WarrantySidebar from "./components/sidebar"
 import { useAuth } from "@/lib/auth-context"
 import { Warranty } from "@/types/warranty"
 import { warrantyApi } from "@/lib/api"
+import { toast } from "react-hot-toast"
 
 // Create a component that uses useSearchParams
 function WarrantiesContent() {
@@ -40,21 +41,12 @@ function WarrantiesContent() {
   const [statusFilter, setStatusFilter] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   
-  // Filter warranties by category
-  const filterWarrantiesByCategory = (category: string) => {
-    const filtered = warranties.filter(warranty => 
-      warranty.product && warranty.product.manufacturer.toLowerCase() === category.toLowerCase()
-    )
-    setFilteredWarranties(filtered)
-  }
-  
   // Fetch warranties from API
   const fetchWarranties = async () => {
     try {
       setIsLoading(true)
       console.log('Fetching warranties from API...')
       
-      // Use the warrantyApi utility which handles authentication automatically
       const response = await warrantyApi.getAllWarranties()
       
       if (response.error) {
@@ -65,26 +57,55 @@ function WarrantiesContent() {
       
       console.log('Warranties data received:', response.data)
       
-      // Handle different response formats
       if (!response.data) {
         return []
       }
       
-      if (Array.isArray(response.data)) {
-        return response.data
-      } else if ('warranties' in response.data && Array.isArray(response.data.warranties)) {
-        return response.data.warranties
+      const warrantyList = Array.isArray(response.data) 
+        ? response.data 
+        : (response.data as { warranties: Warranty[] }).warranties || []
+      
+      setWarranties(warrantyList)
+      
+      // Apply filters after fetching
+      const status = searchParams?.get('status')
+      if (status) {
+        setStatusFilter(status)
+        const filtered = warrantyList.filter(w => w.status === status)
+        setFilteredWarranties(filtered)
       } else {
-        console.error('Unexpected API response format:', response.data)
-        setError('Invalid API response format')
-        return []
+        setStatusFilter(null)
+        setFilteredWarranties(warrantyList)
       }
+      
+      return warrantyList
     } catch (err) {
       console.error('Error fetching warranties:', err)
       setError(err instanceof Error ? err.message : 'Failed to load warranties. Please try again later.')
       return []
     } finally {
       setIsLoading(false)
+    }
+  }
+  
+  // Handle warranty deletion
+  const handleDeleteWarranty = async (id: string) => {
+    if (confirm("Are you sure you want to delete this warranty?")) {
+      try {
+        const response = await warrantyApi.deleteWarranty(id)
+        if (response.error) {
+          toast.error('Failed to delete warranty: ' + response.error)
+          return
+        }
+        toast.success('Warranty deleted successfully')
+        // Refresh the warranties list
+        await fetchWarranties()
+        // Refresh the router cache
+        router.refresh()
+      } catch (error) {
+        toast.error('An error occurred while deleting the warranty')
+        console.error('Error deleting warranty:', error)
+      }
     }
   }
   
@@ -96,28 +117,23 @@ function WarrantiesContent() {
       } else if (user && user.role !== 'user') {
         router.replace(user.role === 'admin' ? '/admin' : '/login')
       } else {
-        // Fetch warranties from API
-        fetchWarranties().then(data => {
-          setWarranties(data)
-          setFilteredWarranties(data)
-          
-          // Check if there's a category filter in the URL
-          const category = searchParams?.get('category')
-          if (category) {
-            filterWarrantiesByCategory(category)
-          }
-          
-          // Check if there's a status filter in the URL
-          const status = searchParams?.get('status')
-          if (status) {
-            setStatusFilter(status)
-            const filtered = data.filter((warranty: Warranty) => warranty.status === status)
-            setFilteredWarranties(filtered)
-          }
-        })
+        fetchWarranties()
       }
     }
   }, [router, searchParams, authLoading, isAuthenticated, user])
+  
+  // Update filtered warranties when status filter changes
+  useEffect(() => {
+    const status = searchParams?.get('status')
+    if (status) {
+      setStatusFilter(status)
+      const filtered = warranties.filter(w => w.status === status)
+      setFilteredWarranties(filtered)
+    } else {
+      setStatusFilter(null)
+      setFilteredWarranties(warranties)
+    }
+  }, [searchParams, warranties])
   
   // Filter and sort warranties
   useEffect(() => {

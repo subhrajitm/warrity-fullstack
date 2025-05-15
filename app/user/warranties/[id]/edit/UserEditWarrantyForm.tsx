@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ArrowLeft, Save, AlertTriangle } from "lucide-react"
-import { Warranty, WarrantyApiResponse, ValidationError } from "@/types/warranty"
+import { Warranty, WarrantyApiResponse, ValidationError, WarrantyInput } from "@/types/warranty"
 import { warrantyApi } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
 
@@ -21,13 +21,13 @@ const WarrantySidebar = dynamic(() => import("../../components/sidebar"), {
 })
 
 // Default empty warranty data for initialization
-const emptyWarranty = {
+const emptyWarranty: Partial<Warranty> = {
   id: "",
   _id: "",
   product: { 
+    _id: "", 
     name: "", 
-    manufacturer: "",
-    _id: "" 
+    manufacturer: "" 
   },
   purchaseDate: "",
   expirationDate: "",
@@ -37,7 +37,11 @@ const emptyWarranty = {
   documents: [],
   status: "active" as const,
   notes: "",
-  user: "",
+  user: {
+    _id: "",
+    name: "",
+    email: ""
+  },
   createdAt: "",
   updatedAt: ""
 }
@@ -49,24 +53,55 @@ const formatDateForInput = (isoDateString: string | undefined): string => {
   return date.toISOString().split('T')[0]; // Returns YYYY-MM-DD
 }
 
-// Utility function to safely get nested property values
-const safelyGetNestedValue = (obj: any, path: string, defaultValue: string = ''): string => {
-  if (!obj) return defaultValue;
-  
+// Add utility function for handling nested form values
+const safelyGetNestedValue = (obj: any, path: string): string => {
   const keys = path.split('.');
-  let current = obj;
+  let value = obj;
   
   for (const key of keys) {
-    if (current === undefined || current === null) return defaultValue;
+    if (value === null || value === undefined) return '';
+    value = value[key];
+  }
+  
+  return value || '';
+};
+
+// Add utility function for setting nested form values
+const setNestedValue = (obj: any, path: string, value: any): any => {
+  const keys = path.split('.');
+  const newObj = { ...obj };
+  let current = newObj;
+  
+  for (let i = 0; i < keys.length - 1; i++) {
+    const key = keys[i];
+    if (!(key in current)) {
+      current[key] = {};
+    }
     current = current[key];
   }
   
-  return current !== undefined && current !== null ? String(current) : defaultValue;
-}
+  current[keys[keys.length - 1]] = value;
+  return newObj;
+};
 
 interface ApiError {
   message: string;
   errors?: string[];
+}
+
+interface FormData {
+  product: {
+    _id: string;
+    name: string;
+    manufacturer: string;
+  };
+  purchaseDate: string;
+  expirationDate: string;
+  warrantyProvider: string;
+  warrantyNumber: string;
+  coverageDetails: string;
+  notes?: string;
+  status?: 'active' | 'expiring' | 'expired';
 }
 
 interface Props {
@@ -130,138 +165,79 @@ export default function UserEditWarrantyForm({ warrantyId }: Props) {
   }, [warrantyId, authLoading, isAuthenticated, router])
   
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target
-    
-    // Special handling for date inputs
-    if (e.target.type === 'date') {
-      // Convert YYYY-MM-DD to ISO format for storage
-      const isoDate = value ? new Date(value).toISOString() : '';
-      setFormData(prev => ({
-        ...prev,
-        [name]: isoDate
-      }))
-    } else if (name.includes('.')) {
-      // Handle nested properties like product.name
-      const [parent, child] = name.split('.')
-      
-      if (parent === 'product') {
-        setFormData(prev => {
-          // Ensure prev.product exists and has the required properties
-          const currentProduct = prev.product || { _id: "", name: "", manufacturer: "" };
-          
-          return {
-            ...prev,
-            product: {
-              ...currentProduct,
-              [child]: value
-            }
-          };
-        });
-      }
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        [name]: value
-      }))
-    }
-  }
+    const { name, value } = e.target;
+    setFormData(prev => setNestedValue(prev, name, value));
+  };
   
   const handleSelectChange = (name: string, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }))
-  }
+    setFormData(prev => setNestedValue(prev, name, value));
+  };
   
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    setIsSubmitting(true)
-    setError(null) // Clear any previous errors
+    e.preventDefault();
+    setIsSubmitting(true);
+    setError(null);
     
     try {
       // Format the data according to the API requirements
-      const updateData: Record<string, any> = {
-        product: formData.product?._id, // Send only the product ID
+      const updateData = {
+        product: formData.product?._id,
         purchaseDate: formData.purchaseDate ? new Date(formData.purchaseDate).toISOString().split('T')[0] : undefined,
         expirationDate: formData.expirationDate ? new Date(formData.expirationDate).toISOString().split('T')[0] : undefined,
-        warrantyProvider: formData.warrantyProvider || undefined,
-        warrantyNumber: formData.warrantyNumber || undefined,
-        coverageDetails: formData.coverageDetails || undefined,
-        notes: formData.notes || undefined
-      }
+        warrantyProvider: formData.warrantyProvider,
+        warrantyNumber: formData.warrantyNumber,
+        coverageDetails: formData.coverageDetails,
+        notes: formData.notes,
+        status: formData.status
+      };
       
       // Remove undefined values
       Object.keys(updateData).forEach(key => 
-        updateData[key] === undefined && delete updateData[key]
-      )
+        updateData[key as keyof typeof updateData] === undefined && delete updateData[key as keyof typeof updateData]
+      );
       
-      // Ensure required fields are present
-      if (!updateData.product) {
-        setError('Product is required')
-        setIsSubmitting(false)
-        return
+      // Validate required fields
+      const requiredFields = ['product', 'purchaseDate', 'expirationDate', 'warrantyProvider', 'warrantyNumber', 'coverageDetails'];
+      const missingFields = requiredFields.filter(field => !updateData[field as keyof typeof updateData]);
+      
+      if (missingFields.length > 0) {
+        setError(`Missing required fields: ${missingFields.join(', ')}`);
+        setIsSubmitting(false);
+        return;
       }
       
-      if (!updateData.purchaseDate) {
-        setError('Purchase date is required')
-        setIsSubmitting(false)
-        return
-      }
+      console.log('Sending update data:', updateData);
       
-      if (!updateData.expirationDate) {
-        setError('Expiration date is required')
-        setIsSubmitting(false)
-        return
-      }
-      
-      if (!updateData.warrantyProvider) {
-        setError('Warranty provider is required')
-        setIsSubmitting(false)
-        return
-      }
-      
-      if (!updateData.warrantyNumber) {
-        setError('Warranty number is required')
-        setIsSubmitting(false)
-        return
-      }
-      
-      if (!updateData.coverageDetails) {
-        setError('Coverage details are required')
-        setIsSubmitting(false)
-        return
-      }
-      
-      console.log('Sending update data:', updateData) // Debug log
-      
-      const response = await warrantyApi.updateWarranty(warrantyId, updateData)
+      const response = await warrantyApi.updateWarranty(warrantyId, updateData);
       
       if (response.error) {
         // Handle validation errors
-        const error = typeof response.error === 'string' 
-          ? { message: response.error }
-          : response.error as ApiError
-
-        if (error.message === 'Validation error' && 'errors' in error && error.errors) {
-          const errorMessages = Array.isArray(error.errors) 
-            ? error.errors.join(', ')
-            : 'Please check all required fields'
-          setError(errorMessages)
+        if (response.error.includes('Validation error')) {
+          try {
+            const errorObj = JSON.parse(response.error);
+            if (errorObj.errors && Array.isArray(errorObj.errors)) {
+              setError(errorObj.errors.join(', '));
+            } else {
+              setError(response.error);
+            }
+          } catch (e) {
+            setError(response.error);
+          }
         } else {
-          setError(error.message || 'Failed to update warranty')
+          setError(response.error);
         }
-        setIsSubmitting(false)
-        return
+        setIsSubmitting(false);
+        return;
       }
       
-      // Navigate to the details page using replace to prevent back navigation to the form
-      router.replace(`/user/warranties/${warrantyId}`)
+      // Navigate to the details page
+      router.replace(`/user/warranties/${warrantyId}`);
     } catch (error) {
-      console.error('Error updating warranty:', error)
-      setError(error instanceof Error ? error.message : 'Failed to update warranty. Please try again.')
-      setIsSubmitting(false)
+      console.error('Error updating warranty:', error);
+      setError(error instanceof Error ? error.message : 'Failed to update warranty. Please try again.');
+      setIsSubmitting(false);
     }
-  }
+  };
   
   return (
     <div className="flex min-h-screen bg-amber-50">

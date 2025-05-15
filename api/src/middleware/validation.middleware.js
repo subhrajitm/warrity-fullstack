@@ -160,7 +160,7 @@ const validateWarrantyUpdate = [
   body('warrantyProvider').optional().isString().trim().notEmpty(),
   body('warrantyNumber').optional().isString().trim().notEmpty(),
   body('coverageDetails').optional().isString().trim(),
-  body('status').optional().isIn(['active', 'expired', 'cancelled']).withMessage('Invalid status'),
+  body('status').optional().isIn(['active', 'expiring', 'expired']).withMessage('Invalid status'),
   validate
 ];
 
