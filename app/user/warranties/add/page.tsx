@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ArrowLeft, Calendar, Upload, AlertCircle, Loader2, Search, Info } from "lucide-react"
+import { ArrowLeft, Calendar, Upload, AlertCircle, Loader2, Search, Info, Check } from "lucide-react"
 import WarrantySidebar from "../components/sidebar"
 import { useAuth } from "@/lib/auth-context"
 import { WarrantyInput, WarrantyDocument } from "@/types/warranty"
@@ -17,6 +17,9 @@ import { warrantyApi } from "@/lib/api"
 import { productApi } from "@/lib/api"
 import { format, addMonths, isValid, parseISO } from "date-fns"
 import { toast } from "sonner"
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { cn } from "@/lib/utils"
 
 // Interface for product data
 interface ProductOption {
@@ -53,10 +56,12 @@ export default function AddWarrantyPage() {
   const [warrantyFile, setWarrantyFile] = useState<File | null>(null)
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
-  const [searchTerm, setSearchTerm] = useState("")
+  const [searchQuery, setSearchQuery] = useState("")
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({})
   const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({})
+  const [open, setOpen] = useState(false)
+  const [selectedProduct, setSelectedProduct] = useState<ProductOption | null>(null)
   
   // Check if user is logged in
   useEffect(() => {
@@ -99,10 +104,10 @@ export default function AddWarrantyPage() {
     }
   }, [isAuthenticated, authLoading])
   
-  // Filter products based on search term
+  // Filter products based on search query
   const filteredProducts = products.filter(product => 
-    product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.manufacturer.toLowerCase().includes(searchTerm.toLowerCase())
+    product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    product.manufacturer.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
   // Calculate expiration date preview
@@ -125,8 +130,12 @@ export default function AddWarrantyPage() {
         break
       case 'warrantyPeriod':
         const months = parseInt(value)
-        if (isNaN(months) || months <= 0) {
-          errors[name] = 'Warranty period must be a positive number'
+        if (!value.trim()) {
+          errors[name] = 'Warranty period is required'
+        } else if (isNaN(months)) {
+          errors[name] = 'Warranty period must be a number'
+        } else if (months <= 0) {
+          errors[name] = 'Warranty period must be greater than 0'
         } else if (months > 120) { // 10 years
           errors[name] = 'Warranty period seems unusually long'
         }
@@ -328,7 +337,14 @@ export default function AddWarrantyPage() {
   const handleDateClick = (e: React.MouseEvent<HTMLInputElement>) => {
     e.currentTarget.showPicker();
   }
-  
+
+  const handleProductSelect = (product: ProductOption) => {
+    setSelectedProduct(product)
+    setFormData(prev => ({ ...prev, productId: product.id }))
+    setOpen(false)
+    setSearchQuery("")
+  }
+
   return (
     <div className="flex min-h-screen bg-amber-50">
       <WarrantySidebar />
@@ -372,52 +388,68 @@ export default function AddWarrantyPage() {
                   </CardHeader>
                   <CardContent className="p-6 space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="productSearch" className="text-amber-900">Search Products</Label>
-                      <div className="relative">
-                        <Search className="absolute left-3 top-3 h-4 w-4 text-amber-800" />
-                        <Input
-                          id="productSearch"
-                          type="text"
-                          value={searchTerm}
-                          onChange={(e) => setSearchTerm(e.target.value)}
-                          placeholder="Search by product name or manufacturer..."
-                          className="pl-10 border-2 border-amber-800 bg-amber-50 text-amber-900"
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="productId" className="text-amber-900">Product</Label>
-                      <Select 
-                        value={formData.productId} 
-                        onValueChange={(value) => handleSelectChange('productId', value)}
-                      >
-                        <SelectTrigger className="border-2 border-amber-800 bg-amber-50 text-amber-900 hover:bg-amber-100 hover:text-amber-900">
-                          <SelectValue placeholder="Select a product" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-amber-50 border-2 border-amber-800">
-                          {loadingProducts ? (
-                            <div className="flex items-center justify-center p-2 text-amber-900">
-                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                              <span>Loading products...</span>
-                            </div>
-                          ) : filteredProducts.length > 0 ? (
-                            filteredProducts.map((product) => (
-                              <SelectItem 
-                                key={product.id} 
-                                value={product.id}
-                                className="text-amber-900 hover:bg-amber-200 hover:text-amber-900 focus:bg-amber-200 focus:text-amber-900"
-                              >
-                                {product.name} ({product.manufacturer})
-                              </SelectItem>
-                            ))
-                          ) : (
-                            <div className="p-2 text-center text-sm text-amber-800">
-                              No products found. Please add a product first.
-                            </div>
-                          )}
-                        </SelectContent>
-                      </Select>
+                      <Label htmlFor="product" className="text-amber-900">Product *</Label>
+                      <Popover open={open} onOpenChange={setOpen}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={open}
+                            className="w-full justify-between border-2 border-amber-800 bg-amber-50 text-amber-900 hover:bg-amber-100 hover:text-amber-900"
+                          >
+                            {selectedProduct ? (
+                              <div className="flex items-center">
+                                <span>{selectedProduct.name}</span>
+                                <span className="ml-2 text-amber-600">({selectedProduct.manufacturer})</span>
+                              </div>
+                            ) : (
+                              "Search and select a product..."
+                            )}
+                            <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-full p-0 border-2 border-amber-800 bg-amber-50" align="start">
+                          <Command>
+                            <CommandInput 
+                              placeholder="Search products..." 
+                              value={searchQuery}
+                              onValueChange={setSearchQuery}
+                              className="border-amber-800 focus:ring-amber-800"
+                            />
+                            <CommandEmpty className="py-6 text-center text-sm text-amber-800">
+                              {loadingProducts ? (
+                                <div className="flex items-center justify-center">
+                                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                  <span>Loading products...</span>
+                                </div>
+                              ) : (
+                                "No products found."
+                              )}
+                            </CommandEmpty>
+                            <CommandGroup className="max-h-[300px] overflow-auto">
+                              {filteredProducts.map((product) => (
+                                <CommandItem
+                                  key={product.id}
+                                  value={`${product.name} ${product.manufacturer}`}
+                                  onSelect={() => handleProductSelect(product)}
+                                  className="text-amber-900 hover:bg-amber-200 hover:text-amber-900 cursor-pointer"
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      selectedProduct?.id === product.id ? "opacity-100" : "opacity-0"
+                                    )}
+                                  />
+                                  <div className="flex flex-col">
+                                    <span className="font-medium">{product.name}</span>
+                                    <span className="text-sm text-amber-600">{product.manufacturer}</span>
+                                  </div>
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
                       {validationErrors.productId && (
                         <p className="text-sm text-red-600 mt-1">{validationErrors.productId}</p>
                       )}
