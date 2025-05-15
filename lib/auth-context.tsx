@@ -310,12 +310,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const updateProfile = async (data: ProfileUpdateData): Promise<boolean> => {
     try {
+      // Validate the data before sending
+      const validation = validateProfileData(data);
+      if (!validation.isValid) {
+        throw new Error(validation.error);
+      }
+
       const success = await userApi.updateProfile(data);
       if (success) {
-        // Refresh user data after successful update
+        // Only update the user state if the update was successful
         const response = await userApi.getProfile();
         if (response.data) {
-          setUser(response.data as User);
+          // Update only the changed fields to prevent unnecessary re-renders
+          setUser(prevUser => {
+            if (!prevUser) return response.data as User;
+            const updatedUser = {
+              ...prevUser,
+              ...response.data,
+              preferences: {
+                ...prevUser.preferences,
+                ...(response.data as User).preferences
+              },
+              socialLinks: {
+                ...prevUser.socialLinks,
+                ...(response.data as User).socialLinks
+              }
+            } as User;
+            return updatedUser;
+          });
         }
       }
       return success;
