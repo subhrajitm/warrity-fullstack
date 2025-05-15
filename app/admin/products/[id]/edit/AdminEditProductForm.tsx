@@ -14,7 +14,7 @@ import { useAuth } from "@/lib/auth-context"
 import { toast } from "sonner"
 
 // Import API and types
-import { productApi } from '@/lib/api'
+import { productApi, adminApi, ServiceInfo } from '@/lib/api'
 
 interface Product {
   id: string
@@ -29,6 +29,7 @@ interface Product {
   receiptNumber?: string
   description?: string
   notes?: string
+  serviceInfo?: string
   createdAt: string
   updatedAt: string
 }
@@ -59,6 +60,7 @@ interface FormData {
   receiptNumber: string;
   description: string;
   notes: string;
+  serviceInfo?: string;
 }
 
 interface Props {
@@ -68,13 +70,10 @@ interface Props {
 export default function AdminEditProductForm({ productId }: Props) {
   const router = useRouter()
   const { user: authUser, isAuthenticated, isLoading: authLoading } = useAuth()
-  
-  const handleCancel = () => {
-    router.back()
-  }
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [product, setProduct] = useState<Product | null>(null)
+  const [serviceInfos, setServiceInfos] = useState<ServiceInfo[]>([])
   const [formData, setFormData] = useState<FormData>({
     name: "",
     category: "",
@@ -86,7 +85,8 @@ export default function AdminEditProductForm({ productId }: Props) {
     purchaseLocation: "",
     receiptNumber: "",
     description: "",
-    notes: ""
+    notes: "",
+    serviceInfo: ""
   })
 
   // Validate product ID
@@ -111,17 +111,27 @@ export default function AdminEditProductForm({ productId }: Props) {
       return
     }
 
-    // Fetch the product data
-    const fetchProduct = async () => {
+    // Fetch the product data and service infos
+    const fetchData = async () => {
       try {
-        const response = await productApi.getProduct(productId)
-        if (response.error) {
-          toast.error('Failed to fetch product: ' + response.error)
+        const [productResponse, serviceInfoResponse] = await Promise.all([
+          productApi.getProduct(productId),
+          adminApi.getAllServiceInfo()
+        ])
+
+        if (productResponse.error) {
+          toast.error('Failed to fetch product: ' + productResponse.error)
           router.replace('/admin/products')
           return
         }
-        if (response.data) {
-          const product = response.data as Product
+
+        if (serviceInfoResponse.error) {
+          toast.error('Failed to fetch service information: ' + serviceInfoResponse.error)
+          return
+        }
+
+        if (productResponse.data) {
+          const product = productResponse.data as Product
           setProduct(product)
           setFormData({
             name: product.name,
@@ -134,23 +144,28 @@ export default function AdminEditProductForm({ productId }: Props) {
             purchaseLocation: product.purchaseLocation || "",
             receiptNumber: product.receiptNumber || "",
             description: product.description || "",
-            notes: product.notes || ""
+            notes: product.notes || "",
+            serviceInfo: product.serviceInfo || ""
           })
         } else {
           toast.error('Product not found')
           router.replace('/admin/products')
           return
         }
+
+        if (serviceInfoResponse.data?.serviceInfo) {
+          setServiceInfos(serviceInfoResponse.data.serviceInfo)
+        }
       } catch (error) {
-        console.error('Error fetching product:', error)
-        toast.error('Failed to fetch product details')
+        console.error('Error fetching data:', error)
+        toast.error('Failed to fetch data')
         router.replace('/admin/products')
       } finally {
         setIsLoading(false)
       }
     }
     
-    fetchProduct()
+    fetchData()
   }, [router, productId, authLoading, isAuthenticated, authUser])
   
   // Handle form input changes
@@ -162,6 +177,11 @@ export default function AdminEditProductForm({ productId }: Props) {
   // Handle category selection
   const handleCategoryChange = (value: string) => {
     setFormData(prev => ({ ...prev, category: value }))
+  }
+
+  // Handle service info selection
+  const handleServiceInfoChange = (value: string) => {
+    setFormData(prev => ({ ...prev, serviceInfo: value }))
   }
   
   // Handle form submission
@@ -361,6 +381,25 @@ export default function AdminEditProductForm({ productId }: Props) {
                       onChange={handleChange}
                       className="border-2 border-amber-800 bg-amber-50"
                     />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="serviceInfo" className="text-amber-900">Service Information</Label>
+                    <Select
+                      value={formData.serviceInfo}
+                      onValueChange={handleServiceInfoChange}
+                    >
+                      <SelectTrigger className="border-2 border-amber-800 bg-amber-50">
+                        <SelectValue placeholder="Select service information" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {serviceInfos.map((serviceInfo) => (
+                          <SelectItem key={serviceInfo._id} value={serviceInfo._id}>
+                            {serviceInfo.name} ({serviceInfo.serviceType}) - {serviceInfo.company}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
               </div>
