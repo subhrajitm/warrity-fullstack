@@ -9,6 +9,7 @@ export interface Product {
   _id: string;
   name: string;
   manufacturer: string;
+  serviceInfo?: string; // Reference to ServiceInfo document
 }
 
 export interface User {

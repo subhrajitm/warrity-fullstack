@@ -23,13 +23,15 @@ import {
 import WarrantySidebar from "../components/sidebar"
 import { useAuth } from "@/lib/auth-context"
 import { Warranty } from "@/types/warranty"
-import { warrantyApi } from "@/lib/api"
+import { warrantyApi, adminApi } from "@/lib/api"
+import { ServiceInfo } from "@/lib/api"
 
 export default function WarrantyDetailPage() {
   const router = useRouter()
   const params = useParams() as { id: string }
   const { user, isAuthenticated, isLoading: authLoading } = useAuth()
   const [warranty, setWarranty] = useState<Warranty | null>(null)
+  const [serviceInfo, setServiceInfo] = useState<ServiceInfo | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   
@@ -50,6 +52,20 @@ export default function WarrantyDetailPage() {
       // The response data is the warranty object directly
       if (!response.data) {
         throw new Error('Warranty not found')
+      }
+
+      // Fetch service info if product has serviceInfo
+      if (response.data.product?.serviceInfo) {
+        console.log('Product has serviceInfo:', response.data.product.serviceInfo);
+        const serviceInfoResponse = await fetch(`/api/service-info/${response.data.product.serviceInfo}`);
+        const serviceInfoData = await serviceInfoResponse.json();
+        console.log('Service info response:', serviceInfoData);
+        if (serviceInfoData.serviceInfo) {
+          console.log('Setting service info:', serviceInfoData.serviceInfo);
+          setServiceInfo(serviceInfoData.serviceInfo)
+        }
+      } else {
+        console.log('Product has no serviceInfo');
       }
       
       return response.data as Warranty
@@ -331,6 +347,107 @@ export default function WarrantyDetailPage() {
               </CardContent>
             </Card>
           )}
+          
+          <Card className="border-4 border-amber-800 shadow-[8px_8px_0px_0px_rgba(120,53,15,0.5)] bg-amber-100 mb-6">
+            <CardHeader className="border-b-4 border-amber-800 bg-amber-200 px-6 py-4">
+              <CardTitle className="text-xl font-bold text-amber-900">
+                Service Information
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+              {serviceInfo ? (
+                <div className="space-y-4">
+                  <div className="flex justify-between">
+                    <span className="text-amber-800 font-medium">Service Type:</span>
+                    <Badge className="bg-amber-800">{serviceInfo.serviceType}</Badge>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-amber-800 font-medium">Company:</span>
+                    <span className="text-amber-900">{serviceInfo.company}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-amber-800 font-medium">Description:</span>
+                    <span className="text-amber-900">{serviceInfo.description}</span>
+                  </div>
+                  {serviceInfo.contactInfo && (
+                    <div className="mt-4">
+                      <h4 className="text-lg font-semibold text-amber-900 mb-2">Contact Information</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {serviceInfo.contactInfo.email && (
+                          <div className="flex items-center">
+                            <span className="text-amber-800 font-medium mr-2">Email:</span>
+                            <a href={`mailto:${serviceInfo.contactInfo.email}`} className="text-amber-900 hover:text-amber-700">
+                              {serviceInfo.contactInfo.email}
+                            </a>
+                          </div>
+                        )}
+                        {serviceInfo.contactInfo.phone && (
+                          <div className="flex items-center">
+                            <span className="text-amber-800 font-medium mr-2">Phone:</span>
+                            <a href={`tel:${serviceInfo.contactInfo.phone}`} className="text-amber-900 hover:text-amber-700">
+                              {serviceInfo.contactInfo.phone}
+                            </a>
+                          </div>
+                        )}
+                        {serviceInfo.contactInfo.website && (
+                          <div className="flex items-center">
+                            <span className="text-amber-800 font-medium mr-2">Website:</span>
+                            <a href={serviceInfo.contactInfo.website} target="_blank" rel="noopener noreferrer" className="text-amber-900 hover:text-amber-700">
+                              {serviceInfo.contactInfo.website}
+                            </a>
+                          </div>
+                        )}
+                        {serviceInfo.contactInfo.address && (
+                          <div className="flex items-center">
+                            <span className="text-amber-800 font-medium mr-2">Address:</span>
+                            <span className="text-amber-900">{serviceInfo.contactInfo.address}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  {serviceInfo.warrantyInfo && (
+                    <div className="mt-4">
+                      <h4 className="text-lg font-semibold text-amber-900 mb-2">Warranty Information</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {serviceInfo.warrantyInfo.duration && (
+                          <div className="flex items-center">
+                            <span className="text-amber-800 font-medium mr-2">Duration:</span>
+                            <span className="text-amber-900">{serviceInfo.warrantyInfo.duration}</span>
+                          </div>
+                        )}
+                        {serviceInfo.warrantyInfo.coverage && (
+                          <div className="flex items-center">
+                            <span className="text-amber-800 font-medium mr-2">Coverage:</span>
+                            <span className="text-amber-900">{serviceInfo.warrantyInfo.coverage}</span>
+                          </div>
+                        )}
+                        {serviceInfo.warrantyInfo.exclusions && (
+                          <div className="flex items-center">
+                            <span className="text-amber-800 font-medium mr-2">Exclusions:</span>
+                            <span className="text-amber-900">{serviceInfo.warrantyInfo.exclusions}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  {serviceInfo.terms && (
+                    <div className="mt-4">
+                      <h4 className="text-lg font-semibold text-amber-900 mb-2">Terms and Conditions</h4>
+                      <p className="text-amber-900 whitespace-pre-line">{serviceInfo.terms}</p>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <div className="text-amber-800 text-lg font-medium mb-2">No Service Information Available</div>
+                  <p className="text-amber-600">
+                    Service information is not available for this product. Please contact the manufacturer for support.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
           
           {warranty.notes && (
             <Card className="border-4 border-amber-800 shadow-[8px_8px_0px_0px_rgba(120,53,15,0.5)] bg-amber-100">
