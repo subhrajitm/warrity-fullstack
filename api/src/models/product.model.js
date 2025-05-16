@@ -24,6 +24,10 @@ const productSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  serviceInfo: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'ServiceInfo'
+  },
   image: {
     type: String,
     default: null

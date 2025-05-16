@@ -91,7 +91,8 @@ const updateProduct = async (req, res) => {
       price,
       purchaseLocation,
       receiptNumber,
-      notes
+      notes,
+      serviceInfo
     } = req.body;
     
     // Find product
@@ -112,6 +113,7 @@ const updateProduct = async (req, res) => {
     if (purchaseLocation !== undefined) product.purchaseLocation = purchaseLocation;
     if (receiptNumber !== undefined) product.receiptNumber = receiptNumber;
     if (notes !== undefined) product.notes = notes;
+    if (serviceInfo !== undefined) product.serviceInfo = serviceInfo;
     
     await product.save();
     
