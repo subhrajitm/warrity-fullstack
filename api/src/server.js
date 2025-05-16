@@ -87,8 +87,28 @@ if (process.env.NODE_ENV === 'production') {
   app.use(morgan('dev'));
 }
 
-// Static files
-app.use('/uploads', express.static(path.join(process.cwd(), process.env.UPLOAD_PATH || 'uploads')));
+// Static files - serve from both /uploads and /api/uploads
+app.use(['/uploads', '/api/uploads'], (req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', process.env.CORS_ORIGIN || 'http://localhost:3000');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
+  next();
+}, express.static(path.join(process.cwd(), process.env.UPLOAD_PATH || 'uploads')));
+
+// Serve documents subdirectory - handle both /uploads/documents and /api/uploads/documents
+app.use(['/uploads/documents', '/api/uploads/documents'], (req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', process.env.CORS_ORIGIN || 'http://localhost:3000');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
+  next();
+}, express.static(path.join(process.cwd(), process.env.UPLOAD_PATH || 'uploads', 'documents')));
+
 app.use(express.static(path.join(__dirname, '../public')));
 
 // Swagger API Documentation

@@ -65,14 +65,14 @@ const uploadProfilePicture = async (req, res) => {
     
     // Delete old profile picture if exists
     if (user.profilePicture) {
-      const oldPicturePath = path.join(process.env.UPLOAD_PATH || './uploads', path.basename(user.profilePicture));
+      const oldPicturePath = path.join(process.env.UPLOAD_PATH || './uploads', 'documents', path.basename(user.profilePicture));
       if (fs.existsSync(oldPicturePath)) {
         fs.unlinkSync(oldPicturePath);
       }
     }
     
     // Update profile picture
-    user.profilePicture = `/uploads/${req.file.filename}`;
+    user.profilePicture = `/uploads/documents/${req.file.filename}`;
     await user.save();
     
     res.status(200).json({ 

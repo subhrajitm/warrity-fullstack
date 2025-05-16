@@ -113,7 +113,9 @@ export default function EnhancedProfile() {
         if (uploadResponse.error) {
           throw new Error(uploadResponse.error);
         }
-        profilePictureUrl = uploadResponse.data?.url;
+        if (uploadResponse.data?.url) {
+          profilePictureUrl = uploadResponse.data.url;
+        }
       }
 
       const success = await updateProfile({
@@ -123,6 +125,9 @@ export default function EnhancedProfile() {
 
       if (success) {
         toast.success("Profile updated successfully");
+        // Clear the preview URL after successful update
+        setPreviewUrl(null);
+        setProfilePicture(null);
       }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to update profile");
@@ -171,7 +176,11 @@ export default function EnhancedProfile() {
               <div className="space-y-6">
                 <div className="flex items-center space-x-4">
                   <Avatar className="h-20 w-20 border-4 border-amber-800">
-                    <AvatarImage src={previewUrl || user?.profilePicture} />
+                    <AvatarImage 
+                      src={previewUrl || (user?.profilePicture ? `${process.env.NEXT_PUBLIC_API_URL?.replace(/\/api$/, '') || ''}${user.profilePicture}` : undefined)} 
+                      alt={user?.name || "Profile picture"}
+                      crossOrigin="anonymous"
+                    />
                     <AvatarFallback className="bg-amber-200 text-amber-800">
                       {user?.name?.charAt(0) || "U"}
                     </AvatarFallback>
