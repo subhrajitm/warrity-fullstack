@@ -25,6 +25,7 @@ import { useAuth } from "@/lib/auth-context"
 import { Warranty } from "@/types/warranty"
 import { warrantyApi, adminApi } from "@/lib/api"
 import { ServiceInfo } from "@/lib/api"
+import { apiRequest } from "@/lib/api"
 
 export default function WarrantyDetailPage() {
   const router = useRouter()
@@ -57,15 +58,20 @@ export default function WarrantyDetailPage() {
       // Fetch service info if product has serviceInfo
       if (response.data.product?.serviceInfo) {
         console.log('Product has serviceInfo:', response.data.product.serviceInfo);
-        const serviceInfoResponse = await fetch(`/api/service-info/${response.data.product.serviceInfo}`);
-        const serviceInfoData = await serviceInfoResponse.json();
-        console.log('Service info response:', serviceInfoData);
-        if (serviceInfoData.serviceInfo) {
-          console.log('Setting service info:', serviceInfoData.serviceInfo);
-          setServiceInfo(serviceInfoData.serviceInfo)
+        const serviceInfoResponse = await apiRequest(`/service-info/${response.data.product.serviceInfo}`);
+        if (serviceInfoResponse.data?.serviceInfo) {
+          console.log('Setting service info:', serviceInfoResponse.data.serviceInfo);
+          setServiceInfo(serviceInfoResponse.data.serviceInfo)
         }
       } else {
-        console.log('Product has no serviceInfo');
+        // Try to get company-level service info
+        const serviceInfoResponse = await apiRequest(`/service-info/product/${response.data.product._id}`);
+        if (serviceInfoResponse.data?.serviceInfo) {
+          console.log('Setting company-level service info:', serviceInfoResponse.data.serviceInfo);
+          setServiceInfo(serviceInfoResponse.data.serviceInfo)
+        } else {
+          console.log('No service info found for product or company');
+        }
       }
       
       return response.data as Warranty

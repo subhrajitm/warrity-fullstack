@@ -566,89 +566,105 @@ export async function apiRequest<T = any>(
     params?: Record<string, any>;
   } = {}
 ): Promise<ApiResponse<T>> {
-  const { 
-    cancelPrevious = true, 
-    timeout = DEFAULT_TIMEOUT,
-    retries = MAX_RETRIES,
-    cache = method === 'GET',  // Only cache GET requests by default
-    forceFresh = false,
-    params
-  } = options;
-
-  // Generate a cache key for GET requests
-  const cacheKey = method === 'GET' ? `${method}:${endpoint}${params ? `?${new URLSearchParams(params).toString()}` : ''}` : null;
-  
-  // Check cache for GET requests if not forcing fresh data
-  if (cacheKey && cache && !forceFresh) {
-    const cachedData = requestCache.get(cacheKey);
-    if (cachedData) {
-      return { data: cachedData, error: null };
-    }
-  }
-
-  // Prepare headers
-  const requestHeaders: Record<string, string> = {
-    'Content-Type': 'application/json',
-    ...headers
-  };
-
-  // Add auth token if available
-  const token = getAuthToken();
-  if (token) {
-    requestHeaders['Authorization'] = `Bearer ${token}`;
-  }
-
-  // Prepare request options
-  const requestOptions: RequestInit & { timeout?: number } = {
-    method,
-    headers: requestHeaders,
-    credentials: 'include',
-    timeout
-  };
-
-  // Add body for non-GET requests
-  if (method !== 'GET' && data) {
-    requestOptions.body = JSON.stringify(data);
-  }
-
-  // Create a unique key for the request
-  const requestKey = `${method}:${endpoint}${params ? `?${new URLSearchParams(params).toString()}` : ''}`;
-
-  // Use the request queue for GET requests
-  if (method === 'GET') {
-    return requestQueue.enqueue(requestKey, async () => {
-      try {
-        const url = `${cleanApiBaseUrl}${endpoint}${params ? `?${new URLSearchParams(params).toString()}` : ''}`;
-        console.log('Making API request to:', url);
-        const response = await fetchWithRetry(url, requestOptions, retries);
-        const result = await processResponse<T>(response);
-        
-        // Cache successful GET responses
-        if (cacheKey && cache && result.data) {
-          requestCache.set(cacheKey, result.data);
-        }
-        
-        return result;
-      } catch (error) {
-        console.error('API request error:', error);
-        return handleApiError(error);
-      }
-    });
-  }
-
-  // For non-GET requests, proceed normally
   try {
-    const url = `${cleanApiBaseUrl}${endpoint}${params ? `?${new URLSearchParams(params).toString()}` : ''}`;
-    console.log('Making API request to:', url);
-    const response = await fetchWithRetry(url, requestOptions, retries);
-    const result = await processResponse<T>(response);
-    
-    // Cache successful GET responses
-    if (cacheKey && cache && result.data) {
-      requestCache.set(cacheKey, result.data);
+    // Check if the endpoint is an absolute URL
+    const isAbsoluteUrl = endpoint.startsWith('http://') || endpoint.startsWith('https://');
+    let url = isAbsoluteUrl ? endpoint : `${cleanApiBaseUrl}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
+
+    // Add query parameters if provided
+    if (options.params) {
+      const searchParams = new URLSearchParams();
+      Object.entries(options.params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          searchParams.append(key, String(value));
+        }
+      });
+      const queryString = searchParams.toString();
+      if (queryString) {
+        url += (url.includes('?') ? '&' : '?') + queryString;
+      }
     }
+
+    // Get auth token
+    const token = getAuthToken();
+    const defaultHeaders: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      ...headers
+    };
+
+    const { 
+      cancelPrevious = true, 
+      timeout = DEFAULT_TIMEOUT,
+      retries = MAX_RETRIES,
+      cache = method === 'GET',  // Only cache GET requests by default
+      forceFresh = false,
+    } = options;
+
+    // Generate a cache key for GET requests
+    const cacheKey = method === 'GET' ? `${method}:${endpoint}${options.params ? `?${new URLSearchParams(options.params).toString()}` : ''}` : null;
     
-    return result;
+    // Check cache for GET requests if not forcing fresh data
+    if (cacheKey && cache && !forceFresh) {
+      const cachedData = requestCache.get(cacheKey);
+      if (cachedData) {
+        return { data: cachedData, error: null };
+      }
+    }
+
+    // Prepare request options
+    const requestOptions: RequestInit & { timeout?: number } = {
+      method,
+      headers: defaultHeaders,
+      credentials: 'include',
+      timeout
+    };
+
+    // Add body for non-GET requests
+    if (method !== 'GET' && data) {
+      requestOptions.body = JSON.stringify(data);
+    }
+
+    // Create a unique key for the request
+    const requestKey = `${method}:${endpoint}${options.params ? `?${new URLSearchParams(options.params).toString()}` : ''}`;
+
+    // Use the request queue for GET requests
+    if (method === 'GET') {
+      return requestQueue.enqueue(requestKey, async () => {
+        try {
+          console.log('Making API request to:', url);
+          const response = await fetchWithRetry(url, requestOptions, retries);
+          const result = await processResponse<T>(response);
+          
+          // Cache successful GET responses
+          if (cacheKey && cache && result.data) {
+            requestCache.set(cacheKey, result.data);
+          }
+          
+          return result;
+        } catch (error) {
+          console.error('API request error:', error);
+          return handleApiError(error);
+        }
+      });
+    }
+
+    // For non-GET requests, proceed normally
+    try {
+      console.log('Making API request to:', url);
+      const response = await fetchWithRetry(url, requestOptions, retries);
+      const result = await processResponse<T>(response);
+      
+      // Cache successful GET responses
+      if (cacheKey && cache && result.data) {
+        requestCache.set(cacheKey, result.data);
+      }
+      
+      return result;
+    } catch (error) {
+      console.error('API request error:', error);
+      return handleApiError(error);
+    }
   } catch (error) {
     console.error('API request error:', error);
     return handleApiError(error);

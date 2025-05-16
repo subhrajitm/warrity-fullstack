@@ -52,20 +52,27 @@ const getServiceInfoByProduct = async (req, res) => {
   try {
     const productId = req.params.productId;
     
-    // First try to find product-specific service info
-    let serviceInfo = await ServiceInfo.findOne({ product: productId, isActive: true })
-      .populate('product', 'name model');
+    // First check if the product has a serviceInfo field
+    const product = await Product.findById(productId);
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
 
-    // If no product-specific info found, try to find company-level info
+    let serviceInfo = null;
+
+    // If product has serviceInfo field, use that
+    if (product.serviceInfo) {
+      serviceInfo = await ServiceInfo.findById(product.serviceInfo);
+    }
+
+    // If no serviceInfo found or product doesn't have serviceInfo field,
+    // try to find company-level info
     if (!serviceInfo) {
-      const product = await Product.findById(productId);
-      if (product) {
-        serviceInfo = await ServiceInfo.findOne({ 
-          company: product.manufacturer, 
-          product: null,
-          isActive: true 
-        });
-      }
+      serviceInfo = await ServiceInfo.findOne({ 
+        company: product.manufacturer, 
+        product: null,
+        isActive: true 
+      });
     }
 
     if (!serviceInfo) {
