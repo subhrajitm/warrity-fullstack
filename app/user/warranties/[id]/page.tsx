@@ -39,6 +39,7 @@ export default function WarrantyDetailPage() {
   const fetchWarrantyDetails = async (id: string) => {
     try {
       setIsLoading(true)
+      setError(null)
       
       // Use the warrantyApi utility which handles authentication automatically
       const response = await warrantyApi.getWarrantyById(id)
@@ -51,48 +52,71 @@ export default function WarrantyDetailPage() {
       
       // The response data is the warranty object directly
       if (!response.data) {
-        throw new Error('Warranty not found')
+        setError('Warranty not found')
+        return null
       }
 
+      const warrantyData = response.data as Warranty
+
       // Fetch service info if product has serviceInfo
-      if (response.data.product?.serviceInfo) {
-        console.log('Product has serviceInfo:', response.data.product.serviceInfo);
-        const serviceInfoResponse = await fetch(`/api/service-info/${response.data.product.serviceInfo}`);
-        const serviceInfoData = await serviceInfoResponse.json();
-        console.log('Service info response:', serviceInfoData);
-        if (serviceInfoData.serviceInfo) {
-          console.log('Setting service info:', serviceInfoData.serviceInfo);
-          setServiceInfo(serviceInfoData.serviceInfo)
+      if (warrantyData.product?._id) {
+        console.log('Product ID:', warrantyData.product._id);
+        try {
+          const serviceInfoResponse = await warrantyApi.getServiceInfoByProduct(warrantyData.product._id);
+          console.log('Service info response:', serviceInfoResponse);
+          
+          // Check if we have service info data
+          if (serviceInfoResponse.data?.serviceInfo) {
+            console.log('Setting service info:', serviceInfoResponse.data.serviceInfo);
+            setServiceInfo(serviceInfoResponse.data.serviceInfo);
+          } else if (serviceInfoResponse.error) {
+            console.error('Error in service info response:', serviceInfoResponse.error);
+            setServiceInfo(null);
+          } else {
+            console.log('No service info available');
+            setServiceInfo(null);
+          }
+        } catch (error: any) {
+          console.error('Error fetching service info:', error);
+          setServiceInfo(null);
         }
       } else {
-        console.log('Product has no serviceInfo');
+        console.log('Product has no ID:', warrantyData.product);
+        setServiceInfo(null);
       }
       
-      return response.data as Warranty
+      return warrantyData;
     } catch (err) {
-      console.error('Error fetching warranty details:', err)
-      setError('Failed to load warranty details. Please try again later.')
-      return null
+      console.error('Error fetching warranty details:', err);
+      setError('Failed to load warranty details. Please try again later.');
+      return null;
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
   }
   
   // Check if user is logged in and fetch data
   useEffect(() => {
-    if (!authLoading) {
-      if (!isAuthenticated) {
-        router.replace('/login')
-      } else if (user?.role !== 'user') {
-        router.replace(user?.role === 'admin' ? '/admin' : '/login')
-      } else {
+    const fetchData = async () => {
+      if (!authLoading) {
+        if (!isAuthenticated) {
+          router.replace('/login')
+          return
+        }
+        
+        if (user?.role !== 'user') {
+          router.replace(user?.role === 'admin' ? '/admin' : '/login')
+          return
+        }
+        
         // Fetch warranty details from API
-        fetchWarrantyDetails(params.id).then(data => {
-          setWarranty(data)
-        })
+        const data = await fetchWarrantyDetails(params.id)
+        setWarranty(data)
       }
     }
-  }, [router, params, authLoading, isAuthenticated, user])
+
+    fetchData()
+  }, [router, params.id, authLoading, isAuthenticated, user?.role])
   
   const handleDelete = async () => {
     if (confirm("Are you sure you want to delete this warranty? This action cannot be undone.")) {

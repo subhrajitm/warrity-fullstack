@@ -4,24 +4,24 @@ services:
   api:
     build:
       context: .
-      dockerfile: Dockerfile.prod
+      dockerfile: Dockerfile
+    ports:
+      - "5001:5001"
     environment:
       - NODE_ENV=production
       - PORT=5001
-      - CORS_ORIGIN=https://stable-21-03-25.dkewumso9wy5d.amplifyapp.com
       - MONGODB_URI=${MONGODB_URI}
       - JWT_SECRET=${JWT_SECRET}
       - JWT_EXPIRES_IN=7d
-      - RATE_LIMIT_WINDOW_MS=900000
-      - RATE_LIMIT_MAX=100
       - UPLOAD_PATH=uploads
-      - MAX_FILE_SIZE=10485760
-      - LOG_LEVEL=info
+      - CORS_ORIGIN=${CORS_ORIGIN}
+      - LOG_LEVEL=error
     volumes:
-      - ./logs:/app/logs
-      - ./uploads:/app/uploads
+      - ./logs:/usr/src/app/logs
+      - ./uploads:/usr/src/app/uploads
+    restart: unless-stopped
     networks:
-      - app-network
+      - warrity-network
 
   nginx:
     image: nginx:alpine
@@ -34,8 +34,8 @@ services:
     depends_on:
       - api
     networks:
-      - app-network
+      - warrity-network
 
 networks:
-  app-network:
+  warrity-network:
     driver: bridge 

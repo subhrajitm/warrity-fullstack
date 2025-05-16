@@ -464,7 +464,8 @@ async function fetchWithRetry(
         }
       }
       
-      if (!response.ok && retries > 0) {
+      // Don't retry on 404 errors
+      if (!response.ok && response.status !== 404 && retries > 0) {
         const delay = Math.pow(2, MAX_RETRIES - retries) * 1000;
         console.log(`Request failed. Retrying after ${delay}ms...`);
         await new Promise(resolve => setTimeout(resolve, delay));
@@ -509,12 +510,14 @@ async function processResponse<T>(response: Response): Promise<ApiResponse<T>> {
   let error = 'An error occurred';
   const { status } = response;
 
+  // For 404 errors, return null data without an error
+  if (status === 404) {
+    return { data: null, error: null };
+  }
+
   try {
     const errorData = await response.json();
     error = errorData.message || error;
-    
-    // Show error toast for non-successful responses
-    // toast.error(error);
     
     // Handle specific status codes
     if (status === 401) {
@@ -527,7 +530,6 @@ async function processResponse<T>(response: Response): Promise<ApiResponse<T>> {
   } catch (e) {
     // If the response is not JSON, use the status text
     error = response.statusText || error;
-    // toast.error(error);
   }
   return { data: null, error };
 }
@@ -978,7 +980,12 @@ export const warrantyApi = {
       
       return null;
     }
-  }
+  },
+
+  getServiceInfoByProduct: async (productId: string) => {
+    const response = await apiRequest<{ serviceInfo: ServiceInfo }>(`/service-info/product/${productId}`, 'GET');
+    return response;
+  },
 };
 
 // Product API
@@ -1195,6 +1202,8 @@ export const adminApi = {
     apiRequest<{ serviceInfo: ServiceInfo[] }>('/admin/service-info', 'GET'),
   getServiceInfoById: (id: string) => 
     apiRequest<{ serviceInfo: ServiceInfo }>(`/admin/service-info/${id}`, 'GET'),
+  getServiceInfoByProduct: (productId: string) => 
+    apiRequest<{ serviceInfo: ServiceInfo }>(`/admin/service-info/product/${productId}`, 'GET'),
   createServiceInfo: (data: ServiceInfoInput) => 
     apiRequest<{ serviceInfo: ServiceInfo }>('/admin/service-info', 'POST', data),
   updateServiceInfo: (id: string, data: Partial<ServiceInfoInput>) => 

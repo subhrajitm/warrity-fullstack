@@ -7,14 +7,14 @@ const validation = require('../middleware/validation.middleware');
 // Get all service information (admin only)
 router.get('/', auth, isAdmin, serviceInfoController.getAllServiceInfo);
 
-// Get service info by ID
-router.get('/:id', auth, serviceInfoController.getServiceInfoById);
-
 // Get service info by product ID
 router.get('/product/:productId', auth, serviceInfoController.getServiceInfoByProduct);
 
 // Get service info by company
 router.get('/company/:company', auth, serviceInfoController.getServiceInfoByCompany);
+
+// Get service info by ID
+router.get('/:id', auth, serviceInfoController.getServiceInfoById);
 
 // Create new service info (admin only)
 router.post('/', 
