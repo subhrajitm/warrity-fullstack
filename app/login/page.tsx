@@ -1,50 +1,43 @@
 "use client"
 
 import React, { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { LogIn, User, Lock, AlertCircle } from "lucide-react"
+import { LogIn, User, Lock, AlertCircle, Eye, EyeOff } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { toast } from 'sonner'
 
 export default function LoginPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { login, isAuthenticated, user, isLoading } = useAuth()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const returnUrl = searchParams.get('returnUrl')
   
   // Check if user is already logged in
   useEffect(() => {
     if (isAuthenticated && user) {
-      // Get the return URL from the query parameters
-      const params = new URLSearchParams(window.location.search);
-      const returnUrl = params.get('returnUrl');
-      
-      if (returnUrl) {
-        // Validate the return URL to ensure it's a relative path
-        if (returnUrl.startsWith('/')) {
-          router.replace(returnUrl);
-        } else {
-          console.error('Invalid return URL:', returnUrl);
-          router.replace(user.role === 'admin' ? '/admin' : '/user');
-        }
-      } else {
-        router.replace(user.role === 'admin' ? '/admin' : '/user');
-      }
+      const redirectPath = returnUrl || (user.role === 'admin' ? '/admin' : '/user')
+      router.replace(redirectPath)
     }
-  }, [isAuthenticated, user, router]);
+  }, [isAuthenticated, user, router, returnUrl])
   
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setError("")
+    setIsSubmitting(true)
     
     if (!email || !password) {
-      toast.error('Please enter both email and password');
+      toast.error('Please enter both email and password')
+      setIsSubmitting(false)
       return
     }
     
@@ -52,47 +45,34 @@ export default function LoginPage() {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(email)) {
       setError("Please enter a valid email address")
+      setIsSubmitting(false)
       return
     }
     
     // Basic password validation
     if (password.length < 6) {
       setError("Password must be at least 6 characters long")
+      setIsSubmitting(false)
       return
     }
     
     try {
       console.log("Attempting login with:", { email }) // Don't log password
       
-      // Get the return URL from the query parameters
-      const params = new URLSearchParams(window.location.search);
-      const returnUrl = params.get('returnUrl');
-      
-      // Validate returnUrl to prevent open redirect vulnerabilities
-      const isValidReturnUrl = returnUrl && (
-        returnUrl.startsWith('/') && 
-        !returnUrl.startsWith('//') && 
-        !returnUrl.includes('http') &&
-        !returnUrl.includes('javascript:')
-      );
-      
-      // Only redirect to dashboard if there's no return URL
-      const success = await login(email, password, !returnUrl)
-      
-      if (success) {
-        console.log("Login successful")
-        if (isValidReturnUrl) {
-          router.replace(returnUrl)
-        }
-        // If no returnUrl or invalid returnUrl, the auth context will handle redirection
-      } else {
+      const success = await login(email, password, false)
+      if (!success) {
         console.log("Login failed")
         setError("Invalid email or password. Please try again.")
+      } else {
+        console.log("Login successful")
+        // The auth context will handle redirection
       }
     } catch (err: any) {
       console.error("Login error:", err)
       setError(err?.message || "An unexpected error occurred. Please try again.")
       toast.error('An unexpected error occurred during login')
+    } finally {
+      setIsSubmitting(false)
     }
   }
   
@@ -103,6 +83,18 @@ export default function LoginPage() {
         <div className="text-amber-800 text-xl flex items-center">
           <div className="animate-spin mr-3 h-5 w-5 border-2 border-amber-800 border-t-transparent rounded-full" />
           Loading...
+        </div>
+      </div>
+    )
+  }
+  
+  // If user is already authenticated, show loading while redirecting
+  if (isAuthenticated && user) {
+    return (
+      <div className="min-h-screen bg-amber-50 flex items-center justify-center p-6">
+        <div className="text-amber-800 text-xl flex items-center">
+          <div className="animate-spin mr-3 h-5 w-5 border-2 border-amber-800 border-t-transparent rounded-full" />
+          Redirecting...
         </div>
       </div>
     )
@@ -143,6 +135,8 @@ export default function LoginPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="pl-10 border-2 border-amber-800 bg-amber-50"
+                    autoComplete="email"
+                    required
                   />
                 </div>
               </div>
@@ -155,21 +149,34 @@ export default function LoginPage() {
                   <Lock className="absolute left-3 top-3 h-4 w-4 text-amber-800" />
                   <Input
                     id="password"
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     placeholder="Enter your password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10 border-2 border-amber-800 bg-amber-50"
+                    className="pl-10 pr-10 border-2 border-amber-800 bg-amber-50"
+                    autoComplete="current-password"
+                    required
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-3 text-amber-800 hover:text-amber-900"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
                 </div>
               </div>
               
               <Button 
                 type="submit"
                 className="w-full bg-amber-800 hover:bg-amber-900 text-amber-100 border-2 border-amber-900"
-                disabled={isLoading}
+                disabled={isSubmitting || isLoading}
               >
-                {isLoading ? (
+                {isSubmitting ? (
                   <div className="flex items-center justify-center">
                     <div className="animate-spin mr-2 h-4 w-4 border-2 border-amber-100 border-t-transparent rounded-full" />
                     Logging in...

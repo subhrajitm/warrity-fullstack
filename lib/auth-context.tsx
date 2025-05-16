@@ -137,11 +137,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Check if user is already logged in
   useEffect(() => {
+    let isMounted = true;
     const checkAuth = async () => {
       try {
         const token = localStorage.getItem('authToken');
         if (!token) {
-          setLoading(false);
+          if (isMounted) {
+            setLoading(false);
+            setUser(null);
+          }
           return;
         }
 
@@ -152,8 +156,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (refreshResponse.error) {
             // Refresh failed, clear token
             localStorage.removeItem('authToken');
-            setUser(null);
-            setLoading(false);
+            if (isMounted) {
+              setUser(null);
+              setLoading(false);
+            }
             return;
           }
           
@@ -163,22 +169,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const retryResponse = await authApi.getCurrentUser();
             if (retryResponse.error) {
               localStorage.removeItem('authToken');
-              setUser(null);
-            } else if (retryResponse.data?.user) {
+              if (isMounted) {
+                setUser(null);
+                setLoading(false);
+              }
+            } else if (retryResponse.data?.user && isMounted) {
               setUser(retryResponse.data.user);
+              setLoading(false);
             }
           }
-        } else if (response.data?.user) {
+        } else if (response.data?.user && isMounted) {
           setUser(response.data.user);
+          setLoading(false);
         }
       } catch (error) {
         console.error('Auth check failed:', error);
-      } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+          setUser(null);
+        }
       }
     };
 
     checkAuth();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const login = async (email: string, password: string, shouldRedirect: boolean = true): Promise<boolean> => {
@@ -239,7 +255,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Only redirect if shouldRedirect is true
       if (shouldRedirect) {
         const redirectPath = userData.role === 'admin' ? '/admin' : '/user';
-        router.push(redirectPath);
+        router.replace(redirectPath);
       }
       
       return true;
