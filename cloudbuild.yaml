@@ -1,26 +1,61 @@
 steps:
+  # Debug: Print current directory and files
+  - name: 'ubuntu'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        echo "Current directory: $(pwd)"
+        echo "Files in directory:"
+        ls -la
+
   # Install pnpm
   - name: 'node:18-alpine'
     entrypoint: npm
     args: ['install', '-g', 'pnpm']
+    id: 'install-pnpm'
+
+  # Debug: Verify pnpm installation
+  - name: 'node:18-alpine'
+    entrypoint: pnpm
+    args: ['--version']
+    id: 'verify-pnpm'
+
+  # Copy package files
+  - name: 'ubuntu'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        echo "Copying package files..."
+        cp package*.json pnpm-lock.yaml /workspace/
+    id: 'copy-files'
 
   # Install dependencies
   - name: 'node:18-alpine'
     entrypoint: pnpm
     args: ['install', '--frozen-lockfile']
+    id: 'install-deps'
+    env:
+      - 'NODE_ENV=production'
 
   # Build the application
   - name: 'node:18-alpine'
     entrypoint: pnpm
     args: ['run', 'build']
+    id: 'build-app'
+    env:
+      - 'NODE_ENV=production'
 
   # Build the Docker image
   - name: 'gcr.io/cloud-builders/docker'
     args: ['build', '-t', 'gcr.io/$PROJECT_ID/warrity-api:$COMMIT_SHA', '.']
+    id: 'build-image'
 
   # Push the Docker image
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push', 'gcr.io/$PROJECT_ID/warrity-api:$COMMIT_SHA']
+    id: 'push-image'
 
   # Deploy to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
@@ -36,11 +71,17 @@ steps:
       - '--platform'
       - 'managed'
       - '--allow-unauthenticated'
+    id: 'deploy'
 
 images:
   - 'gcr.io/$PROJECT_ID/warrity-api:$COMMIT_SHA'
 
 options:
   logging: CLOUD_LOGGING_ONLY
+  machineType: 'E2_HIGHCPU_8'  # Use a more powerful machine for faster builds
 
-timeout: '1800s'  # 30 minutes 
+timeout: '1800s'  # 30 minutes
+
+substitutions:
+  _NODE_VERSION: '18'
+  _REGION: 'us-central1' 
