@@ -1,0 +1,46 @@
+steps:
+  # Install pnpm
+  - name: 'node:18-alpine'
+    entrypoint: npm
+    args: ['install', '-g', 'pnpm']
+
+  # Install dependencies
+  - name: 'node:18-alpine'
+    entrypoint: pnpm
+    args: ['install', '--frozen-lockfile']
+
+  # Build the application
+  - name: 'node:18-alpine'
+    entrypoint: pnpm
+    args: ['run', 'build']
+
+  # Build the Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/warrity-api:$COMMIT_SHA', '.']
+
+  # Push the Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/warrity-api:$COMMIT_SHA']
+
+  # Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'warrity-api'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/warrity-api:$COMMIT_SHA'
+      - '--region'
+      - 'us-central1'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+
+images:
+  - 'gcr.io/$PROJECT_ID/warrity-api:$COMMIT_SHA'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+timeout: '1800s'  # 30 minutes 

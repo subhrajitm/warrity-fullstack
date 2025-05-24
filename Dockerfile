@@ -8,6 +8,8 @@ RUN npm install -g pnpm
 
 # Copy package files
 COPY package*.json pnpm-lock.yaml ./
+
+# Install dependencies
 RUN pnpm install --frozen-lockfile
 
 # Copy source code
@@ -27,12 +29,14 @@ RUN npm install -g pnpm
 # Copy package files and built assets
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/pnpm-lock.yaml ./
-COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/public ./public
 COPY --from=builder /app/node_modules ./node_modules
 
 # Set environment variables
 ENV NODE_ENV=production
 ENV PORT=5001
+ENV HOSTNAME=0.0.0.0
 
 # Expose port
 EXPOSE 5001
