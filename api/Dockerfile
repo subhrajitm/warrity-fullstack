@@ -3,12 +3,15 @@ FROM node:18-alpine
 # Create app directory
 WORKDIR /usr/src/app
 
-# Install app dependencies
-# A wildcard is used to ensure both package.json AND package-lock.json are copied
-COPY package*.json ./
+# Install pnpm
+RUN npm install -g pnpm && \
+    pnpm --version
+
+# Copy package files
+COPY package*.json pnpm-lock.yaml ./
 
 # Install dependencies
-RUN npm ci --only=production
+RUN pnpm install --frozen-lockfile --prod
 
 # Bundle app source
 COPY . .
@@ -26,4 +29,4 @@ EXPOSE 5001
 ENV NODE_ENV=production
 
 # Run the app
-CMD ["node", "src/server.js"] 
+CMD ["pnpm", "start"] 
